@@ -4,8 +4,15 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 import time
+import os
 
-with open("/Users/roberto/Apps/eportem/credentials.txt", "r") as f:
+# Get the directory of the current file
+current_dir = os.path.dirname(os.path.realpath(__file__))
+
+# Construct the file path
+file_path = os.path.join(current_dir, 'credentials.txt')
+
+with open(file_path, "r") as f:
     uname, pwd = f.read().splitlines()
 
 # create a new Chrome browser instance
