@@ -3,6 +3,7 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
 import time
 import os
 
@@ -16,7 +17,9 @@ with open(file_path, "r") as f:
     uname, pwd = f.read().splitlines()
 
 # create a new Chrome browser instance
-driver = webdriver.Chrome()
+chrome_options = Options()
+chrome_options.add_argument("--headless")
+driver = webdriver.Chrome(options=chrome_options)
 
 # navigate to the login page
 driver.get("https://eportem.es/Usuario/Login?ReturnUrl=%2faplicaciones")
