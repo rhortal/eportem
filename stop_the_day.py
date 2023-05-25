@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from config.login_and_navigate import login_and_navigate
+from utility.login_and_navigate import login_and_navigate
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import time
