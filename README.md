@@ -1,6 +1,6 @@
 # ePortem
 
-Scripts for ePortem. Automates start, lunch, return and end of day.
+Scripts for ePortem. Automates start (office and home versions), lunch, return and end of day.
 
 Takes the credentials from a file. Copy config/credentials-example.txt to config/credentials.txt and add you DNI and Password in 2 lines, replacing the example.
 
