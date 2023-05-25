@@ -12,7 +12,7 @@ def login_and_navigate():
     current_dir = os.path.dirname(os.path.realpath(__file__))
 
     # Construct the file path
-    file_path = os.path.join(current_dir, 'credentials.txt')
+    file_path = os.path.join(current_dir, '../config/credentials.txt')
 
     with open(file_path, "r") as f:
         uname, pwd = f.read().splitlines()
