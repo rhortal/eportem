@@ -2,6 +2,7 @@
 
 Scripts for ePortem. Automates start, lunch, return and end of day.
 
+Clone this repo and make sure you have the python3 binay in your PATH.
 Takes the credentials from a file. Copy config/credentials-example.txt to config/credentials.txt and add you DNI and Password in 2 lines, replacing the example.
 
 ## How to use
