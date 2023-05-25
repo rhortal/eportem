@@ -16,7 +16,7 @@ Takes the credentials from a file. Copy config/credentials-example.txt to config
 
 There are 2 ways to use the software:
 
-- For interactive use on a Mac, drag the *command* folder to your Dock and set it to fan,so you can select which one to click easily from the Dock.
+- For interactive use on a Mac, drag the *command* folder to your Dock and set it to fan, so you can select which one to click easily from the Dock.
 
 - For programmatic use or to use with Cron, simply call the Python files with *python3 /full_path/filename.py*.
 
