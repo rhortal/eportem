@@ -11,16 +11,17 @@ def send_telegram_message(message_text):
 
     # Read the Telegram parameters
     with open(file_path, "r") as f:
-        token, userID = f.read().splitlines()
+        send, token, userID = f.read().splitlines()
 
-    # Create url
-    url = f'https://api.telegram.org/bot{token}/sendMessage'
+    if send == "YES":
+        # Create url
+        url = f'https://api.telegram.org/bot{token}/sendMessage'
 
-    # Create json link with message
-    data = {'chat_id': userID, 'text': message_text}
+        # Create json link with message
+        data = {'chat_id': userID, 'text': message_text}
 
-    # POST the message
-    requests.post(url, data)
+        # POST the message
+        requests.post(url, data)
 
 # Example usage
 if __name__ == '__main__':
