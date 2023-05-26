@@ -3,6 +3,7 @@ from utility.login_and_navigate import login_and_navigate
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import time
+from utility.telegram_send import send_telegram_message
 
 # log in to ePortem
 driver = login_and_navigate()
@@ -15,3 +16,6 @@ time.sleep(3)
 
 # close the browser window
 driver.quit()
+
+# confirm we've done the thing
+send_telegram_message("Reported back from lunch break")
