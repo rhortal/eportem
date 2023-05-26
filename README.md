@@ -9,8 +9,9 @@ ePortem is a SaaS solution used in Spain for HR-related tasks. These scripts aut
 ## Deployment
 
 To deploy this project, clone this repo and make sure you have the python3 binay in your PATH.
-Takes the credentials from a file. Copy config/credentials-example.txt to config/credentials.txt and add you DNI and Password in 2 lines, replacing the example.
-
+Takes ePortem and Telegram credentials from a file. 
+- Copy config/credentials-example.txt to config/credentials.txt and add you DNI and Password in 2 lines, replacing the example.
+- Copy config/telegram-example.txt to config/telegram.txt and add you Bot Token and Chat ID in 2 lines, replacing the example.
 
 ## Usage/Examples
 
@@ -19,7 +20,6 @@ There are 2 ways to use the software:
 - For interactive use on a Mac, drag the *command* folder to your Dock and set it to fan, so you can select which one to click easily from the Dock.
 
 - For programmatic use or to use with Cron, simply call the Python files with *python3 /full_path/filename.py*.
-
 
 ## Acknowledgements
 
