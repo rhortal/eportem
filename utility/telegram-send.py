@@ -1,18 +1,26 @@
-import telegram
-
-# Replace with your Telegram Bot's API token
-TOKEN = '1745486736:AAEAPhpBIlK9oVS1QEQkSyD0WSbHLRcu23M'
+import requests
+import os
 
 # Define function to send message
 def send_telegram_message(message_text):
-    # Create Telegram Bot object
-    bot = telegram.Bot(token=TOKEN)
+    # Get the directory of the current file
+    current_dir = os.path.dirname(os.path.realpath(__file__))
 
-    # Replace with the chat ID you want to send the message to
-    chat_id = '414665210'
+    # Construct the file path
+    file_path = os.path.join(current_dir, '../config/telegram.txt')
 
-    # Send message
-    bot.send_message(chat_id=chat_id, text=message_text)
+    # Read the Telegram parameters
+    with open(file_path, "r") as f:
+        token, userID = f.read().splitlines()
+
+    # Create url
+    url = f'https://api.telegram.org/bot{token}/sendMessage'
+
+    # Create json link with message
+    data = {'chat_id': userID, 'text': message_text}
+
+    # POST the message
+    requests.post(url, data)
 
 # Example usage
 if __name__ == '__main__':
