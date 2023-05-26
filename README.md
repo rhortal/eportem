@@ -11,7 +11,7 @@ ePortem is a SaaS solution used in Spain for HR-related tasks. These scripts aut
 To deploy this project, clone this repo and make sure you have the python3 binay in your PATH.
 Takes ePortem and Telegram credentials from a file. 
 - Copy config/credentials-example.txt to config/credentials.txt and add you DNI and Password in 2 lines, replacing the example.
-- Copy config/telegram-example.txt to config/telegram.txt and add you Bot Token and Chat ID in 2 lines, replacing the example.
+- Copy config/telegram-example.txt to config/telegram.txt. If you want to send telegram messages, make the first line YES and add you Bot Token and Chat ID in the 2 following lines, as in the example.
 
 ## Usage/Examples
 
