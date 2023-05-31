@@ -15,11 +15,12 @@ def login_and_navigate():
     file_path = os.path.join(current_dir, '../config/credentials.txt')
 
     with open(file_path, "r") as f:
-        uname, pwd = f.read().splitlines()
+        uname, pwd, headless = f.read().splitlines()
 
     # create a new Chrome browser instance
     chrome_options = Options()
-    chrome_options.add_argument("--headless")
+    if headless == "YES":
+        chrome_options.add_argument("--headless")
     driver = webdriver.Chrome(options=chrome_options)
 
     # navigate to the login page
