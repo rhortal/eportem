@@ -30,7 +30,7 @@ You can set these scripts to run automatically using Unix `cron`. You can also a
 25 13 * * 1-5 sleep $[RANDOM\%10]m ; python3 /full_path/lunch_break.py
 25 14 * * 1-4 sleep $[RANDOM\%10]m ; python3 /full_path/after_lunch_break.py
 25 14 * * 5 sleep $[RANDOM\%10]m ; python3 /full_path/after_lunch_break_home.py
-10 18 * * 1-5 sleep $[RANDOM\%25]m ;python3 /full_path/stop_the_day.py
+10 18 * * 1-5 sleep $[RANDOM\%25]m ; python3 /full_path/stop_the_day.py
 ```
 The above example checks in Monday to Thursday between 08:55 and 09:05 at the office, and at the same time Fridays starts work from home.
 It then notifies of lunch starting 13:25-13:35 and returns 14:25-14:35 (Fridays it uses the return to work from home script).
