@@ -13,6 +13,7 @@ Takes ePortem and Telegram credentials from a file.
 - Copy config/credentials-example.txt to config/credentials.txt and add you DNI and Password in 2 lines, replacing the example. On the third line, write 
 YES for headless operation (preferred) and NO if you want to see what the browser is doing (useful for debugging).
 - Copy config/telegram-example.txt to config/telegram.txt. If you want to send telegram messages, make the first line YES and add you Bot Token and Chat ID in the 2 following lines, as in the example.
+- Install requirements by running `pip install -r requirements.txt`
 
 ## Usage/Examples
 
