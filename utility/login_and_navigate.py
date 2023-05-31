@@ -6,16 +6,21 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 import time
 import os
+from dotenv import load_dotenv
+from pathlib import Path
 
 def login_and_navigate():
     # Get the directory of the current file
     current_dir = os.path.dirname(os.path.realpath(__file__))
 
-    # Construct the file path
-    file_path = os.path.join(current_dir, '../config/credentials.txt')
+    # Load the .env file
+    dotenv_path = Path(os.path.join(current_dir, '../config/.env'))
+    load_dotenv(dotenv_path=dotenv_path)
 
-    with open(file_path, "r") as f:
-        uname, pwd, headless = f.read().splitlines()
+
+    uname = os.getenv('EPORTEM_USERNAME')
+    pwd = os.getenv('EPORTEM_PASSWORD')
+    headless = os.getenv('HEADLESS_BROWSING')
 
     # create a new Chrome browser instance
     chrome_options = Options()

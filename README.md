@@ -9,11 +9,14 @@ ePortem is a SaaS solution used in Spain for HR-related tasks. These scripts aut
 ## Deployment
 
 To deploy this project, clone this repo and make sure you have the python3 binay in your PATH.
-Takes ePortem and Telegram credentials from a file. 
-- Copy config/credentials-example.txt to config/credentials.txt and add you DNI and Password in 2 lines, replacing the example. On the third line, write 
-YES for headless operation (preferred) and NO if you want to see what the browser is doing (useful for debugging).
-- Copy config/telegram-example.txt to config/telegram.txt. If you want to send telegram messages, make the first line YES and add you Bot Token and Chat ID in the 2 following lines, as in the example.
-- Install requirements by running `pip install -r requirements.txt`
+
+Install requirements by running `pip install -r requirements.txt` in the root 
+
+The software takes configuration including ePortem and Telegram credentials from a .env file. To set this up:
+- Copy config/.env.template to config/.env
+- Open .env with your favourite editor (`nano config/.env` or `code config/.env`)
+- Enter values for all variables as per comments in the file
+
 
 ## Usage/Examples
 
