@@ -18,5 +18,8 @@ if [ ! -f "$script_path" ]; then
   exit 1
 fi
 
-# Execute the script
-python3 "$script_path"
+# Find the location of python or python3 interpreter
+PYTHON=$(which python3 || which python)
+
+# Call the Python script using the interpreter location
+$PYTHON "$script_path"
