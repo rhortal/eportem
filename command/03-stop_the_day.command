@@ -19,4 +19,4 @@ if [ ! -f "$script_path" ]; then
 fi
 
 # Execute the script
-python "$script_path"
+python3 "$script_path"
