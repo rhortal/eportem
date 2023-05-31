@@ -20,7 +20,21 @@ There are 2 ways to use the software:
 
 - For interactive use on a Mac, drag the *command* folder to your Dock and set it to fan, so you can select which one to click easily from the Dock.
 
-- For programmatic use or to use with Cron, simply call the Python files with *python3 /full_path/filename.py*.
+- For programmatic use simply call the Python files with `python3 /full_path/filename.py` from your command line.
+
+### Automation
+You can set these scripts to run automatically using Unix `cron`. You can also add a `sleep $[RANDOM\%nn]m` command preceding the call so the command is called at a random time between 0 and nn minutes.
+```
+55 08 * * 1-4 sleep $[RANDOM\%10]m ; python3 /full_path/start_the_day.py
+55 08 * * 5 sleep $[RANDOM\%10]m ; python3 /full_path/start_the_day_home.py
+25 13 * * 1-5 sleep $[RANDOM\%10]m ; python3 /full_path/lunch_break.py
+25 14 * * 1-4 sleep $[RANDOM\%10]m ; python3 /full_path/after_lunch_break.py
+25 14 * * 5 sleep $[RANDOM\%10]m ; python3 /full_path/after_lunch_break_home.py
+10 18 * * 1-5 sleep $[RANDOM\%25]m ;python3 /full_path/stop_the_day.py
+```
+The above example checks in Monday to Thursday between 08:55 and 09:05 at the office, and at the same time Fridays starts work from home.
+It then notifies of lunch starting 13:25-13:35 and returns 14:25-14:35 (Fridays it uses the return to work from home script).
+It finally calls the script to end the day daily between 18:10 and 18:35.
 
 ## Acknowledgements
 
