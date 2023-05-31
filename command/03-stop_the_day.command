@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Get the absolute path of the directory where the command file is located
 command_dir="$(cd "$(dirname "$0")" && pwd)"
