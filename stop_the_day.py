@@ -20,4 +20,4 @@ time.sleep(3)
 driver.quit()
 
 # confirm we've done the thing
-send_telegram_message("Reported done for the day")
+send_telegram_message("RePortemed done for the day")

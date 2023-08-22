@@ -20,4 +20,4 @@ time.sleep(3)
 driver.quit()
 
 # confirm we've done the thing
-send_telegram_message("Reported at home")
+send_telegram_message("RePortemed at home")
