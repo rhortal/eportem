@@ -6,7 +6,6 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 import time
 import os
-from dotenv import load_dotenv
 from pathlib import Path
 
 def login_and_navigate():
