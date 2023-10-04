@@ -1,8 +1,15 @@
 import os
 import sys
+from dotenv import load_dotenv
 
 def check_env_variable():
-    epportem_enabled = os.environ.get('EPORTEM_ENABLED')
+    # Load the environment variables from the .env file
+    dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config', '.env'))
+    load_dotenv(dotenv_path)
+
+    # Retrieve the value of EPORTEM_ENABLED environment variable
+    epportem_enabled = os.getenv('EPORTEM_ENABLED')
+    
     if epportem_enabled != 'YES':
         sys.exit("EPORTEM_ENABLED environment variable is not set to 'YES'. Terminating the program.")
 

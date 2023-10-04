@@ -4,6 +4,10 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 import time
 from utility.telegram_send import send_telegram_message
+from utility.env_check import check_env_variable
+
+# check if we should run
+check_env_variable()
 
 # log in to ePortem
 driver = login_and_navigate()
