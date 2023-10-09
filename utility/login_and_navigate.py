@@ -7,6 +7,7 @@ from selenium.webdriver.chrome.options import Options
 import time
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 def login_and_navigate():
     # Get the directory of the current file
@@ -14,7 +15,7 @@ def login_and_navigate():
 
     # Load the .env file
     dotenv_path = Path(os.path.join(current_dir, '../config/.env'))
-    load_dotenv(dotenv_path=dotenv_path)
+    load_dotenv(dotenv_path)
 
 
     uname = os.getenv('EPORTEM_USERNAME')

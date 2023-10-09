@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+import os
 from utility.login_and_navigate import login_and_navigate
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -8,6 +9,8 @@ from utility.env_check import check_env_variable
 from dotenv import load_dotenv
 
 # Load the environment variables from the .env file
+
+# Load the .env file
 dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '.', 'config', '.env'))
 load_dotenv(dotenv_path)
 
