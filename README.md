@@ -19,7 +19,8 @@ sudo apt install chromium-chromedriver
 ```shell
 sudo apt install chromium-driver
 ```
-### On macOS install Homebrew then do
+### On macOS 
+install Homebrew then do
 ```shell
 brew install --cask chromedriver
 ```
