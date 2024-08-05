@@ -24,6 +24,7 @@ def login_and_navigate():
 
     # create a new Chrome browser instance
     chrome_options = Options()
+    chrome_options.add_argument("--disable-gpu")
     if headless == "YES":
         chrome_options.add_argument("--headless")
     driver = webdriver.Chrome(options=chrome_options)
