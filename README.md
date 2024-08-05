@@ -10,6 +10,20 @@ ePortem is a SaaS solution used in Spain for HR-related tasks. These scripts aut
 
 To deploy this project, clone this repo and make sure you have the python3 binay in your PATH.
 
+Make sure you have chromium-driver installed
+### On Ubuntu:
+```shell
+sudo apt install chromium-chromedriver
+```
+### On Debian:
+```shell
+sudo apt install chromium-driver
+```
+### On macOS 
+install Homebrew then do
+```shell
+brew install --cask chromedriver
+```
 Install requirements by running `pip install -r requirements.txt` in the root 
 
 The software takes configuration including ePortem and Telegram credentials from a .env file. To set this up:
