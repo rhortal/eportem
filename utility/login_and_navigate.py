@@ -3,7 +3,8 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
 import time
 import os
 from pathlib import Path
@@ -23,12 +24,15 @@ def login_and_navigate():
     headless = os.getenv('HEADLESS_BROWSING')
 
     # create a new Chrome browser instance
-    chrome_options = Options()
+    chrome_options = ChromeOptions()
+    firefox_options = FirefoxOptions()
     chrome_options.add_argument("--disable-gpu")
     if headless == "YES":
         chrome_options.add_argument("--headless")
+        firefox_options.headless = True
     driver = webdriver.Chrome(options=chrome_options)
 
+#    driver = webdriver.Firefox(options=firefox_options)
     # navigate to the login page
     driver.get("https://eportem.es/Usuario/Login?ReturnUrl=%2faplicaciones")
 
@@ -44,6 +48,8 @@ def login_and_navigate():
 
     # wait for the page to load
     time.sleep(2)
+
+#    print (driver.page_source)
 
     return driver
 
