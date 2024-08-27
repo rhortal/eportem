@@ -43,7 +43,7 @@ def login_and_navigate():
     password.send_keys(Keys.RETURN)
 
     # wait for the page to load
-    time.sleep(5)
+    time.sleep(2)
 
     return driver
 
