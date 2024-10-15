@@ -36,7 +36,8 @@ def send_telegram_message(message_text):
         data = {'text': message_text}
 
         # POST the message
-        requests.post(url, data)
+        whathappened = requests.post(url, json = data)
+        print(whathappened.text)
 
 # Example usage
 if __name__ == '__main__':
