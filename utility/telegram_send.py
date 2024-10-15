@@ -12,15 +12,16 @@ def send_telegram_message(message_text):
     dotenv_path = Path(os.path.join(current_dir, '../config/.env'))
     load_dotenv(dotenv_path=dotenv_path)
 
-    send = os.getenv('TELEGRAM_NOTIFY')
-    token = os.getenv('TELEGRAM_BOT_TOKEN')
+    tsend = os.getenv('TELEGRAM_NOTIFY')
+    ssend = os.getenv('SLACK_NOTIFY')
+    telegramToken = os.getenv('TELEGRAM_BOT_TOKEN')
     userID = os.getenv('TELEGRAM_CHAT_ID')
     slackWebhook = os.getenv('SLACK_WEBHOOK')
 
-    if send == "YES":
+    if tsend == "YES":
         # Send to Telegram
         # Create url
-        url = f'https://api.telegram.org/bot{token}/sendMessage'
+        url = f'https://api.telegram.org/bot{telegramToken}/sendMessage'
 
         # Create json link with message
         data = {'chat_id': userID, 'text': message_text}
@@ -28,6 +29,7 @@ def send_telegram_message(message_text):
         # POST the message
         requests.post(url, data)
 
+    if ssend == "YES":
         # Send to Slack
         # Create url
         url = f'https://hooks.slack.com/services/{slackWebhook}'
@@ -36,8 +38,7 @@ def send_telegram_message(message_text):
         data = {'text': message_text}
 
         # POST the message
-        whathappened = requests.post(url, json = data)
-        print(whathappened.text)
+        requests.post(url, json = data)
 
 # Example usage
 if __name__ == '__main__':
