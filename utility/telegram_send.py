@@ -15,13 +15,25 @@ def send_telegram_message(message_text):
     send = os.getenv('TELEGRAM_NOTIFY')
     token = os.getenv('TELEGRAM_BOT_TOKEN')
     userID = os.getenv('TELEGRAM_CHAT_ID')
+    slackWebhook = os.getenv('SLACK_WEBHOOK')
 
     if send == "YES":
+        # Send to Telegram
         # Create url
         url = f'https://api.telegram.org/bot{token}/sendMessage'
 
         # Create json link with message
         data = {'chat_id': userID, 'text': message_text}
+
+        # POST the message
+        requests.post(url, data)
+
+        # Send to Slack
+        # Create url
+        url = f'https://hooks.slack.com/services/{slackWebhook}'
+
+        # Create json link with message
+        data = {'text': message_text}
 
         # POST the message
         requests.post(url, data)
