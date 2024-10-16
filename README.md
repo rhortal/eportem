@@ -1,10 +1,10 @@
 # ePortem
 
-Scripts for ePortem. Automates start (office and home versions), lunch, return and end of day.
+Scripts for ePortem. Automates start (office and home working versions), lunch, return and end of day. 
+
+Optionally, it notifies the user on Telegram and Slack.
 
 ePortem is a SaaS solution used in Spain for HR-related tasks. These scripts automate the functionality that enables people to track the time they spend at work every day, as required by Spanish law.
-
-
 
 ## Deployment
 
