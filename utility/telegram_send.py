@@ -1,6 +1,5 @@
 import requests
 import os
-from dotenv import load_dotenv
 from pathlib import Path
 
 # Define function to send message
@@ -8,9 +7,6 @@ def send_telegram_message(message_text):
     # Get the directory of the current file
     current_dir = os.path.dirname(os.path.realpath(__file__))
 
-    # Load the .env file
-    dotenv_path = Path(os.path.join(current_dir, '../config/.env'))
-    load_dotenv(dotenv_path=dotenv_path)
 
     tsend = os.getenv('TELEGRAM_NOTIFY')
     ssend = os.getenv('SLACK_NOTIFY')

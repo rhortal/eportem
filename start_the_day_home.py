@@ -6,13 +6,6 @@ from selenium.webdriver.common.by import By
 import time
 from utility.telegram_send import send_telegram_message
 from utility.env_check import check_env_variable
-from dotenv import load_dotenv
-
-# Load the environment variables from the .env file
-
-# Load the .env file
-dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '.', 'config', '.env'))
-load_dotenv(dotenv_path)
 
 # check if we should run
 check_env_variable()

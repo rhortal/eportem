@@ -1,11 +1,9 @@
 import os
 import sys
-from dotenv import load_dotenv
+# NOTE: environment variables are loaded by the utility package import
 
 def check_env_variable():
-    # Load the environment variables from the .env file
-    dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config', '.env'))
-    load_dotenv(dotenv_path)
+    # Environment variables loaded by utility package import
 
     # Retrieve the value of EPORTEM_ENABLED environment variable
     epportem_enabled = os.getenv('EPORTEM_ENABLED')
