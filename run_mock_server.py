@@ -7,7 +7,7 @@ import signal
 import sys
 import colorama
 from colorama import Fore, Style
-from mock_server.server import start_mock_server
+from utility.server import start_mock_server
 
 def start_server_thread(host, port, debug):
     """Start the mock server in a separate thread."""
