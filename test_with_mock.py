@@ -11,7 +11,7 @@ def start_mock_server_thread():
     """Start the mock server in a background thread."""
     thread = threading.Thread(
         target=start_mock_server,
-        args=('localhost', 5000, False),
+        args=('localhost', 8000, False),
         daemon=True
     )
     thread.start()
@@ -62,7 +62,7 @@ def main():
     
     # Start the mock server
     server_thread = start_mock_server_thread()
-    print("Mock server started on http://localhost:5000")
+    print("Mock server started on http://localhost:8000")
     
     try:
         if args.action:

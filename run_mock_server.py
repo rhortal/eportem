@@ -25,7 +25,7 @@ def signal_handler(sig, frame):
 def main():
     parser = argparse.ArgumentParser(description="Run the ePortem mock server for testing.")
     parser.add_argument("--host", default="localhost", help="Host to run the server on")
-    parser.add_argument("--port", type=int, default=5000, help="Port to run the server on")
+    parser.add_argument("--port", type=int, default=8000, help="Port to run the server on")
     parser.add_argument("--debug", action="store_true", help="Run in debug mode")
     args = parser.parse_args()
     
@@ -47,6 +47,7 @@ def main():
     print(f"  Login: http://{args.host}:{args.port}/Usuario/Login")
     print(f"  Dashboard: http://{args.host}:{args.port}/aplicaciones")
     print(f"  Reset Session: http://{args.host}:{args.port}/reset")
+    print("\nNote: If port 8000 is already in use, you can specify a different port with --port")
     
     # Keep the main thread alive
     try:

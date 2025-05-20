@@ -31,7 +31,7 @@ def login_and_navigate(driver=None):
             driver = webdriver.Chrome(options=chrome_options)
 
         # Determine the base URL based on whether we're using the mock server
-        base_url = "http://localhost:5000" if use_mock == "YES" else "https://eportem.es"
+        base_url = "http://localhost:8000" if use_mock == "YES" else "https://eportem.es"
         
         # navigate to the login page
         driver.get(f"{base_url}/Usuario/Login?ReturnUrl=%2faplicaciones")
