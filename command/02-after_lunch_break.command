@@ -3,14 +3,8 @@
 # Get the absolute path of the directory where the command file is located
 command_dir="$(cd "$(dirname "$0")" && pwd)"
 
-# Get the filename of the script by removing characters to the left of the dash
-script_filename="$(basename "$0" | sed 's/^[^-]*-//')"
-
-# Remove the .command extension from script_filename
-script_filename="${script_filename%.*}"
-
-# Build the absolute path to the script in the parent directory
-script_path="$command_dir/../$script_filename.py"
+# Build the absolute path to the new after_lunch.py script in the parent directory
+script_path="$command_dir/../after_lunch.py"
 
 # Check if the script file exists
 if [ ! -f "$script_path" ]; then
@@ -21,5 +15,5 @@ fi
 # Find the location of python or python3 interpreter
 PYTHON=$(which python3 || which python)
 
-# Call the Python script using the interpreter location
-$PYTHON "$script_path"
+# Call the Python script using the interpreter location with the office parameter
+$PYTHON "$script_path" --location office

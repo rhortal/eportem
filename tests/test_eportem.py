@@ -1,42 +1,49 @@
 import unittest
-from unittest.mock import MagicMock
-import start_the_day
-import lunch_break
-import after_lunch_break
-import stop_the_day
-import start_the_day_home
-import after_lunch_break_home
+from unittest.mock import MagicMock, patch
+from eportem_action import EPortemAction
 
 class TestEPortem(unittest.TestCase):
 
-    def test_start_the_day(self):
+    def test_start_day_office(self):
         mock_driver = MagicMock()
-        start_the_day.main(driver=mock_driver)
+        action = EPortemAction("start_day", "office", mock_driver)
+        with patch('utility.telegram_send.send_telegram_message'):
+            action.perform()
+        mock_driver.find_element.assert_called()
+
+    def test_start_day_home(self):
+        mock_driver = MagicMock()
+        action = EPortemAction("start_day", "home", mock_driver)
+        with patch('utility.telegram_send.send_telegram_message'):
+            action.perform()
         mock_driver.find_element.assert_called()
 
     def test_lunch_break(self):
         mock_driver = MagicMock()
-        lunch_break.main(driver=mock_driver)
+        action = EPortemAction("lunch_break", "office", mock_driver)
+        with patch('utility.telegram_send.send_telegram_message'):
+            action.perform()
         mock_driver.find_element.assert_called()
 
-    def test_after_lunch_break(self):
+    def test_after_lunch_office(self):
         mock_driver = MagicMock()
-        after_lunch_break.main(driver=mock_driver)
+        action = EPortemAction("after_lunch", "office", mock_driver)
+        with patch('utility.telegram_send.send_telegram_message'):
+            action.perform()
         mock_driver.find_element.assert_called()
 
-    def test_stop_the_day(self):
+    def test_after_lunch_home(self):
         mock_driver = MagicMock()
-        stop_the_day.main(driver=mock_driver)
+        action = EPortemAction("after_lunch", "home", mock_driver)
+        with patch('utility.telegram_send.send_telegram_message'):
+            action.perform()
         mock_driver.find_element.assert_called()
 
-    def test_start_the_day_home(self):
+    def test_stop_day(self):
         mock_driver = MagicMock()
-        start_the_day_home.main(driver=mock_driver)
-        mock_driver.find_element.assert_called()
-
-    def test_after_lunch_break_home(self):
-        mock_driver = MagicMock()
-        after_lunch_break_home.main(driver=mock_driver)
+        action = EPortemAction("stop_day", "office", mock_driver)
+        with patch('utility.telegram_send.send_telegram_message'):
+            action.perform()
         mock_driver.find_element.assert_called()
 
 if __name__ == '__main__':
