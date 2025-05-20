@@ -15,21 +15,35 @@ def login_and_navigate(driver=None):
     uname = os.getenv('EPORTEM_USERNAME')
     pwd = os.getenv('EPORTEM_PASSWORD')
     headless = os.getenv('HEADLESS_BROWSING')
+    use_mock = os.getenv('USE_MOCK_SERVER', 'NO')
 
     # create a new Chrome browser instance if one isn't passed in
     if driver is None:
-        chrome_options = ChromeOptions()
-        chrome_options.add_argument("--disable-gpu")
-        if headless == "YES":
-            chrome_options.add_argument("--headless")
-        driver = webdriver.Chrome(options=chrome_options)
+        if use_mock == "YES":
+            # Use our custom MockWebDriver
+            from mock_server.mock_driver import create_mock_driver
+            driver = create_mock_driver()
+        else:
+            chrome_options = ChromeOptions()
+            chrome_options.add_argument("--disable-gpu")
+            if headless == "YES":
+                chrome_options.add_argument("--headless")
+            driver = webdriver.Chrome(options=chrome_options)
 
+        # Determine the base URL based on whether we're using the mock server
+        base_url = "http://localhost:5000" if use_mock == "YES" else "https://eportem.es"
+        
         # navigate to the login page
-        driver.get("https://eportem.es/Usuario/Login?ReturnUrl=%2faplicaciones")
+        driver.get(f"{base_url}/Usuario/Login?ReturnUrl=%2faplicaciones")
 
     # find the username and password fields within the login form
     username = driver.find_element(By.NAME, "user")
     password = driver.find_element(By.NAME, "password")
+
+    # Use test credentials if we're using the mock server
+    if use_mock == "YES":
+        uname = uname or "test_user"
+        pwd = pwd or "test_password"
 
     username.send_keys(uname)
     password.send_keys(pwd)
