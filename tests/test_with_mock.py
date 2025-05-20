@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import os
-import argparse
+
 import time
 import threading
-import subprocess
+
 from utility.server import start_mock_server
 from eportem_action import execute_action
 
@@ -19,7 +19,7 @@ def start_mock_server_thread():
     time.sleep(1)
     return thread
 
-import pytest
+import pytest  # Ensure pytest is installed in the environment
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_mock_environment():

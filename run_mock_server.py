@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-import os
+
 import argparse
 import threading
-import time
+
 import signal
-import sys
-import colorama
-from colorama import Fore, Style
+
+
 from utility.server import start_mock_server
 
 def start_server_thread(host, port, debug):
@@ -36,13 +35,13 @@ def main():
     
     print(f"{Fore.GREEN}Starting ePortem mock server on http://{args.host}:{args.port}{Style.RESET_ALL}")
     print(f"{Fore.YELLOW}*** MOCK MODE - NO REAL CREDENTIALS WILL BE USED ***{Style.RESET_ALL}")
-    print("Press Ctrl+C to stop the server")
+    print(f"Press Ctrl+C to stop the server")  # Placeholder added
     
     # Register signal handler for graceful shutdown
     signal.signal(signal.SIGINT, signal_handler)
     
     # Start the server
-    server_thread = start_server_thread(args.host, args.port, args.debug)
+    start_server_thread(args.host, args.port, args.debug)
     
     # Print default test credentials
     print("\nMOCK SERVER MODE - Using test credentials only:")

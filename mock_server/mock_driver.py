@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
-import os
-import time
+
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
-from unittest.mock import MagicMock
+from selenium.common.exceptions import NoSuchElementException
 
 # Mock Keys class
 class Keys:
@@ -16,7 +13,7 @@ class Keys:
     ESCAPE = '\ue00c'
     SPACE = ' '
 
-class MockWebElement:
+class MockWebElement(WebDriver):
     """A mock implementation of Selenium's WebElement."""
     
     def __init__(self, element_id, tag_name, attributes=None, text=None):
