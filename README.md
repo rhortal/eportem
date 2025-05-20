@@ -89,7 +89,7 @@ python3 test_with_mock.py
 python3 test_with_mock.py --action start_day --location office
 ```
 
-The mock server runs on http://localhost:5000 and provides simulated ePortem interfaces for testing.
+The mock server runs on http://localhost:8000 and provides simulated ePortem interfaces for testing.
 
 ## Configuration
 
@@ -108,6 +108,9 @@ To switch between real ePortem and the mock server, set the environment variable
 ```bash
 # Use the mock server
 export USE_MOCK_SERVER=YES
+
+# Specify a different port if 8000 is already in use
+python3 run_mock_server.py --port 8888
 
 # Use the real ePortem service (default)
 export USE_MOCK_SERVER=NO
