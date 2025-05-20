@@ -21,8 +21,14 @@ def start_mock_server_thread():
 
 def run_all_tests():
     """Run tests for all actions with the mock driver."""
-    # Set environment variable to use mock server
+    # Set environment variables for mock server
     os.environ['USE_MOCK_SERVER'] = 'YES'
+    # Store original credentials
+    orig_username = os.environ.get('EPORTEM_USERNAME', '')
+    orig_password = os.environ.get('EPORTEM_PASSWORD', '')
+    # Set mock credentials for testing
+    os.environ['EPORTEM_USERNAME'] = 'test_user'
+    os.environ['EPORTEM_PASSWORD'] = 'test_password'
     
     print("Testing all actions with mock server...")
     
@@ -51,6 +57,17 @@ def run_all_tests():
     execute_action('stop_day', 'office', mock=True, use_mock_server=True)
     
     print("\nAll tests completed successfully!")
+    
+    # Restore original credentials
+    if orig_username:
+        os.environ['EPORTEM_USERNAME'] = orig_username
+    else:
+        os.environ.pop('EPORTEM_USERNAME', None)
+        
+    if orig_password:
+        os.environ['EPORTEM_PASSWORD'] = orig_password
+    else:
+        os.environ.pop('EPORTEM_PASSWORD', None)
 
 def main():
     parser = argparse.ArgumentParser(description="Test ePortem actions using the mock server.")
@@ -60,9 +77,19 @@ def main():
                       help="Location (home or office)")
     args = parser.parse_args()
     
+    # Store original credentials
+    orig_username = os.environ.get('EPORTEM_USERNAME', '')
+    orig_password = os.environ.get('EPORTEM_PASSWORD', '')
+    
+    # Set environment variables for mock server
+    os.environ['USE_MOCK_SERVER'] = 'YES'
+    os.environ['EPORTEM_USERNAME'] = 'test_user'
+    os.environ['EPORTEM_PASSWORD'] = 'test_password'
+    
     # Start the mock server
     server_thread = start_mock_server_thread()
     print("Mock server started on http://localhost:8000")
+    print("Using mock credentials: test_user / test_password")
     
     try:
         if args.action:
@@ -84,6 +111,17 @@ def main():
             time.sleep(1)
     except KeyboardInterrupt:
         print("\nExiting...")
+    finally:
+        # Restore original credentials
+        if orig_username:
+            os.environ['EPORTEM_USERNAME'] = orig_username
+        else:
+            os.environ.pop('EPORTEM_USERNAME', None)
+            
+        if orig_password:
+            os.environ['EPORTEM_PASSWORD'] = orig_password
+        else:
+            os.environ.pop('EPORTEM_PASSWORD', None)
 
 if __name__ == "__main__":
     main()
