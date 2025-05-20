@@ -80,13 +80,13 @@ You can use the mock server for development and testing without needing to acces
 
 ```bash
 # Start the mock server
-python3 run_mock_server.py
+python3 utility/server.py
 
 # Run all tests using the mock server
-python3 test_with_mock.py
+pytest tests/test_with_mock.py
 
 # Test a specific action using the mock server
-python3 test_with_mock.py --action start_day --location office
+pytest tests/test_with_mock.py --action=start_day --location=office
 ```
 
 The mock server runs on http://localhost:8000 and provides simulated ePortem interfaces for testing.
@@ -103,7 +103,7 @@ The codebase follows DRY (Don't Repeat Yourself) principles with unified compone
 
 - `eportem_action.py` - Core action handler for all operations
 - `start_day.py`, `lunch_break_unified.py`, etc. - Simplified action scripts
-- `mock_server/` - Testing environment that simulates ePortem
+- `utility/server.py` - Testing environment that simulates ePortem
 
 To switch between real ePortem and the mock server, set the environment variable:
 
@@ -112,10 +112,10 @@ To switch between real ePortem and the mock server, set the environment variable
 export USE_MOCK_SERVER=YES
 
 # Specify a different port if 8000 is already in use
-python3 run_mock_server.py --port 8888
+python3 utility/server.py --port 8888
 
 # To pass additional options to the mock server
-python3 run_mock_server.py --debug
+python3 utility/server.py --debug
 
 # Use the real ePortem service (default)
 export USE_MOCK_SERVER=NO
