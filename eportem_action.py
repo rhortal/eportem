@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import time
 import argparse
+import os
 from selenium.webdriver.common.by import By
 from utility.login_and_navigate import login_and_navigate
 from utility.telegram_send import send_telegram_message
@@ -79,8 +80,9 @@ class EPortemAction:
         
     def perform(self):
         """Perform the action"""
-        # Check if we should run
-        check_env_variable()
+        # Check if we should run (unless using mock server)
+        if os.getenv('USE_MOCK_SERVER', 'NO') != 'YES':
+            check_env_variable()
         
         # Log in to ePortem
         self.driver = login_and_navigate(self.driver)
@@ -100,21 +102,30 @@ class EPortemAction:
         # Close the browser window
         self.driver.quit()
         
-        # Send notification
-        send_telegram_message(self._get_message())
+        # Send notification (unless using mock server)
+        if os.getenv('USE_MOCK_SERVER', 'NO') != 'YES':
+            send_telegram_message(self._get_message())
+        else:
+            print(f"MOCK NOTIFICATION: {self._get_message()}")
         
         return True
 
 
-def execute_action(action_type, location="office", mock=False):
+def execute_action(action_type, location="office", mock=False, use_mock_server=False):
     """Helper function to execute an action with proper setup"""
     driver = None
     if mock:
-        from selenium import webdriver
-        from selenium.webdriver.chrome.options import Options as ChromeOptions
-        chrome_options = ChromeOptions()
-        chrome_options.add_argument("--headless")
-        driver = webdriver.Chrome(options=chrome_options)
+        if use_mock_server or os.getenv('USE_MOCK_SERVER', 'NO') == 'YES':
+            # Use our custom MockWebDriver
+            from mock_server.mock_driver import create_mock_driver
+            driver = create_mock_driver()
+        else:
+            # Use real Chrome in headless mode
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options as ChromeOptions
+            chrome_options = ChromeOptions()
+            chrome_options.add_argument("--headless")
+            driver = webdriver.Chrome(options=chrome_options)
     
     action = EPortemAction(action_type, location, driver)
     return action.perform()
@@ -127,6 +138,7 @@ if __name__ == "__main__":
     parser.add_argument("--location", choices=["home", "office"], default="office", 
                       help="Location (home or office)")
     parser.add_argument("--mock", action="store_true", help="Run with a mock driver.")
+    parser.add_argument("--use-mock-server", action="store_true", help="Use the mock server instead of real ePortem.")
     args = parser.parse_args()
     
-    execute_action(args.action, args.location, args.mock)
+    execute_action(args.action, args.location, args.mock, args.use_mock_server)

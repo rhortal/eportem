@@ -6,6 +6,14 @@ Optionally, it notifies the user on Telegram and Slack.
 
 ePortem is a SaaS solution used in Spain for HR-related tasks. These scripts automate the functionality that enables people to track the time they spend at work every day, as required by Spanish law.
 
+## Features
+
+- Automated time tracking for office and remote work
+- Support for start of day, lunch break, and end of day actions
+- Telegram and Slack notifications
+- Location override system
+- Mock server for testing without accessing the real ePortem service
+
 ## Deployment
 
 To deploy this project, clone this repo and make sure you have the python3 binary in your PATH.
@@ -66,15 +74,51 @@ To run the tests, use the `run_tests.sh` script in the root directory:
 ./run_tests.sh
 ```
 
+### Mock Server for Testing
+
+You can use the mock server for development and testing without needing to access the real ePortem service:
+
+```bash
+# Start the mock server
+python3 run_mock_server.py
+
+# Run all tests using the mock server
+python3 test_with_mock.py
+
+# Test a specific action using the mock server
+python3 test_with_mock.py --action start_day --location office
+```
+
+The mock server runs on http://localhost:5000 and provides simulated ePortem interfaces for testing.
+
 ## Configuration
 
 The schedule for each day is configured in the `config/config.json` file, located in the `config` directory. The location (home or office) can also be configured in this file.
+
+## Development
+
+The codebase follows DRY (Don't Repeat Yourself) principles with unified components:
+
+- `eportem_action.py` - Core action handler for all operations
+- `start_day.py`, `lunch_break_unified.py`, etc. - Simplified action scripts
+- `mock_server/` - Testing environment that simulates ePortem
+
+To switch between real ePortem and the mock server, set the environment variable:
+
+```bash
+# Use the mock server
+export USE_MOCK_SERVER=YES
+
+# Use the real ePortem service (default)
+export USE_MOCK_SERVER=NO
+```
 
 ## Acknowledgements
 
 - ChatGPT 3.5 and Gemini 2.0 Flash
 - XPath Helper Chrome extension
 - The Selenium docs
+- Flask for the mock server
 - Patience
 
 ## About Me
