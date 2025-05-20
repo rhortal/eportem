@@ -48,10 +48,11 @@ def login_and_navigate(driver=None):
         username = driver.find_element(By.NAME, "user")
         password = driver.find_element(By.NAME, "password")
 
-        # Use test credentials if we're using the mock server
+        # Always use test credentials in mock mode
         if use_mock == "YES":
-            uname = uname or "test_user"
-            pwd = pwd or "test_password"
+            uname = "test_user"
+            pwd = "test_password"
+            print("Using mock credentials: test_user / test_password")
 
         username.send_keys(uname)
         password.send_keys(pwd)

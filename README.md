@@ -91,6 +91,8 @@ python3 test_with_mock.py --action start_day --location office
 
 The mock server runs on http://localhost:8000 and provides simulated ePortem interfaces for testing.
 
+> **Important Security Note**: When using the mock server, your real ePortem credentials are never used. The system automatically uses test credentials (`test_user`/`test_password`) for all mock server interactions.
+
 ## Configuration
 
 The schedule for each day is configured in the `config/config.json` file, located in the `config` directory. The location (home or office) can also be configured in this file.
@@ -111,6 +113,9 @@ export USE_MOCK_SERVER=YES
 
 # Specify a different port if 8000 is already in use
 python3 run_mock_server.py --port 8888
+
+# To pass additional options to the mock server
+python3 run_mock_server.py --debug
 
 # Use the real ePortem service (default)
 export USE_MOCK_SERVER=NO

@@ -5,6 +5,8 @@ import threading
 import time
 import signal
 import sys
+import colorama
+from colorama import Fore, Style
 from mock_server.server import start_mock_server
 
 def start_server_thread(host, port, debug):
@@ -23,13 +25,17 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 def main():
+    # Initialize colorama for colored terminal output
+    colorama.init()
+    
     parser = argparse.ArgumentParser(description="Run the ePortem mock server for testing.")
     parser.add_argument("--host", default="localhost", help="Host to run the server on")
     parser.add_argument("--port", type=int, default=8000, help="Port to run the server on")
     parser.add_argument("--debug", action="store_true", help="Run in debug mode")
     args = parser.parse_args()
     
-    print(f"Starting ePortem mock server on http://{args.host}:{args.port}")
+    print(f"{Fore.GREEN}Starting ePortem mock server on http://{args.host}:{args.port}{Style.RESET_ALL}")
+    print(f"{Fore.YELLOW}*** MOCK MODE - NO REAL CREDENTIALS WILL BE USED ***{Style.RESET_ALL}")
     print("Press Ctrl+C to stop the server")
     
     # Register signal handler for graceful shutdown
@@ -39,9 +45,10 @@ def main():
     server_thread = start_server_thread(args.host, args.port, args.debug)
     
     # Print default test credentials
-    print("\nDefault test credentials:")
-    print(f"  Username: {os.getenv('EPORTEM_USERNAME', 'test_user')}")
-    print(f"  Password: {os.getenv('EPORTEM_PASSWORD', 'test_password')}")
+    print("\nMOCK SERVER MODE - Using test credentials only:")
+    print(f"  Username: test_user")
+    print(f"  Password: test_password")
+    print("\nWARNING: Real credentials will NOT be used in mock mode for security.")
     
     print("\nTest URLs:")
     print(f"  Login: http://{args.host}:{args.port}/Usuario/Login")
