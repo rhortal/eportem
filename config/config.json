@@ -1,0 +1,44 @@
+{
+  "schedule": {
+    "0": {
+      "day": "Monday",
+      "location": "office",
+      "start_the_day": "9:00",
+      "lunch_break": "13:30",
+      "after_lunch_break": "14:30",
+      "stop_the_day": "18:00"
+    },
+    "1": {
+      "day": "Tuesday",
+      "location": "office",
+      "start_the_day": "9:00",
+      "lunch_break": "13:30",
+      "after_lunch_break": "14:30",
+      "stop_the_day": "18:00"
+    },
+    "2": {
+      "day": "Wednesday",
+      "location": "home",
+      "start_the_day": "9:00",
+      "lunch_break": "13:30",
+      "after_lunch_break": "14:30",
+      "stop_the_day": "18:00"
+    },
+    "3": {
+      "day": "Thursday",
+      "location": "office",
+      "start_the_day": "9:00",
+      "lunch_break": "13:30",
+      "after_lunch_break": "14:30",
+      "stop_the_day": "18:00"
+    },
+    "4": {
+      "day": "Friday",
+      "location": "office",
+      "start_the_day": "9:00",
+      "lunch_break": "13:30",
+      "after_lunch_break": "14:30",
+      "stop_the_day": "18:00"
+    }
+  }
+}
