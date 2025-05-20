@@ -6,7 +6,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 import time
 import os
-from pathlib import Path
+
 
 def login_and_navigate(driver=None):
     # Get the directory of the current file

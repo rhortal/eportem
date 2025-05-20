@@ -1,6 +1,6 @@
 import requests
 import os
-from pathlib import Path
+
 
 # Define function to send message
 def send_telegram_message(message_text):
