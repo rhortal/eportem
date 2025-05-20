@@ -128,13 +128,23 @@ class MockWebDriver(WebDriver):
     
     def __init__(self):
         # We don't call super().__init__() because we're mocking
-        self.current_url = 'about:blank'
+        self._current_url = 'about:blank'
         self._mock_pages = self._build_mock_pages()
         self._current_page = None
         
+    @property
+    def current_url(self):
+        """Get the current URL."""
+        return self._current_url
+    
+    @current_url.setter
+    def current_url(self, value):
+        """Set the current URL."""
+        self._current_url = value
+        
     def get(self, url):
         """Navigate to a URL."""
-        self.current_url = url
+        self._current_url = url
         
         # Determine which mock page to load
         if '/Usuario/Login' in url:
