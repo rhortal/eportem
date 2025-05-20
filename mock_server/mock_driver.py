@@ -31,9 +31,9 @@ class MockWebElement:
         self._mock_clicks = 0
         self._mock_driver = None
         
-    def get_attribute(self, name):
+    def get_attribute(self, name, default=None):
         """Get an attribute value."""
-        return self.attributes.get(name)
+        return self.attributes.get(name, default)
     
     def click(self):
         """Simulate clicking on the element."""
@@ -44,14 +44,14 @@ class MockWebElement:
         self._mock_clicks += 1
         
         # If this is a dropdown toggle, simulate showing the dropdown
-        if 'dropdown-toggle' in self.get_attribute('class', ''):
+        if 'dropdown-toggle' in (self.get_attribute('class') or ''):
             # Find dropdown menu
             for child in self._children:
-                if child.tag_name == 'ul' and 'dropdown-menu' in child.get_attribute('class', ''):
+                if child.tag_name == 'ul' and 'dropdown-menu' in (child.get_attribute('class') or ''):
                     child._is_displayed = True
                     # Also add 'open' to parent's class
                     if self._parent:
-                        classes = self._parent.get_attribute('class', '').split()
+                        classes = (self._parent.get_attribute('class') or '').split()
                         if 'open' not in classes:
                             classes.append('open')
                             self._parent.attributes['class'] = ' '.join(classes)
@@ -81,7 +81,7 @@ class MockWebElement:
                 parent = parent._parent
                 
             if parent and parent.tag_name == 'form':
-                print(f"Mock form submission: {parent.get_attribute('action', 'unknown')}")
+                print(f"Mock form submission: {parent.get_attribute('action') or 'unknown'}")
                 # Simulate form submission by redirecting to dashboard
                 if self._mock_driver:
                     self._mock_driver.get("http://localhost:8000/aplicaciones")
@@ -117,7 +117,7 @@ class MockWebElement:
         elif by == By.TAG_NAME:
             return element.tag_name == value
         elif by == By.CLASS_NAME:
-            classes = element.get_attribute('class', '').split()
+            classes = (element.get_attribute('class') or '').split()
             return value in classes
         elif by == By.NAME:
             return element.get_attribute('name') == value
@@ -125,8 +125,8 @@ class MockWebElement:
             # Very basic XPath handling - just for the elements we know about
             if value == "//button[contains(@class, 'btn-outline-primary') and contains(@class, 'm-l-xs')]":
                 return (element.tag_name == 'button' and 
-                       'btn-outline-primary' in element.get_attribute('class', '') and
-                       'm-l-xs' in element.get_attribute('class', ''))
+                       'btn-outline-primary' in (element.get_attribute('class') or '') and
+                       'm-l-xs' in (element.get_attribute('class') or ''))
             elif '[@id=' in value:
                 # Extract ID from XPath
                 import re
@@ -144,10 +144,10 @@ class MockWebElement:
                 return element.get_attribute('id') == '_ststop'
             elif 'btn-primary' in value:
                 return (element.tag_name == 'button' and 
-                       'btn-primary' in element.get_attribute('class', ''))
+                       'btn-primary' in (element.get_attribute('class') or ''))
             elif 'btn-warning' in value:
                 return (element.tag_name == 'button' and 
-                       'btn-warning' in element.get_attribute('class', ''))
+                       'btn-warning' in (element.get_attribute('class') or ''))
         return False
 
 class MockWebDriver(WebDriver):
