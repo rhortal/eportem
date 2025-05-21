@@ -37,11 +37,11 @@ class EPortemAction:
             },
             "lunch_break": {
                 "office": {
-                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
+                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button",
                     "button2": "//*[@id=\"_stpause\"]"
                 },
                 "home": {
-                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
+                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button",
                     "button2": "//*[@id=\"_stpause\"]"
                 }
             },
@@ -57,12 +57,12 @@ class EPortemAction:
             },
             "stop_day": {
                 "office": {
-                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
-                    "button2": "//a[@id=\"_ststop\"]"
+                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button",
+                    "button2": "//*[@id=\"_ststop\"]"
                 },
                 "home": {
-                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
-                    "button2": "//a[@id=\"_ststop\"]"
+                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button",
+                    "button2": "//*[@id=\"_ststop\"]"
                 }
             }
         }
@@ -169,7 +169,7 @@ def execute_action(action_type, location="office", mock=False, use_mock_server=F
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Execute ePortem actions.")
-    parser.add_argument("action", choices=["start_day", "lunch_break", "after_lunch", "stop_day"],
+    parser.add_argument("action", choices=["start_day", "lunch_break", "after_lunch", "stop_day", "help"],
                       help="The action to perform")
     parser.add_argument("--location", choices=["home", "office"], default="office",
                       help="Location (home or office)")
@@ -177,4 +177,25 @@ if __name__ == "__main__":
     parser.add_argument("--use-mock-server", action="store_true", help="Use the mock server instead of real ePortem.")
     args = parser.parse_args()
 
-    execute_action(args.action, args.location, args.mock, args.use_mock_server)
+    if args.action == "help":
+        print(
+            "\nUSAGE EXAMPLES:\n"
+            "  python3 eportem_action.py start_day --location office\n"
+            "  python3 eportem_action.py start_day --location home\n"
+            "  python3 eportem_action.py lunch_break --location office\n"
+            "  python3 eportem_action.py lunch_break --location home\n"
+            "  python3 eportem_action.py after_lunch --location office\n"
+            "  python3 eportem_action.py after_lunch --location home\n"
+            "  python3 eportem_action.py stop_day --location office\n"
+            "  python3 eportem_action.py stop_day --location home\n"
+            "\n"
+            "OPTIONS:\n"
+            "  --mock             Run with a mock driver\n"
+            "  --use-mock-server  Use the mock server instead of real ePortem\n"
+            "\n"
+            "ACTIONS:\n"
+            "  start_day, lunch_break, after_lunch, stop_day\n"
+            "  (use --location to specify 'office' or 'home')\n"
+        )
+    else:
+        execute_action(args.action, args.location, args.mock, args.use_mock_server)
