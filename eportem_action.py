@@ -27,42 +27,42 @@ class EPortemAction:
         selectors = {
             "start_day": {
                 "office": {
-                    "button1": "//div[@id='wrapper']/div[@id='page-wrapper']/div[@class='wrapper wrapper-content']/div[@class='row']/div[@class='col-lg-6 col-sm-12'][1]/div[@class='ibox']/div[@class='ibox-content']/div[@class='row']/div[@id='buttonsRegBox']/div[@class='btn-group']/div[@class='btn-group']/button[@class='btn btn-outline btn-block btn-primary dropdown-toggle']",
+                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
                     "button2": None
                 },
                 "home": {
-                    "button1": "//button[contains(@class, 'btn') and contains(@class, 'btn-outline-primary') and contains(@class, 'm-l-xs')]",
-                    "button2": "//li/ul/li[2]/a[@id='_ststart']/h2"
+                    "button1": "//*[@id=\"buttonsRegBox\"]/div/button/i",
+                    "button2": "//*[@id=\"_ststart\"]/h2"
                 }
             },
             "lunch_break": {
                 "office": {
-                    "button1": "//div[@id='wrapper']/div[@id='page-wrapper']/div[@class='wrapper wrapper-content']/div[@class='row']/div[@class='col-lg-6 col-sm-12'][1]/div[@class='ibox']/div[@class='ibox-content']/div[@class='row']/div[@id='buttonsRegBox']/div[@class='btn-group']/div[@class='btn-group']/button[@class='btn btn-outline btn-block btn-primary dropdown-toggle']",
-                    "button2": "//div[@id='wrapper']/div[@id='page-wrapper']/div[@class='wrapper wrapper-content']/div[@class='row']/div[@class='col-lg-6 col-sm-12'][1]/div[@class='ibox']/div[@class='ibox-content']/div[@class='row']/div[@id='buttonsRegBox']/div[@class='btn-group']/div[@class='btn-group open']/ul[@class='dropdown-menu scrollable-menu']/li[1]/ul/li[1]/a[@id='_stpause']"
+                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
+                    "button2": "//*[@id=\"_stpause\"]/h2"
                 },
                 "home": {
-                    "button1": "//div[@id='wrapper']/div[@id='page-wrapper']/div[@class='wrapper wrapper-content']/div[@class='row']/div[@class='col-lg-6 col-sm-12'][1]/div[@class='ibox']/div[@class='ibox-content']/div[@class='row']/div[@id='buttonsRegBox']/div[@class='btn-group']/div[@class='btn-group']/button[@class='btn btn-outline btn-block btn-primary dropdown-toggle']",
-                    "button2": "//div[@id='wrapper']/div[@id='page-wrapper']/div[@class='wrapper wrapper-content']/div[@class='row']/div[@class='col-lg-6 col-sm-12'][1]/div[@class='ibox']/div[@class='ibox-content']/div[@class='row']/div[@id='buttonsRegBox']/div[@class='btn-group']/div[@class='btn-group open']/ul[@class='dropdown-menu scrollable-menu']/li[1]/ul/li[1]/a[@id='_stpause']"
+                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
+                    "button2": "//*[@id=\"_stpause\"]/h2"
                 }
             },
             "after_lunch": {
                 "office": {
-                    "button1": "//div[@id='wrapper']/div[@id='page-wrapper']/div[@class='wrapper wrapper-content']/div[@class='row']/div[@class='col-lg-6 col-sm-12'][1]/div[@class='ibox']/div[@class='ibox-content']/div[@class='row']/div[@id='buttonsRegBox']/div[@class='btn-group']/div[@class='btn-group']/button[@class='btn btn-outline btn-block btn-warning dropdown-toggle']",
-                    "button2": "//div[@id='wrapper']/div[@id='page-wrapper']/div[@class='wrapper wrapper-content']/div[@class='row']/div[@class='col-lg-6 col-sm-12'][1]/div[@class='ibox']/div[@class='ibox-content']/div[@class='row']/div[@id='buttonsRegBox']/div[@class='btn-group']/div[@class='btn-group open']/ul[@class='dropdown-menu scrollable-menu']/li[1]/ul/li[1]/a[@id='_stini']"
+                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
+                    "button2": "//*[@id=\"_stini\"]/h2"
                 },
                 "home": {
-                    "button1": "//div[@id='wrapper']/div[@id='page-wrapper']/div[@class='wrapper wrapper-content']/div[@class='row']/div[@class='col-lg-6 col-sm-12'][1]/div[@class='ibox']/div[@class='ibox-content']/div[@class='row']/div[@id='buttonsRegBox']/div[@class='btn-group']/div[@class='btn-group']/button[@class='btn btn-outline btn-block btn-warning dropdown-toggle']",
-                    "button2": "//div[@id='wrapper']/div[@id='page-wrapper']/div[@class='wrapper wrapper-content']/div[@class='row']/div[@class='col-lg-6 col-sm-12'][1]/div[@class='ibox']/div[@class='ibox-content']/div[@class='row']/div[@id='buttonsRegBox']/div[@class='btn-group']/div[@class='btn-group open']/ul[@class='dropdown-menu scrollable-menu']/li[1]/ul/li[2]/a[@id='_stini']"
+                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
+                    "button2": "//*[@id=\"_stini\"]/h2"
                 }
             },
             "stop_day": {
                 "office": {
-                    "button1": "//div[@id='wrapper']/div[@id='page-wrapper']/div[@class='wrapper wrapper-content']/div[@class='row']/div[@class='col-lg-6 col-sm-12'][1]/div[@class='ibox']/div[@class='ibox-content']/div[@class='row']/div[@id='buttonsRegBox']/div[@class='btn-group']/div[@class='btn-group']/button[@class='btn btn-outline btn-block btn-primary dropdown-toggle']",
-                    "button2": "//div[@id='wrapper']/div[@id='page-wrapper']/div[@class='wrapper wrapper-content']/div[@class='row']/div[@class='col-lg-6 col-sm-12'][1]/div[@class='ibox']/div[@class='ibox-content']/div[@class='row']/div[@id='buttonsRegBox']/div[@class='btn-group']/div[@class='btn-group open']/ul[@class='dropdown-menu scrollable-menu']/li[2]/a[@id='_ststop']"
+                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
+                    "button2": "//*[@id=\"_ststop\"]/h2"
                 },
                 "home": {
-                    "button1": "//div[@id='wrapper']/div[@id='page-wrapper']/div[@class='wrapper wrapper-content']/div[@class='row']/div[@class='col-lg-6 col-sm-12'][1]/div[@class='ibox']/div[@class='ibox-content']/div[@class='row']/div[@id='buttonsRegBox']/div[@class='btn-group']/div[@class='btn-group']/button[@class='btn btn-outline btn-block btn-primary dropdown-toggle']",
-                    "button2": "//div[@id='wrapper']/div[@id='page-wrapper']/div[@class='wrapper wrapper-content']/div[@class='row']/div[@class='col-lg-6 col-sm-12'][1]/div[@class='ibox']/div[@class='ibox-content']/div[@class='row']/div[@id='buttonsRegBox']/div[@class='btn-group']/div[@class='btn-group open']/ul[@class='dropdown-menu scrollable-menu']/li[2]/a[@id='_ststop']"
+                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
+                    "button2": "//*[@id=\"_ststop\"]/h2"
                 }
             }
         }
