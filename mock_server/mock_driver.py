@@ -119,33 +119,63 @@ class MockWebElement(WebDriver):
         elif by == By.NAME:
             return element.get_attribute('name') == value
         elif by == By.XPATH:
-            # Very basic XPath handling - just for the elements we know about
-            if value == "//button[contains(@class, 'btn-outline-primary') and contains(@class, 'm-l-xs')]":
-                return (element.tag_name == 'button' and 
-                       'btn-outline-primary' in (element.get_attribute('class') or '') and
-                       'm-l-xs' in (element.get_attribute('class') or ''))
-            elif '[@id=' in value:
-                # Extract ID from XPath
-                import re
-                id_match = re.search(r'\[@id=[\'"]([^\'"]+)[\'"]\]', value)
-                if id_match:
-                    return element.get_attribute('id') == id_match.group(1)
-            # Our specific ePortem XPaths from the real code
-            elif '_ststart' in value:
-                return element.get_attribute('id') == '_ststart'
-            elif '_stpause' in value:
-                return element.get_attribute('id') == '_stpause'
-            elif '_stini' in value:
-                return element.get_attribute('id') == '_stini'
-            elif '_ststop' in value:
-                return element.get_attribute('id') == '_ststop'
-            elif 'btn-primary' in value:
-                return (element.tag_name == 'button' and 
-                       'btn-primary' in (element.get_attribute('class') or ''))
-            elif 'btn-warning' in value:
-                return (element.tag_name == 'button' and 
-                       'btn-warning' in (element.get_attribute('class') or ''))
-        return False
+            # Robust XPath handling for new selectors
+            # Start Day Office/Home button1: //*[@id="buttonsRegBox"]/div/div/button/div/div[2]/h2
+            if value == '//*[@id="buttonsRegBox"]/div/div/button/div/div[2]/h2':
+                return (
+                    element.tag_name == 'h2'
+                    and element._parent
+                    and element._parent.tag_name == 'div'
+                    and element._parent._parent
+                    and element._parent._parent.tag_name == 'div'
+                    and element._parent._parent._parent
+                    and element._parent._parent._parent.tag_name == 'button'
+                    and element._parent._parent._parent._parent
+                    and element._parent._parent._parent._parent.tag_name == 'div'
+                    and element._parent._parent._parent._parent.get_attribute('id') == 'buttonsRegBox'
+                )
+            # Start Day Home button1: //*[@id="buttonsRegBox"]/div/button/i
+            if value == '//*[@id="buttonsRegBox"]/div/button/i':
+                return (
+                    element.tag_name == 'i'
+                    and element._parent
+                    and element._parent.tag_name == 'button'
+                    and element._parent._parent
+                    and element._parent._parent.tag_name == 'div'
+                    and element._parent._parent.get_attribute('id') == 'buttonsRegBox'
+                )
+            # Lunch Break/After Lunch/Stop Day button2: //*[@id="_stpause"]/h2, //*[@id="_stini"]/h2, //*[@id="_ststop"]/h2, //*[@id="_ststart"]/h2
+            import re
+            m = re.match(r'\*\[@id="(_stpause|_stini|_ststop|_ststart)"\]/h2', value.replace('/', ''))
+            if value == '//*[@id="_stpause"]/h2':
+                return (
+                    element.tag_name == 'h2'
+                    and element._parent
+                    and element._parent.tag_name == 'a'
+                    and element._parent.get_attribute('id') == '_stpause'
+                )
+            if value == '//*[@id="_stini"]/h2':
+                return (
+                    element.tag_name == 'h2'
+                    and element._parent
+                    and element._parent.tag_name == 'a'
+                    and element._parent.get_attribute('id') == '_stini'
+                )
+            if value == '//*[@id="_ststop"]/h2':
+                return (
+                    element.tag_name == 'h2'
+                    and element._parent
+                    and element._parent.tag_name == 'a'
+                    and element._parent.get_attribute('id') == '_ststop'
+                )
+            if value == '//*[@id="_ststart"]/h2':
+                return (
+                    element.tag_name == 'h2'
+                    and element._parent
+                    and element._parent.tag_name == 'a'
+                    and element._parent.get_attribute('id') == '_ststart'
+                )
+            return False
 
 class MockWebDriver(WebDriver):
     """A mock implementation of Selenium's WebDriver."""
@@ -316,15 +346,44 @@ class MockWebDriver(WebDriver):
         li1 = MockWebElement('li1', 'li')
         ul1 = MockWebElement('ul1', 'ul')
         li_start = MockWebElement('li-start', 'li')
-        a_start = MockWebElement('a-start', 'a', {'id': '_ststart'}, 'Start Work (Office)')
+        a_start = MockWebElement('a-start', 'a', {'id': '_ststart'}, None)
+        h2_start = MockWebElement('h2-start', 'h2', {}, 'Start Work (Office)')
+        a_start._children = [h2_start]
+        h2_start._parent = a_start
+
         li_pause = MockWebElement('li-pause', 'li')
-        a_pause = MockWebElement('a-pause', 'a', {'id': '_stpause'}, 'Pause for Lunch')
+        a_pause = MockWebElement('a-pause', 'a', {'id': '_stpause'}, None)
+        h2_pause = MockWebElement('h2-pause', 'h2', {}, 'Pause for Lunch')
+        a_pause._children = [h2_pause]
+        h2_pause._parent = a_pause
+
         li_stop = MockWebElement('li-stop', 'li')
-        a_stop = MockWebElement('a-stop', 'a', {'id': '_ststop'}, 'End Workday')
-        
-        # Home button
+        a_stop = MockWebElement('a-stop', 'a', {'id': '_ststop'}, None)
+        h2_stop = MockWebElement('h2-stop', 'h2', {}, 'End Workday')
+        a_stop._children = [h2_stop]
+        h2_stop._parent = a_stop
+
+        # Home button (for start_day at home)
         home_button = MockWebElement('home-button', 'button', {'class': 'btn btn-outline-primary m-l-xs'}, 'Home Options')
-        
+        i_home = MockWebElement('i-home', 'i', {}, '')
+        home_button._children = [i_home]
+        i_home._parent = home_button
+
+        # Main button for all actions (office/home)
+        main_button = MockWebElement('main-button', 'button', {'class': 'btn btn-outline btn-block btn-primary dropdown-toggle'}, None)
+        div1 = MockWebElement('div1', 'div', {})
+        div2 = MockWebElement('div2', 'div', {})
+        div3 = MockWebElement('div3', 'div', {})
+        h2_main = MockWebElement('h2-main', 'h2', {}, 'Main Action')
+        div3._children = [h2_main]
+        h2_main._parent = div3
+        div2._children = [div3]
+        div3._parent = div2
+        div1._children = [div2]
+        div2._parent = div1
+        main_button._children = [div1]
+        div1._parent = main_button
+
         # Warning dropdown (Resume)
         btn_group3 = MockWebElement('btn-group3', 'div', {'class': 'btn-group'})
         btn_group4 = MockWebElement('btn-group4', 'div', {'class': 'btn-group'})
@@ -337,10 +396,16 @@ class MockWebDriver(WebDriver):
         li2 = MockWebElement('li2', 'li')
         ul2 = MockWebElement('ul2', 'ul')
         li_resume_office = MockWebElement('li-resume-office', 'li')
-        a_resume_office = MockWebElement('a-resume-office', 'a', {'id': '_stini'}, 'Resume (Office)')
+        a_resume_office = MockWebElement('a-resume-office', 'a', {'id': '_stini'}, None)
+        h2_resume_office = MockWebElement('h2-resume-office', 'h2', {}, 'Resume (Office)')
+        a_resume_office._children = [h2_resume_office]
+        h2_resume_office._parent = a_resume_office
         li_resume_home = MockWebElement('li-resume-home', 'li')
-        a_resume_home = MockWebElement('a-resume-home', 'a', {'id': '_stini'}, 'Resume (Home)')
-        
+        a_resume_home = MockWebElement('a-resume-home', 'a', {'id': '_stini'}, None)
+        h2_resume_home = MockWebElement('h2-resume-home', 'h2', {}, 'Resume (Home)')
+        a_resume_home._children = [h2_resume_home]
+        h2_resume_home._parent = a_resume_home
+
         # Build DOM structure
         li_start._children = [a_start]
         li_pause._children = [a_pause]
@@ -348,19 +413,19 @@ class MockWebDriver(WebDriver):
         ul1._children = [li_start, li_pause]
         li1._children = [ul1]
         primary_menu._children = [li1, li_stop]
-        btn_group2._children = [primary_button, primary_menu]
-        
+        btn_group2._children = [main_button, primary_menu]
+
         li_resume_office._children = [a_resume_office]
         li_resume_home._children = [a_resume_home]
         ul2._children = [li_resume_office, li_resume_home]
         li2._children = [ul2]
         warning_menu._children = [li2]
         btn_group4._children = [warning_button, warning_menu]
-        
+
         # Set parent references
         primary_menu._parent = btn_group2
         warning_menu._parent = btn_group4
-        
+
         btn_group1._children = [btn_group2, home_button]
         btn_group3._children = [btn_group4]
         buttons_box._children = [btn_group1, btn_group3]
