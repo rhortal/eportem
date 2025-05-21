@@ -58,11 +58,11 @@ class EPortemAction:
             "stop_day": {
                 "office": {
                     "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
-                    "button2": "//*[@id=\"_ststop\"]/h2"
+                    "button2": "//a[@id=\"_ststop\"]"
                 },
                 "home": {
                     "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
-                    "button2": "//*[@id=\"_ststop\"]/h2"
+                    "button2": "//a[@id=\"_ststop\"]"
                 }
             }
         }
