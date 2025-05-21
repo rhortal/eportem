@@ -48,11 +48,11 @@ class EPortemAction:
             "after_lunch": {
                 "office": {
                     "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
-                    "button2": "//*[@id=\"_stini\"]/h2"
+                    "button2": "//a[@id=\"_stini\" and @name=\"1\"]"
                 },
                 "home": {
                     "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
-                    "button2": "//*[@id=\"_stini\"]/h2"
+                    "button2": "//a[@id=\"_stini\" and @name=\"1293\"]"
                 }
             },
             "stop_day": {
