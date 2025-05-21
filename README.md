@@ -55,6 +55,35 @@ python3 override_location.py home
 
 This will set the location to `home` for the current day. To set it back to the default, simply delete the `location_override.txt` file.
 
+### Running Actions Directly
+
+You can invoke any action directly using `eportem_action.py` without relying on the config file or the main runner script. This is useful for manual runs, debugging, or scripting.
+
+```bash
+python3 eportem_action.py ACTION --location LOCATION
+```
+
+Where `ACTION` is one of:
+- `start_day`
+- `lunch_break`
+- `after_lunch`
+- `stop_day`
+
+And `LOCATION` is either `office` or `home` (default is `office`).
+
+**Examples:**
+```bash
+python3 eportem_action.py start_day --location office
+python3 eportem_action.py lunch_break --location home
+python3 eportem_action.py stop_day
+```
+
+You can also use the mock driver or mock server for testing:
+```bash
+python3 eportem_action.py start_day --location office --mock
+python3 eportem_action.py lunch_break --use-mock-server
+```
+
 ## Automation
 You can set these scripts to run automatically using Unix `cron`. You can also add a `sleep $[RANDOM%nn]m` command preceding the call so the command is called at a random time between 0 and nn minutes.
 ```
