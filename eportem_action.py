@@ -38,11 +38,11 @@ class EPortemAction:
             "lunch_break": {
                 "office": {
                     "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
-                    "button2": "//*[@id="_stpause"]"
+                    "button2": "//*[@id=\"_stpause\"]"
                 },
                 "home": {
                     "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
-                    "button2": "//*[@id="_stpause"]"
+                    "button2": "//*[@id=\"_stpause\"]"
                 }
             },
             "after_lunch": {
