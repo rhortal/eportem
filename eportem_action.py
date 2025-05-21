@@ -27,12 +27,12 @@ class EPortemAction:
         selectors = {
             "start_day": {
                 "office": {
-                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
+                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button",
                     "button2": None
                 },
                 "home": {
-                    "button1": "//*[@id=\"_ststart\"]/h2",
-                    "button2": None
+                    "button1": "//*[@id=\"buttonsRegBox\"]/div/button[@data-toggle=\"dropdown\"]",
+                    "button2": "//*[@id=\"_ststart\" and @name=\"1293\"]"
                 }
             },
             "lunch_break": {
