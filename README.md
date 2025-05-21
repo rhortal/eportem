@@ -152,11 +152,11 @@ export USE_MOCK_SERVER=NO
 
 ## Acknowledgements
 
-- ChatGPT 3.5 and Gemini 2.0 Flash
+- ChatGPT, Claude, Qwen, Gemma and Gemini
 - XPath Helper Chrome extension
 - The Selenium docs
-- Flask for the mock server
-- Patience
+- Flask
+- Lots and lots of patience
 
 ## About Me
 I'm learning Python and exploring ways to automate daily tasks at work as a way to improve my Python skills.
