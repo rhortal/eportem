@@ -11,7 +11,7 @@ class EPortemAction:
     def __init__(self, action_type, location="office", driver=None):
         """
         Initialize the EPortem action
-        
+
         Parameters:
         - action_type: start_day, lunch_break, after_lunch, stop_day
         - location: office, home
@@ -21,7 +21,7 @@ class EPortemAction:
         self.location = location
         self.driver = driver
         self.selectors = self._get_selectors()
-        
+
     def _get_selectors(self):
         """Return appropriate selectors based on action type and location"""
         selectors = {
@@ -31,18 +31,18 @@ class EPortemAction:
                     "button2": None
                 },
                 "home": {
-                    "button1": "//*[@id=\"buttonsRegBox\"]/div/button/i",
-                    "button2": "//*[@id=\"_ststart\"]/h2"
+                    "button1": "//*[@id=\"_ststart\"]/h2",
+                    "button2": None
                 }
             },
             "lunch_break": {
                 "office": {
                     "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
-                    "button2": "//*[@id=\"_stpause\"]/h2"
+                    "button2": "//*[@id="_stpause"]"
                 },
                 "home": {
                     "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
-                    "button2": "//*[@id=\"_stpause\"]/h2"
+                    "button2": "//*[@id="_stpause"]"
                 }
             },
             "after_lunch": {
@@ -67,7 +67,7 @@ class EPortemAction:
             }
         }
         return selectors.get(self.action_type, {}).get(self.location, {})
-    
+
     def _get_message(self):
         """Return the appropriate notification message"""
         messages = {
@@ -77,23 +77,23 @@ class EPortemAction:
             "stop_day": "RePortemed done for the day"
         }
         return messages.get(self.action_type, "RePortem action completed")
-        
+
     def perform(self):
         """Perform the action"""
         use_mock = os.getenv('USE_MOCK_SERVER', 'NO') == 'YES'
-        
+
         # Check if we should run (unless using mock server)
         if not use_mock:
             check_env_variable()
-        
+
         # Log in to ePortem
         self.driver = login_and_navigate(self.driver)
-        
+
         try:
             # Find and click the first button
             button1 = self.driver.find_element(By.XPATH, self.selectors["button1"])
             button1.click()
-            
+
             # Click the second button if needed
             if self.selectors["button2"]:
                 time.sleep(1)  # Small delay to ensure dropdown is visible
@@ -116,7 +116,7 @@ class EPortemAction:
                                 raise
                     else:
                         raise
-            
+
             time.sleep(3)
         except Exception as e:
             if not use_mock:
@@ -127,13 +127,13 @@ class EPortemAction:
         finally:
             # Close the browser window
             self.driver.quit()
-        
+
         # Send notification (unless using mock server)
         if not use_mock:
             send_telegram_message(self._get_message())
         else:
             print(f"MOCK NOTIFICATION: {self._get_message()}")
-        
+
         return True
 
 
@@ -141,7 +141,7 @@ def execute_action(action_type, location="office", mock=False, use_mock_server=F
     """Helper function to execute an action with proper setup"""
     driver = None
     use_mock = use_mock_server or os.getenv('USE_MOCK_SERVER', 'NO') == 'YES'
-    
+
     if mock or use_mock:
         if use_mock:
             # Use our custom MockWebDriver
@@ -154,7 +154,7 @@ def execute_action(action_type, location="office", mock=False, use_mock_server=F
                 print("Falling back to real WebDriver in headless mode")
                 mock = True
                 use_mock = False
-        
+
         if mock and not use_mock:
             # Use real Chrome in headless mode
             from selenium import webdriver
@@ -162,19 +162,19 @@ def execute_action(action_type, location="office", mock=False, use_mock_server=F
             chrome_options = ChromeOptions()
             chrome_options.add_argument("--headless")
             driver = webdriver.Chrome(options=chrome_options)
-    
+
     action = EPortemAction(action_type, location, driver)
     return action.perform()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Execute ePortem actions.")
-    parser.add_argument("action", choices=["start_day", "lunch_break", "after_lunch", "stop_day"], 
+    parser.add_argument("action", choices=["start_day", "lunch_break", "after_lunch", "stop_day"],
                       help="The action to perform")
-    parser.add_argument("--location", choices=["home", "office"], default="office", 
+    parser.add_argument("--location", choices=["home", "office"], default="office",
                       help="Location (home or office)")
     parser.add_argument("--mock", action="store_true", help="Run with a mock driver.")
     parser.add_argument("--use-mock-server", action="store_true", help="Use the mock server instead of real ePortem.")
     args = parser.parse_args()
-    
+
     execute_action(args.action, args.location, args.mock, args.use_mock_server)
