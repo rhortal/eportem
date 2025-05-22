@@ -136,6 +136,27 @@ class EPortemAction:
             if os.getenv('SLACK_NOTIFY') == "YES":
                 manager.register_channel(SlackChannel())
             manager.notify(self._get_message())
+
+            # Slack status update
+            if os.getenv('SLACK_STATUS', 'NO') == 'YES':
+                from utility.slack_status import SlackStatusUpdater
+                status_updater = SlackStatusUpdater()
+                if self.action_type == "start_day":
+                    status_text = f"Working at {self.location}"
+                    emoji = ":house:" if self.location == "home" else ":office:"
+                elif self.action_type == "lunch_break":
+                    status_text = "Away for lunch"
+                    emoji = ":fork_and_knife:"
+                elif self.action_type == "after_lunch":
+                    status_text = f"Working at {self.location}"
+                    emoji = ":house:" if self.location == "home" else ":office:"
+                elif self.action_type == "stop_day":
+                    status_text = "Done for the day"
+                    emoji = ":palm_tree:"
+                else:
+                    status_text = "Working"
+                    emoji = ":computer:"
+                status_updater.set_status(status_text, emoji)
         else:
             print(f"MOCK NOTIFICATION: {self._get_message()}")
 
