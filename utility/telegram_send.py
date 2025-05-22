@@ -23,7 +23,11 @@ def send_telegram_message(message_text):
         data = {'chat_id': userID, 'text': message_text}
 
         # POST the message
-        requests.post(url, data)
+        response = requests.post(url, data)
+        if response.status_code == 200:
+            print("Telegram notification sent successfully.")
+        else:
+            print(f"Telegram notification failed with status code {response.status_code}: {response.text}")
 
     if ssend == "YES":
         # Send to Slack
@@ -34,7 +38,11 @@ def send_telegram_message(message_text):
         data = {'text': message_text}
 
         # POST the message
-        requests.post(url, json = data)
+        response = requests.post(url, json = data)
+        if response.status_code == 200:
+            print("Slack notification sent successfully.")
+        else:
+            print(f"Slack notification failed with status code {response.status_code}: {response.text}")
 
 # Example usage
 if __name__ == '__main__':
