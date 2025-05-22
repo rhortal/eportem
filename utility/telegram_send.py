@@ -1,5 +1,6 @@
 import requests
 import os
+from dotenv import load_dotenv
 
 
 # Define function to send message
@@ -46,4 +47,7 @@ def send_telegram_message(message_text):
 
 # Example usage
 if __name__ == '__main__':
+    # Load environment variables from eportem/config/.env
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "config", ".env")
+    load_dotenv(env_path)
     send_telegram_message("Hello from my function!")
