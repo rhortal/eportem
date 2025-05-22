@@ -4,7 +4,7 @@ import argparse
 import os
 from selenium.webdriver.common.by import By
 from utility.login_and_navigate import login_and_navigate
-from utility.telegram_send import send_telegram_message
+from utility.notification_send import NotificationManager, TelegramChannel, SlackChannel
 from utility.env_check import check_env_variable
 
 class EPortemAction:
@@ -130,7 +130,12 @@ class EPortemAction:
 
         # Send notification (unless using mock server)
         if not use_mock:
-            send_telegram_message(self._get_message())
+            manager = NotificationManager()
+            if os.getenv('TELEGRAM_NOTIFY') == "YES":
+                manager.register_channel(TelegramChannel())
+            if os.getenv('SLACK_NOTIFY') == "YES":
+                manager.register_channel(SlackChannel())
+            manager.notify(self._get_message())
         else:
             print(f"MOCK NOTIFICATION: {self._get_message()}")
 
