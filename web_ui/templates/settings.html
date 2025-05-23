@@ -206,6 +206,7 @@
                     wrap.className = "settings-password-wrap";
                     input = document.createElement("input");
                     input.type = "password";
+                    input.id = `env-field-${field.key}`;
                     input.value = field.value || "";
                     input.autocomplete = "new-password";
                     input.style.width = "100%";
@@ -227,12 +228,14 @@
                 } else if(field.type === "toggle") {
                     input = document.createElement("input");
                     input.type = "checkbox";
+                    input.id = `env-field-${field.key}`;
                     input.checked = !!field.value;
                     row.appendChild(input);
                 } else {
                     input = document.createElement("input");
                     input.type = field.type === "number" ? "number" : "text";
                     input.className = "settings-input";
+                    input.id = `env-field-${field.key}`;
                     input.value = (field.value !== undefined && field.value !== null) ? field.value : "";
                     if(field.type === "number") {
                         if(field.min !== undefined) input.min = field.min;

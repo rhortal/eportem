@@ -373,7 +373,10 @@ def start_scheduler():
 # Settings (.env) Endpoints
 ############################
 
-ENV_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config', '.env'))
+ENV_PATH = os.environ.get(
+    "EPORTEM_ENV_PATH",
+    os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config', '.env'))
+)
 
 SETTING_SCHEMA = [
     {
