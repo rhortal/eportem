@@ -265,7 +265,8 @@ def update_upcoming_action():
 
     # Debug output
     print(f"[SchedulerStatus] Now: {now_time} Today: {today_str}")
-    print(f"[SchedulerStatus] Todays actions: {[f\"{x['action']}@{x['time']}\" for x in todays]}")
+    actions_times = [f"{x['action']}@{x['time']}" for x in todays]
+    print(f"[SchedulerStatus] Todays actions: {actions_times}")
     print(f"[SchedulerStatus] Selected result: {result}")
 
     if result:
