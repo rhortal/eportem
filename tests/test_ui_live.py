@@ -63,9 +63,20 @@ class TestEportemWebUILive:
         assert srv_group.is_displayed()
     
 @pytest.mark.usefixtures("flask_server_with_empty_env")
-def test_config_warning_overlay_for_missing_env(self, flask_server_with_empty_env):
-    self.driver.get(flask_server_with_empty_env)
-    ov = self.driver.find_element(By.ID, "config-warning-overlay")
-    assert ov.is_displayed()
-    btn = ov.find_element(By.TAG_NAME, "button")
-    assert "Open Settings" in btn.text
+def test_config_warning_overlay_for_missing_env(flask_server_with_empty_env):
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--window-size=1200,800")
+    driver = webdriver.Chrome(options=options)
+    driver.implicitly_wait(4)
+    try:
+        driver.get(flask_server_with_empty_env)
+        ov = driver.find_element(By.ID, "config-warning-overlay")
+        assert ov.is_displayed()
+        btn = ov.find_element(By.TAG_NAME, "button")
+        assert "Open Settings" in btn.text
+    finally:
+        driver.quit()
