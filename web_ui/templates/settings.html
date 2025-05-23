@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ page_title|default("Settings") }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f9f9f9;
+            margin: 0;
+            min-height: 100vh;
+        }
+        #main-content {
+            margin: 0 auto 2.5em auto;
+            max-width: 700px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 5px 36px 0 rgba(60,60,100,0.09);
+            padding: 2.5em 2em 1em 2em;
+        }
+        .group-box {
+            margin-bottom: 2em;
+            padding: 1.1em 1.7em 1.5em 1.2em;
+            background: #f7faff;
+            border-radius: 9px;
+        }
+        .group-heading {
+            font-weight: 700;
+            font-size: 1.15em;
+            margin: 0 0 1.1em 0;
+            color: #0d47a1;
+        }
+        .settings-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.15em;
+            flex-wrap: wrap;
+        }
+        .settings-label {
+            flex: 0 0 180px;
+            margin-right: 1.1em;
+            font-size: 1em;
+            font-weight: 500;
+        }
+        .settings-input {
+            font-size: 1em;
+            padding: 0.23em 0.7em;
+            border-radius: 3px;
+            border: 1px solid #bdbdbd;
+            width: 260px;
+        }
+        .settings-password-wrap {
+            position: relative;
+            display: inline-block;
+            width: 264px;
+        }
+        .settings-eye {
+            position: absolute;
+            top: 1.1em;
+            right: 7px;
+            font-size: 1.13em;
+            cursor: pointer;
+            color: #757575;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+        .settings-desc {
+            margin-left: 1.2em;
+            font-size: 0.97em;
+            color: #556;
+        }
+        .settings-valerr {
+            margin-left: 1.2em;
+            font-size: 0.96em;
+            color: #b71c1c;
+            display: none;
+        }
+        #server-toggle-btn {
+            background: #90caf9;
+            color: #222;
+            font-weight: 600;
+            margin: 0.5em 0 0.7em 0;
+            border: none;
+            border-radius: 4px;
+            padding: 0.45em 1.1em;
+            cursor: pointer;
+        }
+        #server-group {
+            background: #f6f9fc;
+            border: 1.1px dashed #90caf9;
+            border-radius: 8px;
+            padding: 1em 1em 1.5em 1.2em;
+        }
+        #settings-success, #settings-error {
+            font-size: 1.04em;
+            font-weight: bold;
+            display: block;
+            margin-top: 0.9em;
+        }
+        #settings-success { color: #2e7d32;}
+        #settings-error { color: #b71c1c;}
+        .settings-actions {
+            margin-top: 2.1em;
+            margin-bottom: 1em;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 0.37em 1.3em;
+            margin-right: 1.1em;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 1.03em;
+            font-weight: 500;
+        }
+        .btn-add { background: #4caf50; color: #fff; }
+        .btn-warning { background: #f9a825; color: #fff; border: 1px solid #bdb76b;}
+        @media (max-width: 650px) {
+            #main-content { padding: 1.1em 0.3em;}
+            .settings-label { flex: 1 1 130px; }
+            .settings-input, .settings-password-wrap { width: 98vw; max-width: 99vw;}
+        }
+    </style>
+</head>
+<body>
+    {% include "header.html" with context %}
+    <div id="main-content">
+        <h1 style="margin-top:0;margin-bottom:1.3em;color:#1565c0;font-size:2em;letter-spacing:0.01em;">Settings</h1>
+        <div id="server-start-info" style="margin-bottom:1.6em;font-size:1.07em;color:#444;">
+            <span>Server started: <span id="server-start-time" style="font-weight:600;">Loading...</span> &nbsp;
+            Uptime: <span id="server-uptime" style="color:#1976d2;font-weight:600;">Loading...</span></span>
+        </div>
+        <form id="settings-form" autocomplete="off">
+            <div id="settings-groups"></div>
+            <div class="settings-actions">
+                <button id="settings-save-btn" class="btn btn-add" type="button">Save</button>
+                <button id="settings-restart-btn" class="btn btn-warning" type="button">Restart UI</button>
+            </div>
+            <span id="settings-success"></span>
+            <span id="settings-error"></span>
+        </form>
+        <div style="margin-top:1.7em;color:#c57a00;font-weight:500;">
+            <span id="restart-warning">If you change any server settings, you must restart the UI for changes to take effect.</span>
+        </div>
+    </div>
+    <script>
+    let settingsSchema = [];
+    let fieldInputs = {};
+    let errorBoxes = {};
+    let validationErrors = {};
+    let valueState = {};
+    function fetchAndRenderSettings() {
+        fetch("/api/env_schema").then(r=>r.json()).then(d=>{
+            if(d.success) {
+                settingsSchema = d.schema;
+                renderSettingsForm();
+            }
+        });
+    }
+    function renderSettingsForm() {
+        const groupsSpec = [
+            { key: "eportem", label: "ePortem Credentials", keys: ["EPORTEM_USERNAME", "EPORTEM_PASSWORD"] },
+            { key: "telegram", label: "Telegram Settings", keys: ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TELEGRAM_NOTIFY"] },
+            { key: "slack", label: "Slack Settings", keys: ["SLACK_WEBHOOK", "SLACK_NOTIFY", "SLACK_STATUS"] },
+            { key: "server", label: "Server Settings", keys: ["EPORTEM_ENABLED", "WEB_UI_PORT", "HEADLESS_BROWSING", "USE_MOCK_SERVER"] }
+        ];
+        let groupFields = {};
+        settingsSchema.forEach(f => groupFields[f.key] = f);
+        const container = document.getElementById("settings-groups");
+        container.innerHTML = "";
+        fieldInputs = {}; errorBoxes = {}; validationErrors = {}; valueState = {};
+        groupsSpec.forEach(g => {
+            // Container for group
+            let groupBox = document.createElement("div");
+            groupBox.className = "group-box";
+            if(g.key === "server") {
+                groupBox.style.display = "none";
+                groupBox.id = "server-group";
+            }
+            // Heading
+            let heading = document.createElement("div");
+            heading.className = "group-heading";
+            heading.textContent = g.label;
+            groupBox.appendChild(heading);
+            g.keys.forEach(key => {
+                const field = groupFields[key]; if (!field) return;
+                let row = document.createElement("div");
+                row.className = "settings-row";
+                let label = document.createElement("label");
+                label.className = "settings-label";
+                label.textContent = field.label + (field.required ? " *" : "");
+                label.title = field.description || "";
+                row.appendChild(label);
+                let input;
+                // Password special
+                if(field.type === "password") {
+                    let wrap = document.createElement("div");
+                    wrap.className = "settings-password-wrap";
+                    input = document.createElement("input");
+                    input.type = "password";
+                    input.value = field.value || "";
+                    input.autocomplete = "new-password";
+                    input.style.width = "100%";
+                    input.style.boxSizing = "border-box";
+                    input.style.paddingRight = "2.2em";
+                    let eye = document.createElement("span");
+                    eye.className = "settings-eye";
+                    eye.innerHTML = `<svg viewBox="0 0 24 24" width="22" style="vertical-align:middle;" xmlns="http://www.w3.org/2000/svg"><path fill="#757575" d="M12 4.5C7.305 4.5 3.135 7.735 1.5 12c1.635 4.265 5.805 7.5 10.5 7.5s8.865-3.235 10.5-7.5C20.865 7.735 16.695 4.5 12 4.5zm0 13c-4.005 0-7.565-2.505-9.04-6C4.435 8.005 7.995 5.5 12 5.5s7.565 2.505 9.04 6c-1.475 3.495-5.035 6-9.04 6zm0-10.5A4.5 4.5 0 0 0 7.5 11.5c0 2.485 2.015 4.5 4.5 4.5s4.5-2.015 4.5-4.5A4.5 4.5 0 0 0 12 7.5zm0 7A2.5 2.5 0 1 1 12 10a2.5 2.5 0 0 1 0 5z"/></svg>`;
+                    eye.title = "Show/Hide password";
+                    eye.onclick = function() {
+                        input.type = (input.type === "password" ? "text" : "password");
+                        let p = eye.querySelector("path");
+                        if(input.type === "password") p.setAttribute("fill","#757575");
+                        else p.setAttribute("fill","#1976d2");
+                    };
+                    wrap.appendChild(input);
+                    wrap.appendChild(eye);
+                    row.appendChild(wrap);
+                } else if(field.type === "toggle") {
+                    input = document.createElement("input");
+                    input.type = "checkbox";
+                    input.checked = !!field.value;
+                    row.appendChild(input);
+                } else {
+                    input = document.createElement("input");
+                    input.type = field.type === "number" ? "number" : "text";
+                    input.className = "settings-input";
+                    input.value = (field.value !== undefined && field.value !== null) ? field.value : "";
+                    if(field.type === "number") {
+                        if(field.min !== undefined) input.min = field.min;
+                        if(field.max !== undefined) input.max = field.max;
+                        input.style.width = "120px";
+                    }
+                    row.appendChild(input);
+                }
+                fieldInputs[field.key] = input;
+                // Description
+                let desc = document.createElement("span");
+                desc.className = "settings-desc";
+                desc.textContent = field.description || "";
+                if(field.example) {
+                    desc.textContent += " Example: " + field.example;
+                }
+                row.appendChild(desc);
+                // Validation error
+                let errBox = document.createElement("span");
+                errBox.className = "settings-valerr";
+                errBox.id = "valerr-" + field.key;
+                row.appendChild(errBox);
+                errorBoxes[field.key] = errBox;
+                groupBox.appendChild(row);
+            });
+            container.appendChild(groupBox);
+        });
+        // Server toggle button after rendering
+        let serverBtn = document.getElementById("server-toggle-btn");
+        if(!serverBtn) {
+            serverBtn = document.createElement("button");
+            serverBtn.type = "button";
+            serverBtn.id = "server-toggle-btn";
+            serverBtn.className = "btn";
+            serverBtn.style.background = "#90caf9";
+            serverBtn.textContent = "Show Server Settings";
+            serverBtn.onclick = function() {
+                let sec = document.getElementById("server-group");
+                if(sec.style.display === "none") {
+                    sec.style.display = "";
+                    serverBtn.textContent = "Hide Server Settings";
+                } else {
+                    sec.style.display = "none";
+                    serverBtn.textContent = "Show Server Settings";
+                }
+            };
+            container.insertBefore(serverBtn, document.getElementById("server-group"));
+        }
+    }
+    function getFieldValue(field, input) {
+        if(field.type === "toggle") return !!input.checked;
+        if(field.type === "number") return parseInt(input.value, 10);
+        return input.value;
+    }
+    function validateField(field) {
+        let v = getFieldValue(field, fieldInputs[field.key]);
+        let err = "";
+        if(field.required && (v === "" || v === undefined || (field.type === "number" && isNaN(v)))) err = "Required";
+        if (!err && field.pattern && v) {
+            let re = new RegExp(field.pattern);
+            if (!re.test(v)) err = "Format invalid";
+        }
+        if (!err && field.type === "number") {
+            if (field.min && v < field.min) err = `Must be >= ${field.min}`;
+            if (field.max && v > field.max) err = `Must be <= ${field.max}`;
+        }
+        const box = errorBoxes[field.key];
+        if(err) {
+            box.style.display = "";
+            box.textContent = err;
+            validationErrors[field.key] = err;
+        } else {
+            box.style.display = "none";
+            box.textContent = "";
+            delete validationErrors[field.key];
+        }
+        return err;
+    }
+    function collectValuesAndValidate() {
+        validationErrors = {};
+        let env = {};
+        settingsSchema.forEach(f=>{
+            let val = getFieldValue(f, fieldInputs[f.key]);
+            env[f.key] = val;
+            validateField(f);
+        });
+        return env;
+    }
+    document.getElementById("settings-save-btn").onclick = function() {
+        document.getElementById("settings-success").textContent = "";
+        document.getElementById("settings-error").textContent = "";
+        let envVals = collectValuesAndValidate();
+        if(Object.keys(validationErrors).length) {
+            document.getElementById("settings-error").textContent = "Please fix all highlighted validation errors before saving.";
+            return;
+        }
+        fetch("/api/env", {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({env: envVals})
+        }).then(r=>r.json()).then(d=>{
+            if(d.success) {
+                document.getElementById("settings-success").textContent = "Saved!";
+            } else {
+                document.getElementById("settings-error").textContent = "Error: " + (d.error || "Save failed");
+            }
+        }).catch(()=>{ document.getElementById("settings-error").textContent = "Network error saving config."; });
+    };
+    document.getElementById("settings-restart-btn").onclick = function() {
+        if(confirm("Are you sure you want to restart the Web UI? Any changes not saved will be lost, and the UI may be temporarily unavailable.")) {
+            fetch("/api/restart", {method: "POST"})
+              .then(r=>r.json()).then(d=>{
+                if(d.success) {
+                  document.getElementById("settings-success").textContent = "Restart requested. The UI will reload if the server is running with restart policy (e.g., Docker or systemd).";
+                  setTimeout(function(){ location.reload(); }, 2000);
+                } else {
+                  document.getElementById("settings-error").textContent = "Error: Could not restart: " + (d.error || "");
+                }
+              })
+              .catch(()=>{ document.getElementById("settings-error").textContent = "Error: Could not contact server for restart."; });
+        }
+    };
+
+    // Server info
+    function loadServerInfo() {
+        fetch("/api/serverinfo").then(r => r.json()).then(d => {
+            if (d.success) {
+                // Format start time
+                let dt = new Date(d.start_time);
+                let dtStr = dt.toLocaleString();
+                document.getElementById("server-start-time").textContent = dtStr;
+                // Format uptime
+                let out = "";
+                if (d.uptime_days) out += d.uptime_days + " days ";
+                if (d.uptime_hours || out) out += d.uptime_hours + " hr ";
+                out += d.uptime_minutes + " min";
+                document.getElementById("server-uptime").textContent = out;
+            } else {
+                document.getElementById("server-start-time").textContent = "Error";
+                document.getElementById("server-uptime").textContent = "";
+            }
+        }).catch(() => {
+            document.getElementById("server-start-time").textContent = "Error";
+            document.getElementById("server-uptime").textContent = "";
+        });
+    }
+    fetchAndRenderSettings();
+    loadServerInfo();
+    </script>
+{% include "footer.html" %}
+</body>
+</html>
