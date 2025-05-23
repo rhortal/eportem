@@ -2,14 +2,14 @@
 services:
   webui:
     build:
-      context: ./web_ui
+      context: .
       dockerfile: Dockerfile
     env_file:
-      - ../eportem/config/.env
+      - ./config/.env
     ports:
       - "${WEB_UI_PORT:-8010}:8010"
     environment:
       - USE_MOCK_SERVER=${USE_MOCK_SERVER:-NO}
     restart: unless-stopped
     volumes:
-      - ../eportem:/app
+      - .:/app
