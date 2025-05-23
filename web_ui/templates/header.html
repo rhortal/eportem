@@ -1,0 +1,13 @@
+<nav style="display: flex; justify-content: space-between; align-items: center; padding: 0.8em 2em 0.8em 2em; background: #e3f2fd; border-radius: 0 0 7px 7px; margin-bottom: 1em;">
+  <div>
+    <a href="/" style="text-decoration: none; font-size: 1.4em; font-weight: bold; color: #1565c0; letter-spacing: 0.02em;">Home</a>
+  </div>
+  <a href="/settings" id="settings-btn" style="background: none; border: none; cursor: pointer; text-decoration: none;">
+    <span style="font-size: 2em; color: #1565c0;" title="Settings">&#9881;</span>
+  </a>
+</nav>
+{% block page_title %}
+  <h1 style="margin-top:0;margin-bottom:1.3em;color:#333;font-size:2em;letter-spacing:0.01em;">
+    {{ page_title|default("ePortem Web UI") }}
+  </h1>
+{% endblock %}

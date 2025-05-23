@@ -1,8 +1,10 @@
 import os
 import threading
 import time
+from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from dotenv import load_dotenv
+import json
 
 # Load environment variables from config/.env if present
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', 'config', '.env'))
@@ -15,8 +17,6 @@ app = Flask(
 
 # Configurable port
 PORT = int(os.getenv("WEB_UI_PORT", 8010))
-
-import json
 
 WEB_UI_CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'web_ui_config.json')
 
@@ -102,12 +102,19 @@ else:
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    # Pass config error status and year to template
+    return render_template("index.html", config_error=CONFIG_ERROR, page_title="ePortem Web UI", year=datetime.datetime.now().year)
+
+@app.route("/settings")
+def settings():
+   # Render a dedicated settings page, reusing schema/config error
+   return render_template("settings.html", config_error=CONFIG_ERROR, page_title="Settings", year=datetime.datetime.now().year)
 
 @app.route("/api/state", methods=["GET"])
 def get_state():
     print(f"API /api/state returning schedule: {state.get('schedule')}")
-    return jsonify(state)
+    # Also return config error status to UI
+    return jsonify({**state, "config_error": CONFIG_ERROR})
 
 @app.route("/api/toggle", methods=["POST"])
 def toggle():
@@ -368,28 +375,234 @@ def start_scheduler():
 
 ENV_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config', '.env'))
 
-@app.route("/api/env", methods=["GET"])
-def get_env_file():
+SETTING_SCHEMA = [
+    {
+        "key": "EPORTEM_USERNAME",
+        "type": "text",
+        "label": "ePortem Username",
+        "description": "Your ePortem username for login.",
+        "required": True,
+    },
+    {
+        "key": "EPORTEM_PASSWORD",
+        "type": "password",
+        "label": "ePortem Password",
+        "description": "Your ePortem password for login.",
+        "required": True,
+    },
+    {
+        "key": "TELEGRAM_BOT_TOKEN",
+        "type": "text",
+        "label": "Telegram Bot Token",
+        "description": "Format: 000000000:AaAaAaAaAaAaAaAaAaAa... (numbers, colon, then mixed case letters/numbers)",
+        "pattern": r"^\d{6,}:[A-Za-z0-9_]{35,}$",
+        "required": False,
+        "example": "1745486736:AAEAPhpBIlK9oVS1QEQkSyD0WSbHLRcu23M"
+    },
+    {
+        "key": "TELEGRAM_CHAT_ID",
+        "type": "text",
+        "label": "Telegram Chat ID",
+        "description": "Telegram chat ID (should be all digits, copy from your Telegram app).",
+        "pattern": r"^\d+$",
+        "required": False,
+        "example": "123456789"
+    },
+    {
+        "key": "TELEGRAM_NOTIFY",
+        "type": "toggle",
+        "label": "Enable Telegram Notifications",
+        "description": "Send notifications via Telegram.",
+        "required": True,
+    },
+    {
+        "key": "SLACK_NOTIFY",
+        "type": "toggle",
+        "label": "Enable Slack Notifications",
+        "description": "Send notifications via Slack webhooks.",
+        "required": True,
+    },
+    {
+        "key": "SLACK_WEBHOOK",
+        "type": "text",
+        "label": "Slack Token",
+        "description": "Format: xoxb-... (bot) or xoxp-... (user), e.g. xoxp-000000000000-000000000000-000000000000-abcdefghijklmnopqrstuvwxyz012345",
+        "pattern": r"^xox[bpar]-[0-9]+-[0-9]+-[0-9]+-[a-zA-Z0-9]+$",
+        "required": False,
+        "example": "xoxp-REDACTED-EXAMPLE-TOKEN"
+    },
+    {
+        "key": "SLACK_STATUS",
+        "type": "toggle",
+        "label": "Update Slack Status",
+        "description": "Change Slack status automatically when schedule events occur.",
+        "required": True,
+    },
+    {
+        "key": "HEADLESS_BROWSING",
+        "type": "toggle",
+        "label": "Use Headless Browsing",
+        "description": "Run browser actions in headless mode.",
+        "required": True,
+    },
+    {
+        "key": "EPORTEM_ENABLED",
+        "type": "toggle",
+        "label": "Enable ePortem Automation",
+        "description": "Main toggle to enable or disable all automation.",
+        "required": True,
+    },
+    {
+        "key": "WEB_UI_PORT",
+        "type": "number",
+        "label": "Web UI Port",
+        "description": "Port for the web UI server.",
+        "required": True,
+        "min": 1025,
+        "max": 65535,
+        "example": "8010"
+    },
+    {
+        "key": "USE_MOCK_SERVER",
+        "type": "toggle",
+        "label": "Use Mock Server (Developer Setting)",
+        "description": "Send actions to a local mock server for testing.",
+        "required": True
+    }
+]
+
+def parse_env_file(env_path):
+    values = {}
     try:
-        with open(ENV_PATH, "r") as f:
-            content = f.read()
-        return jsonify({"success": True, "content": content})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        with open(env_path, "r") as f:
+            for line in f:
+                s = line.strip()
+                if not s or s.startswith("#") or "=" not in s:
+                    continue
+                k, v = s.split("=", 1)
+                values[k.strip()] = v.strip()
+    except Exception:
+        pass
+    return values
+
+def write_env_file(new_values, env_path):
+    # Compose new .env file with comments preserved where possible.
+    orig_lines = []
+    try:
+        with open(env_path, "r") as f:
+            orig_lines = f.readlines()
+    except Exception:
+        pass
+
+    result_lines = []
+    seen = set()
+    # Update existing keys
+    for line in orig_lines:
+        s = line.strip()
+        # Comments/empty lines untouched
+        if not s or s.startswith("#") or "=" not in s:
+            result_lines.append(line)
+            continue
+        k = s.split("=", 1)[0].strip()
+        if k in new_values:
+            result_lines.append(f"{k}={new_values[k]}\n")
+            seen.add(k)
+        else:
+            result_lines.append(line)
+    # Add any missing from new_values
+    for k,v in new_values.items():
+        if k not in seen:
+            result_lines.append(f"{k}={v}\n")
+    with open(env_path, "w") as f:
+        f.writelines(result_lines)
+
+@app.route("/api/env_schema", methods=["GET"])
+def env_schema():
+    env_vals = parse_env_file(ENV_PATH)
+    schema = []
+    for entry in SETTING_SCHEMA:
+        current_val = env_vals.get(entry["key"])
+        typ = entry["type"]
+        if typ == "toggle":
+            normalized = (current_val or "").upper()
+            value = normalized == "YES"
+        elif typ == "number":
+            try:
+                value = int(current_val)
+            except Exception:
+                value = ""
+        else:
+            value = current_val or ""
+        with_info = entry.copy()
+        with_info["value"] = value
+        schema.append(with_info)
+    return jsonify({"success": True, "schema": schema})
+
+@app.route("/api/env", methods=["GET"])
+def get_env_struct():
+    # for backward UI-compat, get raw if "?raw=1"
+    if request.args.get("raw"):
+        try:
+            with open(ENV_PATH, "r") as f:
+                content = f.read()
+            return jsonify({"success": True, "content": content})
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    # else JSON schema
+    env_vals = parse_env_file(ENV_PATH)
+    return jsonify({"success": True, "env": env_vals})
 
 @app.route("/api/env", methods=["POST"])
-def save_env_file():
-    content = request.json.get("content")
-    # Optionally validate .env content here.
+def save_env_struct():
+    data = request.json
+    # Must be dict: {key1: val1, ...}
+    incoming = data.get("env") if "env" in data else None
+    if not incoming or not isinstance(incoming, dict):
+        return jsonify({"success": False, "error": "No env dict provided!"}), 400
+
+    err = []
+
+    # Validate each input per schema
+    to_save = {}
+    for entry in SETTING_SCHEMA:
+        k = entry["key"]
+        typ = entry["type"]
+        val = incoming.get(k)
+        if typ == "toggle":
+            real_val = "YES" if bool(val) else "NO"
+        elif typ == "number":
+            try:
+                real_val = str(int(val))
+                if "min" in entry and int(val) < entry["min"]:
+                    err.append(f"{entry['label']}: must be >= {entry['min']}")
+                if "max" in entry and int(val) > entry["max"]:
+                    err.append(f"{entry['label']}: must be <= {entry['max']}")
+            except Exception:
+                err.append(f"{entry['label']}: must be a number")
+                real_val = ""
+        else:
+            real_val = val if val is not None else ""
+        # Required check
+        if entry.get("required") and (real_val is None or real_val == "" or (typ=="toggle" and real_val not in ["YES","NO"])):
+            err.append(f"{entry['label']}: is required")
+        # Pattern validation
+        pat = entry.get("pattern")
+        if pat and real_val:
+            if not re.match(pat, real_val):
+                err.append(f"{entry['label']}: format invalid")
+        to_save[k] = real_val
+
+    if err:
+        return jsonify({"success": False, "error": "; ".join(err)}), 400
+    # Backup old .env
+    backup_path = ENV_PATH + ".bak"
+    if pathlib.Path(ENV_PATH).exists():
+        with open(ENV_PATH, "r") as oldf:
+            with open(backup_path, "w") as bak:
+                bak.write(oldf.read())
+    # Write new values
     try:
-        # Backup old .env?
-        backup_path = ENV_PATH + ".bak"
-        if pathlib.Path(ENV_PATH).exists():
-            with open(ENV_PATH, "r") as oldf:
-                with open(backup_path, "w") as bak:
-                    bak.write(oldf.read())
-        with open(ENV_PATH, "w") as f:
-            f.write(content)
+        write_env_file(to_save, ENV_PATH)
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -398,6 +611,7 @@ import argparse
 import sys
 import signal
 import datetime
+import re
 
 @app.route("/api/restart", methods=["POST"])
 def restart_server():
@@ -434,6 +648,28 @@ def get_server_info():
         "uptime_minutes": int(minutes)
     })
 
+# Global variable to communicate config validity to UI
+CONFIG_ERROR = None
+MIN_REQUIRED_KEYS = [
+    "EPORTEM_USERNAME",
+    "EPORTEM_PASSWORD",
+    "EPORTEM_ENABLED",
+    "HEADLESS_BROWSING",
+    "WEB_UI_PORT"
+]
+
+def validate_basic_config():
+    # Check if .env file exists, and key fields are present/non-empty
+    if not os.path.exists(ENV_PATH):
+        return "Configuration file not found (.env missing)."
+    vals = parse_env_file(ENV_PATH)
+    missing = [k for k in MIN_REQUIRED_KEYS if not vals.get(k)]
+    if missing:
+        return f"Configuration incomplete. Missing required: {', '.join(missing)}"
+    if vals.get("EPORTEM_ENABLED", "").upper() != "YES":
+        return "EPORTEM_ENABLED is not set to YES."
+    return None
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run ePortem Web UI server")
     parser.add_argument("--mock", action="store_true", help="Use the mock server for ePortem actions (sets USE_MOCK_SERVER=YES) for this session.")
@@ -443,5 +679,7 @@ if __name__ == "__main__":
         print("[web_ui] Running in MOCK SERVER mode: USE_MOCK_SERVER=YES")
     else:
         print("[web_ui] Running in normal (real) mode.")
+    # Validate config
+    CONFIG_ERROR = validate_basic_config()
     start_scheduler()
     app.run(host="0.0.0.0", port=PORT, debug=True)
