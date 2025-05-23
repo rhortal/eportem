@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Automated ePortem Console</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2em; background: #f9f9f9; }
+        h1 { color: #333; }
+        .toggle-group { margin-bottom: 1.5em; }
+        .toggle-label { margin-right: 1em; }
+        table { border-collapse: collapse; width: 100%; background: #fff; }
+        th, td { border: 1px solid #ccc; padding: 0.5em 1em; text-align: center; }
+        th { background: #eee; }
+        tr:nth-child(even) { background: #f5f5f5; }
+        .btn { padding: 0.3em 0.8em; margin: 0 0.2em; border: none; border-radius: 3px; cursor: pointer; }
+        .btn-add { background: #4caf50; color: #fff; }
+        .btn-remove { background: #f44336; color: #fff; }
+        .toggle-switch { vertical-align: middle; }
+    </style>
+</head>
+<body>
+    <h1>ePortem Web UI</h1>
+    <div class="toggle-group">
+        <label class="toggle-label">
+            <input type="checkbox" id="updates_enabled" class="toggle-switch"> Updates Enabled
+        </label>
+
+        <label class="toggle-label">
+            <input type="checkbox" id="telegram_enabled" class="toggle-switch"> Telegram Updates
+        </label>
+        <label class="toggle-label">
+            <input type="checkbox" id="slack_enabled" class="toggle-switch"> Slack Updates
+        </label>
+        <label class="toggle-label">
+            <input type="checkbox" id="slack_status_enabled" class="toggle-switch"> Slack Status
+        </label>
+    </div>
+    <h2>Schedule</h2>
+    <div style="display: flex; gap: 1em; margin-bottom:1em;">
+      <div id="manual-trigger-box" style="flex:1; background:#f0f6ff; border:1px solid #90caf9; color:#134975; padding:0.7em 1.2em; border-radius:4px;">
+        <strong>Trigger Action Now</strong>
+        <form id="manual-action-form" style="margin-top:0.7em;">
+          <label>
+            <select id="manual-action">
+              <option value="start_day">Start Day</option>
+              <option value="lunch_break">Lunch Break</option>
+              <option value="after_lunch">After Lunch</option>
+              <option value="stop_day">Stop Day</option>
+            </select>
+          </label>
+          <label>
+            <select id="manual-location">
+              <option value="office">Office</option>
+              <option value="home">Home</option>
+            </select>
+          </label>
+          <label style="margin-left:0.7em;">
+            <input type="checkbox" id="manual-telegram" checked> Telegram
+          </label>
+          <label style="margin-left:0.7em;">
+            <input type="checkbox" id="manual-slack" checked> Slack Updates
+          </label>
+          <label style="margin-left:0.7em;">
+            <input type="checkbox" id="manual-slack-status" checked> Slack Status
+          </label>
+          <button class="btn btn-add" type="button" style="margin-left:0.7em;" onclick="triggerManualAction()">Trigger</button>
+        </form>
+        <div id="manual-action-result" style="margin-top:0.5em;font-size:0.95em;"></div>
+      </div>
+      <div id="scheduler-status" style="flex:1; background:#f0f6ff; border:1px solid #90caf9; color:#134975; padding:0.7em 1.2em; border-radius:4px;">
+        <strong>Scheduler Status:</strong><br>
+        <span id="upcoming-action">Upcoming action: <em>Not</em> available</em></span>
+        <span id="countdown"></span><br>
+        <span id="last-action-result">Last action result: <em></em>Not available</em></span>
+      </div>
+    </div>
+    <div style="margin-bottom:1em;">
+      <div style="display: flex; align-items: center; gap: 1em; margin-bottom:1em;">
+        <button id="today-btn" type="button" class="btn btn-add" style="padding:0.2em 1em;">Today</button>
+        <span style="font-weight:600; margin-left:0.5em; margin-right:0.5em;">Show:</span>
+        <div id="day-toggles" style="display:flex;gap:0.5em;align-items: center;">
+          <label><input type="checkbox" class="day-toggle" value="Monday" checked> Mon</label>
+          <label><input type="checkbox" class="day-toggle" value="Tuesday" checked> Tue</label>
+          <label><input type="checkbox" class="day-toggle" value="Wednesday" checked> Wed</label>
+          <label><input type="checkbox" class="day-toggle" value="Thursday" checked> Thu</label>
+          <label><input type="checkbox" class="day-toggle" value="Friday" checked> Fri</label>
+          <button type="button" class="btn btn-add" id="all-days-btn" style="margin-left:1em;">All</button>
+        </div>
+      </div>
+    </div>
+    <table id="schedule_table">
+        <thead>
+            <tr>
+                <th>Day</th>
+                <th>Time</th>
+                <th>Action</th>
+                <th>Location</th>
+                <th>Enabled</th>
+                <th>Remove</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Rows will be populated by JS -->
+        </tbody>
+    </table>
+    <div style="margin-top:1em; margin-bottom:1em; background:#f0f6ff; border:1px solid #90caf9; color:#134975; padding:0.9em 1.5em; border-radius:4px;">
+      <div style="display:flex; align-items: center; gap:1em; flex-wrap:wrap;">
+        <span style="font-weight:600; margin-right:0.7em;">Add Row to Schedule:</span>
+        <input type="time" id="new_time">
+        <select id="new_action">
+            <option value="start_day">Start Day</option>
+            <option value="lunch_break">Lunch Break</option>
+            <option value="after_lunch">After Lunch</option>
+            <option value="stop_day">Stop Day</option>
+        </select>
+        <select id="new_location" style="min-width:90px;">
+            <option value="office">Office</option>
+            <option value="home">Home</option>
+        </select>
+        <div id="bulk-days" style="display:flex; gap:0.3em;">
+            <label><input type="checkbox" class="bulk-day" value="Monday" checked> Mon</label>
+            <label><input type="checkbox" class="bulk-day" value="Tuesday" checked> Tue</label>
+            <label><input type="checkbox" class="bulk-day" value="Wednesday" checked> Wed</label>
+            <label><input type="checkbox" class="bulk-day" value="Thursday" checked> Thu</label>
+            <label><input type="checkbox" class="bulk-day" value="Friday" checked> Fri</label>
+        </div>
+        <button class="btn btn-add" onclick="addRow()">Add Row</button>
+      </div>
+    </div>
+    <script>
+       let state = {};
+       function getTodayStr() {
+           const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+           return days[new Date().getDay()];
+       }
+
+       function fetchSchedulerStatus() {
+           fetch('/api/scheduler_status').then(r => r.json()).then(status => {
+               document.getElementById('upcoming-action').innerHTML =
+                   'Upcoming action: ' +
+                   (status.upcoming_action ? status.upcoming_action : '<em>Not available</em>');
+               document.getElementById('last-action-result').innerHTML =
+                   'Last action result: ' +
+                   (status.last_action_result ? status.last_action_result : '<em>Not available</em>');
+               // Parse out HH:MM and show countdown if possible
+               if (status.upcoming_action) {
+                   // Try to extract HH:MM and Day, e.g. "Start day at 09:00 (Friday)"
+                   const m = status.upcoming_action.match(/at (\d\d?:\d\d) \((\w+)\)/);
+                   if (m) {
+                       const targetTime = m[1];
+                       const targetDay = m[2];
+                       updateCountdown(targetTime, targetDay);
+                   } else {
+                       document.getElementById('countdown').innerHTML = '';
+                   }
+               } else {
+                   document.getElementById('countdown').innerHTML = '';
+               }
+           }).catch(() => {
+               document.getElementById('upcoming-action').innerHTML = 'Upcoming action: <em>Not available</em>';
+               document.getElementById('countdown').innerHTML = '';
+               document.getElementById('last-action-result').innerHTML = 'Last action result: <em>Not available</em>';
+           });
+       }
+
+       function fetchState() {
+           fetch('/api/state').then(r => r.json()).then(data => {
+               state = data;
+               document.getElementById('updates_enabled').checked = state.updates_enabled;
+
+               document.getElementById('telegram_enabled').checked = state.telegram_enabled;
+               document.getElementById('slack_enabled').checked = state.slack_enabled;
+               document.getElementById('slack_status_enabled').checked = state.slack_status_enabled;
+               renderSchedule(state.schedule);
+               fetchSchedulerStatus();
+           });
+       }
+        function toggle(key, value) {
+            fetch('/api/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({key, value})
+            }).then(fetchState);
+        }
+
+        function triggerManualAction() {
+            const action = document.getElementById('manual-action').value;
+            const location = document.getElementById('manual-location').value;
+            const telegram = document.getElementById('manual-telegram').checked;
+            const slack = document.getElementById('manual-slack').checked;
+            const slackStatus = document.getElementById('manual-slack-status').checked;
+            document.getElementById('manual-action-result').textContent = "Triggering...";
+            fetch('/api/trigger_now', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    action, location,
+                    telegram, slack, slack_status: slackStatus
+                })
+            })
+            .then(r => r.json())
+            .then(resp => {
+                if (resp.success) {
+                    document.getElementById('manual-action-result').innerHTML =
+                        '<span style="color:#388e3c;">' + (resp.result || 'Action triggered!') + '</span>';
+                } else {
+                    document.getElementById('manual-action-result').innerHTML =
+                        '<span style="color:#b71c1c;">Error: ' + (resp.error || 'Unknown error') + '</span>';
+                }
+            })
+            .catch(() => {
+                document.getElementById('manual-action-result').innerHTML =
+                    '<span style="color:#b71c1c;">Error: Could not reach server.</span>';
+            });
+        }
+        document.getElementById('updates_enabled').onchange = e => toggle('updates_enabled', e.target.checked);
+
+        document.getElementById('telegram_enabled').onchange = e => toggle('telegram_enabled', e.target.checked);
+        document.getElementById('slack_enabled').onchange = e => toggle('slack_enabled', e.target.checked);
+        document.getElementById('slack_status_enabled').onchange = e => toggle('slack_status_enabled', e.target.checked);
+        function getSelectedDays() {
+            // Return array of days to show
+            const toggles = document.querySelectorAll('.day-toggle:checked');
+            return Array.from(toggles).map(x => x.value);
+        }
+
+        function renderSchedule(schedule) {
+            const selectedDays = getSelectedDays();
+            const tbody = document.getElementById('schedule_table').querySelector('tbody');
+            tbody.innerHTML = '';
+            if (selectedDays.length === 0) return;
+            schedule.forEach(row => {
+                if (!selectedDays.includes(row.day)) return;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.day ? row.day : ''}</td>
+                   <td>
+                       <span class="time-cell" data-id="${row.id}" style="cursor:pointer;text-decoration:underline;">${row.time}</span>
+                   </td>
+                    <td>${row.action.replace('_', ' ')}</td>
+                    <td>
+                        <span class="location-cell" data-id="${row.id}" style="cursor:pointer;text-decoration:underline;">${row.location ? row.location : ''}</span>
+                    </td>
+                    <td>
+                        <input type="checkbox" ${row.enabled ? 'checked' : ''} onchange="toggleRow(${row.id})">
+                    </td>
+                    <td>
+                        <button class="btn btn-remove" onclick="removeRow(${row.id})">Remove</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            // Add event listeners after rendering
+            document.querySelectorAll('.location-cell').forEach(el => {
+                el.onclick = function (e) {
+                    const id = parseInt(this.getAttribute('data-id'));
+                    const prevValue = this.textContent.trim().toLowerCase();
+                    const select = document.createElement('select');
+                    const options = ['home', 'office'];
+                    options.forEach(loc => {
+                        const option = document.createElement('option');
+                        option.value = loc;
+                        option.textContent = loc.charAt(0).toUpperCase() + loc.slice(1);
+                        if (prevValue === loc) option.selected = true;
+                        select.appendChild(option);
+                    });
+                    select.onblur = function () {
+                        updateLocation(id, select.value);
+                    };
+                    select.onchange = function () {
+                        updateLocation(id, select.value);
+                    };
+                    this.replaceWith(select);
+                    select.focus();
+                };
+            });
+
+            document.querySelectorAll('.time-cell').forEach(el => {
+                el.onclick = function (e) {
+                    const id = parseInt(this.getAttribute('data-id'));
+                    const prevValue = this.textContent.trim();
+                    const input = document.createElement('input');
+                    input.type = 'time';
+                    input.value = prevValue;
+                    input.style.width = '75px';
+                    input.onblur = function () {
+                        updateTime(id, input.value);
+                    };
+                    input.onkeydown = function (evt) {
+                        if (evt.key === 'Enter') {
+                            input.blur();
+                        }
+                    };
+                    this.replaceWith(input);
+                    input.focus();
+                }
+            });
+        }
+        function toggleRow(id) {
+            fetch('/api/schedule/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id})
+            }).then(fetchState);
+        }
+
+        function updateLocation(id, location) {
+            fetch('/api/schedule/update_location', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id, location})
+            }).then(fetchState);
+        }
+        function addRow() {
+            const time = document.getElementById('new_time').value;
+            const action = document.getElementById('new_action').value;
+            const location = document.getElementById('new_location').value;
+            const days = Array.from(document.querySelectorAll('.bulk-day:checked')).map(cb => cb.value);
+            if (!time || !action || days.length === 0) return alert('Please select time, action, and at least one day');
+            fetch('/api/schedule/add', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({time, action, days, location})
+            }).then(fetchState);
+        }
+
+        function updateTime(id, time) {
+            fetch('/api/schedule/update_time', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id, time})
+            }).then(fetchState);
+        }
+
+        function removeRow(id) {
+            fetch('/api/schedule/remove', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id})
+            }).then(fetchState);
+        }
+       // Calculate and update countdown every 5s
+       let countdownTimer = null;
+       function updateCountdown(targetTime, targetDay) {
+           if (countdownTimer) clearInterval(countdownTimer);
+           function update() {
+               const now = new Date();
+               // Parse day index
+               const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+               let dayIdxNow = now.getDay();
+               let dayIdxTarget = days.indexOf(targetDay);
+               if (dayIdxTarget === -1) { document.getElementById('countdown').innerHTML = ''; return; }
+               // Parse target time
+               const [hh, mm] = targetTime.split(':').map(x => parseInt(x, 10));
+               let nextAction = new Date(now);
+               nextAction.setHours(hh, mm, 0, 0);
+               // If target day is in the past (this week), roll forward
+               let daysDiff = dayIdxTarget - dayIdxNow;
+               if (daysDiff < 0 || (daysDiff === 0 && nextAction < now)) {
+                   daysDiff += 7;
+               }
+               nextAction.setDate(now.getDate() + daysDiff);
+               // If target day is today but target time has passed, go to next week
+               if (daysDiff === 0 && nextAction < now) {
+                   nextAction.setDate(nextAction.getDate() + 7);
+               }
+               const diffMs = nextAction - now;
+               if (diffMs <= 0) {
+                   document.getElementById('countdown').innerHTML = ' <span style="color:#b71c1c">(now)</span>';
+                   return;
+               }
+               const diffMin = Math.floor(diffMs / 60000);
+               const hr = Math.floor(diffMin / 60);
+               const min = diffMin % 60;
+               let txt = ' <span style="color:#1976d2">(' + (hr > 0 ? hr + ' hr ' : '') + min + ' min left)</span>';
+               document.getElementById('countdown').innerHTML = txt;
+           }
+           update();
+           countdownTimer = setInterval(update, 5000);
+       }
+
+       // Apply filter on change of day toggles
+       document.addEventListener('DOMContentLoaded', function () {
+            fetchState();
+            fetchSchedulerStatus();
+            document.querySelectorAll('.day-toggle').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    renderSchedule(state.schedule);
+                });
+            });
+            document.getElementById('today-btn').onclick = function() {
+                 const todayStr = getTodayStr();
+                 document.querySelectorAll('.day-toggle').forEach(cb => {
+                     cb.checked = (cb.value === todayStr);
+                 });
+                 renderSchedule(state.schedule);
+             };
+             // Add behavior for "All" button to select/deselect all
+             document.getElementById('all-days-btn').onclick = function() {
+                 const toggles = document.querySelectorAll('.day-toggle');
+                 const allChecked = Array.from(toggles).every(cb => cb.checked);
+                 toggles.forEach(cb => cb.checked = !allChecked);
+                 renderSchedule(state.schedule);
+             };
+         });
+    </script>
+</body>
+</html>
