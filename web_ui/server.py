@@ -611,10 +611,10 @@ def save_env_struct():
         return jsonify({"success": False, "error": str(e)}), 500
 
 import argparse
-import sys
 import signal
 import datetime
 import re
+import os
 
 @app.route("/api/restart", methods=["POST"])
 def restart_server():
@@ -625,12 +625,12 @@ def restart_server():
     """
     # Acknowledge immediately, then restart after short delay (to flush response)
     import threading
-    def delayed_exit():
+    def delayed_hard_exit():
         import time as _t
         _t.sleep(1)
         print("[web_ui] Restart triggered from settings UI.")
-        sys.exit(0)
-    threading.Thread(target=delayed_exit, daemon=True).start()
+        os._exit(0)
+    threading.Thread(target=delayed_hard_exit, daemon=True).start()
     return jsonify({"success": True})
 
 SERVER_START_TIME = datetime.datetime.now()
