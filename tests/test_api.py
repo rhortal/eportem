@@ -12,10 +12,7 @@ def client(monkeypatch):
     env_path = os.path.join(temp_dir, ".env")
     # Patch ENV_PATH in server
     monkeypatch.setattr(webui, "ENV_PATH", env_path)
-    # Patch CONFIG_ERROR so it is recalculated for each test
-    def recalc_config():
-        webui.CONFIG_ERROR = webui.validate_basic_config()
-    monkeypatch.setattr(webui, "recalc_config_error", recalc_config)
+    webui.CONFIG_ERROR = webui.validate_basic_config()
 
     app = webui.app
     app.config["TESTING"] = True
