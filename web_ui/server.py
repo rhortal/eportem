@@ -193,7 +193,9 @@ def update_time():
     return jsonify({"success": False, "error": "Row not found"}), 404
 
 import subprocess
-from flask import request
+from flask import request, jsonify
+
+import pathlib
 
 # Track status for UI
 state["_scheduler_status"] = {
@@ -360,7 +362,77 @@ def start_scheduler():
     t = threading.Thread(target=scheduler_loop, daemon=True)
     t.start()
 
+############################
+# Settings (.env) Endpoints
+############################
+
+ENV_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config', '.env'))
+
+@app.route("/api/env", methods=["GET"])
+def get_env_file():
+    try:
+        with open(ENV_PATH, "r") as f:
+            content = f.read()
+        return jsonify({"success": True, "content": content})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/env", methods=["POST"])
+def save_env_file():
+    content = request.json.get("content")
+    # Optionally validate .env content here.
+    try:
+        # Backup old .env?
+        backup_path = ENV_PATH + ".bak"
+        if pathlib.Path(ENV_PATH).exists():
+            with open(ENV_PATH, "r") as oldf:
+                with open(backup_path, "w") as bak:
+                    bak.write(oldf.read())
+        with open(ENV_PATH, "w") as f:
+            f.write(content)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 import argparse
+import sys
+import signal
+import datetime
+
+@app.route("/api/restart", methods=["POST"])
+def restart_server():
+    """
+    Attempt to restart the web UI process.
+    Only works if run in a way where signal or sys.exit will trigger a restart policy,
+    for example under Docker or systemd with restart policy.
+    """
+    # Acknowledge immediately, then restart after short delay (to flush response)
+    import threading
+    def delayed_exit():
+        import time as _t
+        _t.sleep(1)
+        print("[web_ui] Restart triggered from settings UI.")
+        sys.exit(0)
+    threading.Thread(target=delayed_exit, daemon=True).start()
+    return jsonify({"success": True})
+
+SERVER_START_TIME = datetime.datetime.now()
+
+@app.route("/api/serverinfo", methods=["GET"])
+def get_server_info():
+    start_time = SERVER_START_TIME
+    now = datetime.datetime.now()
+    uptime = now - start_time
+    days, rem = divmod(uptime.total_seconds(), 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, _ = divmod(rem, 60)
+    return jsonify({
+        "success": True,
+        "start_time": start_time.isoformat(),
+        "uptime_days": int(days),
+        "uptime_hours": int(hours),
+        "uptime_minutes": int(minutes)
+    })
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run ePortem Web UI server")

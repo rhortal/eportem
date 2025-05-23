@@ -20,6 +20,14 @@
     </style>
 </head>
 <body>
+    <nav style="display: flex; justify-content: space-between; align-items: center; padding: 0.8em 2em 0.8em 2em; background: #e3f2fd; border-radius: 0 0 7px 7px; margin-bottom: 1em;">
+      <div>
+        <a href="/" style="text-decoration: none; font-size: 1.4em; font-weight: bold; color: #1565c0; letter-spacing: 0.02em;">Home</a>
+      </div>
+      <button id="settings-btn" style="background: none; border: none; cursor: pointer;">
+        <span style="font-size: 2em; color: #1565c0;" title="Settings">&#9881;</span>
+      </button>
+    </nav>
     <h1>ePortem Web UI</h1>
     <div class="toggle-group">
         <label class="toggle-label">
@@ -404,6 +412,132 @@
                  renderSchedule(state.schedule);
              };
          });
+    // SETTINGS MODAL LOGIC
+    let settingsModal, envTextarea, envSaveBtn, envError, envSuccess;
+    function showSettingsModal() {
+        settingsModal.style.display = "flex";
+        envError.textContent = "";
+        envSuccess.textContent = "";
+        envTextarea.value = "Loading...";
+        fetch("/api/env")
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    envTextarea.value = d.content;
+                } else {
+                    envTextarea.value = "";
+                    envError.textContent = "Error: " + (d.error || "Could not load .env file.");
+                }
+            }).catch(() => {
+                envTextarea.value = "";
+                envError.textContent = "Network error loading config.";
+            });
+    }
+    function hideSettingsModal() {
+        settingsModal.style.display = "none";
+    }
+    function saveEnvFile() {
+        envError.textContent = "";
+        envSuccess.textContent = "";
+        fetch("/api/env", {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({content: envTextarea.value})
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                envSuccess.textContent = "Saved!";
+            } else {
+                envError.textContent = "Error saving: " + (d.error || "Unknown error");
+            }
+        }).catch(() => {
+            envError.textContent = "Network error saving config.";
+        });
+    }
+    document.addEventListener("DOMContentLoaded", function() {
+        settingsModal = document.getElementById("settings-modal");
+        envTextarea = document.getElementById("env-textarea");
+        envSaveBtn = document.getElementById("env-save-btn");
+        envError = document.getElementById("env-error");
+        envSuccess = document.getElementById("env-success");
+
+        // Fetch and display server info (start time and uptime)
+        function loadServerInfo() {
+            fetch("/api/serverinfo").then(r => r.json()).then(d => {
+                if (d.success) {
+                    // Format start time
+                    let dt = new Date(d.start_time);
+                    let dtStr = dt.toLocaleString();
+                    document.getElementById("server-start-time").textContent = dtStr;
+                    // Format uptime
+                    let out = "";
+                    if (d.uptime_days) out += d.uptime_days + " days ";
+                    if (d.uptime_hours || out) out += d.uptime_hours + " hr ";
+                    out += d.uptime_minutes + " min";
+                    document.getElementById("server-uptime").textContent = out;
+                } else {
+                    document.getElementById("server-start-time").textContent = "Error";
+                    document.getElementById("server-uptime").textContent = "";
+                }
+            }).catch(() => {
+                document.getElementById("server-start-time").textContent = "Error";
+                document.getElementById("server-uptime").textContent = "";
+            });
+        }
+
+        document.getElementById("settings-btn").onclick = function() {
+            showSettingsModal();
+            loadServerInfo();
+        };
+        document.getElementById("settings-modal-close").onclick = hideSettingsModal;
+        envSaveBtn.onclick = function() {
+            saveEnvFile();
+            document.getElementById("restart-warning").style.fontWeight = "900";
+            document.getElementById("restart-warning").style.color = "#e65100";
+        };
+        document.getElementById("env-restart-btn").onclick = function() {
+            if (confirm("Are you sure you want to restart the Web UI? Any changes not saved will be lost, and the UI may be temporarily unavailable.")) {
+                fetch("/api/restart", {method: "POST"})
+                  .then(r=>r.json()).then(d=>{
+                    if (d.success) {
+                      envSuccess.textContent = "Restart requested. The UI will reload if the server is running with restart policy (e.g., Docker or systemd).";
+                      setTimeout(function(){ location.reload(); }, 2000);
+                    } else {
+                      envError.textContent = "Error: Could not restart: " + (d.error || "");
+                    }
+                  })
+                  .catch(()=>{ envError.textContent = "Error: Could not contact server for restart."; });
+            }
+        };
+        // Also allow clicking the backdrop to close:
+        settingsModal.onclick = function(e){
+            if (e.target === settingsModal) hideSettingsModal();
+        };
+    });
     </script>
+<!-- SETTINGS MODAL -->
+<div id="settings-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:50;align-items:center;justify-content:center;background:rgba(22,22,22,0.33);">
+    <div style="background:#fff;min-width:410px;max-width:90vw;padding:2em 2em 1.2em 2em;border-radius:7px;box-shadow:0 0 14px 0 rgba(20,50,130,0.16);position:relative;">
+        <button id="settings-modal-close" style="position:absolute;top:1.2em;right:1.2em;background:none;border:none;font-size:1.2em;cursor:pointer;color:#333;">&times;</button>
+        <h2 style="margin-top:0;margin-bottom:0.7em;font-size:1.2em;color:#1565c0;">Edit .env Settings</h2>
+        <div id="server-start-info" style="margin-bottom:0.6em;font-size:1em;color:#444;">
+            <span>Server started: <span id="server-start-time" style="font-weight:600;">Loading...</span><br>
+            Uptime: <span id="server-uptime" style="color:#1976d2;font-weight:600;">Loading...</span></span>
+        </div>
+        <div style="margin-bottom:0.9em;">
+            <textarea id="env-textarea" style="width:100%;min-height:230px;font-family: monospace;font-size:1em;border-radius:3px;border:1px solid #bdbdbd;resize:vertical;padding:0.5em 0.7em;"></textarea>
+        </div>
+        <div>
+            <button id="env-save-btn" class="btn btn-add" style="font-size:1em;">Save</button>
+            <button id="env-restart-btn" class="btn btn-add" style="margin-left:1em;background:#f9a825;color:#fff;font-weight:600;border:1px solid #bdb76b;">Restart UI</button>
+            <span id="env-success" style="color:#2e7d32;font-weight:500;"><!-- Success msg --></span>
+            <span id="env-error" style="color:#b71c1c;font-weight:500;margin-left:1.2em;"><!-- Error msg --></span>
+        </div>
+        <div style="margin-top:0.7em;color:#c57a00;font-weight:500;">
+            <span id="restart-warning">If you change any settings above, you must restart the UI for changes to take effect.</span>
+        </div>
+    </div>
+</div>
 </body>
 </html>
