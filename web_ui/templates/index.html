@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Automated ePortem Console</title>
+    <title>{{ page_title|default("ePortem Web UI") }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { font-family: Arial, sans-serif; margin: 2em; background: #f9f9f9; }
@@ -20,15 +20,46 @@
     </style>
 </head>
 <body>
-    <nav style="display: flex; justify-content: space-between; align-items: center; padding: 0.8em 2em 0.8em 2em; background: #e3f2fd; border-radius: 0 0 7px 7px; margin-bottom: 1em;">
-      <div>
-        <a href="/" style="text-decoration: none; font-size: 1.4em; font-weight: bold; color: #1565c0; letter-spacing: 0.02em;">Home</a>
+    <div id="config-warning-overlay" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:10000;background:rgba(0,0,0,0.35);align-items:center;justify-content:center;">
+      <div style="background:#fffbe7;border:2px solid #ff9800;box-shadow: 0 2px 16px #bcaaa4;padding:2.3em 2.5em;border-radius:12px;max-width:460px;text-align:center;">
+        <div style="font-size:2.0em;margin-bottom:0.4em;color:#e65100;">⚠️</div>
+        <div id="config-warning-msg" style="font-size:1.1em;margin-bottom:1.3em; color:#402800;">
+          Configuration is missing or incomplete. Click the <b>Settings</b>
+          <span style="display:inline-block;vertical-align:middle;"><span style="font-size:1.2em;color:#1565c0;">&#9881;</span></span>
+          icon above to set up your environment.
+        </div>
+        <a href="/settings"><button class="btn btn-add" onclick="document.getElementById('config-warning-overlay').style.display='none';">Open Settings</button></a>
       </div>
-      <button id="settings-btn" style="background: none; border: none; cursor: pointer;">
-        <span style="font-size: 2em; color: #1565c0;" title="Settings">&#9881;</span>
-      </button>
-    </nav>
-    <h1>ePortem Web UI</h1>
+    </div>
+    {% include "header.html" with context %}
+    <script>
+      // Show overlay if window.CONFIG_ERROR or from /api/state
+      function showConfigWarning(msg) {
+        var ov = document.getElementById('config-warning-overlay');
+        document.getElementById('config-warning-msg').textContent = msg + " Click the Settings ⚙️ icon above to set up your environment.";
+        ov.style.display = "flex";
+      }
+      document.addEventListener("DOMContentLoaded", function () {
+        // config_error is available as a template variable, or fallback to API if unavailable.
+        var configError =
+          (typeof CONFIG_ERROR !== "undefined" && CONFIG_ERROR) ||
+          (window.CONFIG_ERROR && window.CONFIG_ERROR);
+        // If served from backend as template var, replace at render-time:
+        {% if config_error and config_error != "None" %}
+          configError = "{{ config_error }}";
+        {% endif %}
+        if (configError && configError !== "None") {
+          showConfigWarning(configError);
+        } else {
+          // Try AJAX fallback in case of SPA routing
+          fetch("/api/state").then(r=>r.json()).then(d=>{
+            if(d.config_error && d.config_error !== "None")
+              showConfigWarning(d.config_error);
+          });
+        }
+      });
+    </script>
+    </script>
     <div class="toggle-group">
         <label class="toggle-label">
             <input type="checkbox" id="updates_enabled" class="toggle-switch"> Updates Enabled
@@ -413,23 +444,249 @@
              };
          });
     // SETTINGS MODAL LOGIC
-    let settingsModal, envTextarea, envSaveBtn, envError, envSuccess;
+    let settingsModal, envSaveBtn, envError, envSuccess, envForm;
+    let envSchema = [];
+    let envFormVals = {};
+    let envFields = {};
+    let envValidation = {};
+    function renderEnvForm(schema) {
+        envForm.innerHTML = "";
+        envFields = {};
+        envValidation = {};
+
+        // Groupings
+        const groupOrder = [
+          {key: "eportem", label: "ePortem Credentials", keys: ["EPORTEM_USERNAME", "EPORTEM_PASSWORD"]},
+          {key: "telegram", label: "Telegram Settings", keys: ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TELEGRAM_NOTIFY"]},
+          {key: "slack", label: "Slack Settings", keys: ["SLACK_WEBHOOK", "SLACK_NOTIFY", "SLACK_STATUS"]},
+          {key: "server", label: "Server Settings", keys: ["EPORTEM_ENABLED", "WEB_UI_PORT", "HEADLESS_BROWSING", "USE_MOCK_SERVER"]}
+        ];
+
+        // Prepare fields by key for fast lookup
+        const fieldByKey = {};
+        schema.forEach(f => { fieldByKey[f.key] = f; });
+
+        // Server section is collapsible
+        let serverSectionId = "server-settings-group";
+        let serverToggleId = "server-settings-toggle";
+        let collapsed = true;
+
+        groupOrder.forEach(group => {
+            // Collapsible for server only
+            if (group.key === "server") {
+                // Hide by default
+                let toggleBtn = document.createElement("button");
+                toggleBtn.type = "button";
+                toggleBtn.className = "btn btn-add";
+                toggleBtn.style.margin = "0.4em 0 0.6em 0";
+                toggleBtn.style.background = "#90caf9";
+                toggleBtn.style.color = "#222";
+                toggleBtn.textContent = "Show Server Settings";
+                toggleBtn.id = serverToggleId;
+                toggleBtn.onclick = function() {
+                    let sec = document.getElementById(serverSectionId);
+                    if (sec.style.display === "none") {
+                        sec.style.display = "";
+                        toggleBtn.textContent = "Hide Server Settings";
+                    } else {
+                        sec.style.display = "none";
+                        toggleBtn.textContent = "Show Server Settings";
+                    }
+                };
+                envForm.appendChild(toggleBtn);
+            }
+
+            let groupBox = document.createElement("div");
+            groupBox.style.marginBottom = "1.5em";
+            groupBox.style.padding = "0.4em 1.2em 0.6em 0";
+            if (group.key === "server") {
+                groupBox.style.display = "none";
+                groupBox.id = serverSectionId;
+                groupBox.style.background = "#f6f9fc";
+                groupBox.style.border = "1px dashed #90caf9";
+                groupBox.style.borderRadius = "7px";
+            }
+
+            let heading = document.createElement("div");
+            heading.textContent = group.label;
+            heading.style.fontWeight = "700";
+            heading.style.fontSize = "1.08em";
+            heading.style.margin = "0.3em 0 0.85em 0";
+            heading.style.color = "#0d47a1";
+            groupBox.appendChild(heading);
+
+            group.keys.forEach(key => {
+                let field = fieldByKey[key];
+                if (!field) return;
+                // Container per field
+                let row = document.createElement("div");
+                row.style.marginBottom = "1em";
+                row.style.display = "flex";
+                row.style.alignItems = "center";
+                let label = document.createElement("label");
+                label.textContent = field.label + (field.required ? " *" : "");
+                label.title = field.description || "";
+                label.style.flex = "0 0 170px";
+                label.style.marginRight = "1em";
+                row.appendChild(label);
+
+                let input;
+                if (field.type === "toggle") {
+                    input = document.createElement("input");
+                    input.type = "checkbox";
+                    input.checked = !!field.value;
+                } else if (field.type === "password") {
+                    // Wrapper for positioning
+                    let wrap = document.createElement("div");
+                    wrap.style.position = "relative";
+                    wrap.style.display = "inline-block";
+                    wrap.style.width = "258px";
+                    wrap.style.marginRight = "5px";
+                    input = document.createElement("input");
+                    input.type = "password";
+                    input.value = field.value || "";
+                    input.autocomplete = "new-password";
+                    input.style.width = "100%";
+                    input.style.boxSizing = "border-box";
+                    input.style.paddingRight = "2.2em";
+                    // Eye icon
+                    let eye = document.createElement("span");
+                    eye.innerHTML = `<svg viewBox="0 0 24 24" width="22" style="vertical-align:middle;" xmlns="http://www.w3.org/2000/svg"><path fill="#757575" d="M12 4.5C7.305 4.5 3.135 7.735 1.5 12c1.635 4.265 5.805 7.5 10.5 7.5s8.865-3.235 10.5-7.5C20.865 7.735 16.695 4.5 12 4.5zm0 13c-4.005 0-7.565-2.505-9.04-6C4.435 8.005 7.995 5.5 12 5.5s7.565 2.505 9.04 6c-1.475 3.495-5.035 6-9.04 6zm0-10.5A4.5 4.5 0 0 0 7.5 11.5c0 2.485 2.015 4.5 4.5 4.5s4.5-2.015 4.5-4.5A4.5 4.5 0 0 0 12 7.5zm0 7A2.5 2.5 0 1 1 12 10a2.5 2.5 0 0 1 0 5z"/></svg>`;
+                    eye.title = "Show/Hide password";
+                    eye.style.cursor = "pointer";
+                    eye.style.position = "absolute";
+                    eye.style.top = "50%";
+                    eye.style.transform = "translateY(-50%)";
+                    eye.style.right = "7px";
+                    eye.style.zIndex = "2";
+                    eye.onclick = function() {
+                        input.type = (input.type === "password" ? "text" : "password");
+                        if(input.type === "password") {
+                            eye.firstChild.setAttribute("fill","#757575");
+                        } else {
+                            eye.firstChild.setAttribute("fill","#1976d2");
+                        }
+                    };
+                    wrap.appendChild(input);
+                    wrap.appendChild(eye);
+                    row.appendChild(wrap);
+                    let descr = document.createElement("span");
+                    descr.style.marginLeft = "1.3em";
+                    descr.style.fontSize = "0.97em";
+                    descr.style.color = "#4b505c";
+                    descr.textContent = field.description || "";
+                    if (field.example) {
+                        descr.textContent += " Example: " + field.example;
+                    }
+                    let valBox = document.createElement("span");
+                    valBox.id = `env-valerr-${field.key}`;
+                    valBox.style.marginLeft = "1.3em";
+                    valBox.style.fontSize = "0.97em";
+                    valBox.style.color = "#b71c1c";
+                    valBox.style.display = "none";
+                    row.appendChild(descr);
+                    row.appendChild(valBox);
+                    groupBox.appendChild(row);
+                    envFields[field.key] = input;
+                    return;
+                } else if (field.type === "number") {
+                    input = document.createElement("input");
+                    input.type = "number";
+                    input.value = field.value !== undefined && field.value !== null ? field.value : "";
+                    input.style.width = "90px";
+                    if (field.min !== undefined) input.min = field.min;
+                    if (field.max !== undefined) input.max = field.max;
+                } else {
+                    input = document.createElement("input");
+                    input.type = "text";
+                    input.value = field.value || "";
+                    input.style.width = "250px";
+                }
+                input.id = `env-field-${field.key}`;
+                input.oninput = function() { validateEnvField(field); };
+                envFields[field.key] = input;
+
+                let descr = document.createElement("span");
+                descr.style.marginLeft = "1.3em";
+                descr.style.fontSize = "0.97em";
+                descr.style.color = "#4b505c";
+                descr.textContent = field.description || "";
+                if (field.example) {
+                    descr.textContent += " Example: " + field.example;
+                }
+
+                let valBox = document.createElement("span");
+                valBox.id = `env-valerr-${field.key}`;
+                valBox.style.marginLeft = "1.3em";
+                valBox.style.fontSize = "0.97em";
+                valBox.style.color = "#b71c1c";
+                valBox.style.display = "none";
+
+                row.appendChild(input);
+                row.appendChild(descr);
+                row.appendChild(valBox);
+
+                groupBox.appendChild(row);
+            });
+            envForm.appendChild(groupBox);
+        });
+    }
+    function getFieldValue(field, input) {
+        if(field.type === "toggle") {
+            return !!input.checked;
+        }
+        if(field.type === "number") {
+            return parseInt(input.value, 10);
+        }
+        return input.value;
+    }
+    function validateEnvField(field) {
+        let v = getFieldValue(field, envFields[field.key]);
+        let err = "";
+        if (field.required && (v === "" || v === undefined || (field.type === "number" && isNaN(v)))) {
+            err = "Required";
+        }
+        if (!err && field.pattern && v) {
+            let re = new RegExp(field.pattern);
+            if (!re.test(v)) err = "Format invalid";
+        }
+        if (!err && field.type === "number") {
+            if (field.min && v < field.min) err = `Must be >= ${field.min}`;
+            if (field.max && v > field.max) err = `Must be <= ${field.max}`;
+        }
+        let box = document.getElementById(`env-valerr-${field.key}`);
+        if (err) {
+            box.style.display = "";
+            box.textContent = err;
+            envValidation[field.key] = err;
+        } else {
+            box.style.display = "none";
+            box.textContent = "";
+            delete envValidation[field.key];
+        }
+        return err;
+    }
+    function updateEnvFormVals() {
+        envSchema.forEach(f=>{
+            envFormVals[f.key] = getFieldValue(f, envFields[f.key]);
+        });
+    }
     function showSettingsModal() {
         settingsModal.style.display = "flex";
         envError.textContent = "";
         envSuccess.textContent = "";
-        envTextarea.value = "Loading...";
-        fetch("/api/env")
+        fetch("/api/env_schema")
             .then(r => r.json())
             .then(d => {
                 if (d.success) {
-                    envTextarea.value = d.content;
+                    envSchema = d.schema;
+                    renderEnvForm(envSchema);
                 } else {
-                    envTextarea.value = "";
-                    envError.textContent = "Error: " + (d.error || "Could not load .env file.");
+                    envForm.innerHTML = '';
+                    envError.textContent = "Error: " + (d.error || "Could not load settings schema.");
                 }
             }).catch(() => {
-                envTextarea.value = "";
+                envForm.innerHTML = "";
                 envError.textContent = "Network error loading config.";
             });
     }
@@ -439,10 +696,21 @@
     function saveEnvFile() {
         envError.textContent = "";
         envSuccess.textContent = "";
+        updateEnvFormVals();
+        // Validate all fields before save
+        let hadErr = false;
+        envSchema.forEach(f=>{
+            let err = validateEnvField(f);
+            if (err) hadErr = true;
+        });
+        if (hadErr) {
+            envError.textContent = "Please fix all highlighted validation errors before saving.";
+            return;
+        }
         fetch("/api/env", {
             method: "POST",
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({content: envTextarea.value})
+            body: JSON.stringify({env: envFormVals})
         })
         .then(r => r.json())
         .then(d => {
@@ -455,89 +723,8 @@
             envError.textContent = "Network error saving config.";
         });
     }
-    document.addEventListener("DOMContentLoaded", function() {
-        settingsModal = document.getElementById("settings-modal");
-        envTextarea = document.getElementById("env-textarea");
-        envSaveBtn = document.getElementById("env-save-btn");
-        envError = document.getElementById("env-error");
-        envSuccess = document.getElementById("env-success");
-
-        // Fetch and display server info (start time and uptime)
-        function loadServerInfo() {
-            fetch("/api/serverinfo").then(r => r.json()).then(d => {
-                if (d.success) {
-                    // Format start time
-                    let dt = new Date(d.start_time);
-                    let dtStr = dt.toLocaleString();
-                    document.getElementById("server-start-time").textContent = dtStr;
-                    // Format uptime
-                    let out = "";
-                    if (d.uptime_days) out += d.uptime_days + " days ";
-                    if (d.uptime_hours || out) out += d.uptime_hours + " hr ";
-                    out += d.uptime_minutes + " min";
-                    document.getElementById("server-uptime").textContent = out;
-                } else {
-                    document.getElementById("server-start-time").textContent = "Error";
-                    document.getElementById("server-uptime").textContent = "";
-                }
-            }).catch(() => {
-                document.getElementById("server-start-time").textContent = "Error";
-                document.getElementById("server-uptime").textContent = "";
-            });
-        }
-
-        document.getElementById("settings-btn").onclick = function() {
-            showSettingsModal();
-            loadServerInfo();
-        };
-        document.getElementById("settings-modal-close").onclick = hideSettingsModal;
-        envSaveBtn.onclick = function() {
-            saveEnvFile();
-            document.getElementById("restart-warning").style.fontWeight = "900";
-            document.getElementById("restart-warning").style.color = "#e65100";
-        };
-        document.getElementById("env-restart-btn").onclick = function() {
-            if (confirm("Are you sure you want to restart the Web UI? Any changes not saved will be lost, and the UI may be temporarily unavailable.")) {
-                fetch("/api/restart", {method: "POST"})
-                  .then(r=>r.json()).then(d=>{
-                    if (d.success) {
-                      envSuccess.textContent = "Restart requested. The UI will reload if the server is running with restart policy (e.g., Docker or systemd).";
-                      setTimeout(function(){ location.reload(); }, 2000);
-                    } else {
-                      envError.textContent = "Error: Could not restart: " + (d.error || "");
-                    }
-                  })
-                  .catch(()=>{ envError.textContent = "Error: Could not contact server for restart."; });
-            }
-        };
-        // Also allow clicking the backdrop to close:
-        settingsModal.onclick = function(e){
-            if (e.target === settingsModal) hideSettingsModal();
-        };
-    });
     </script>
-<!-- SETTINGS MODAL -->
-<div id="settings-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:50;align-items:center;justify-content:center;background:rgba(22,22,22,0.33);">
-    <div style="background:#fff;min-width:410px;max-width:90vw;padding:2em 2em 1.2em 2em;border-radius:7px;box-shadow:0 0 14px 0 rgba(20,50,130,0.16);position:relative;">
-        <button id="settings-modal-close" style="position:absolute;top:1.2em;right:1.2em;background:none;border:none;font-size:1.2em;cursor:pointer;color:#333;">&times;</button>
-        <h2 style="margin-top:0;margin-bottom:0.7em;font-size:1.2em;color:#1565c0;">Edit .env Settings</h2>
-        <div id="server-start-info" style="margin-bottom:0.6em;font-size:1em;color:#444;">
-            <span>Server started: <span id="server-start-time" style="font-weight:600;">Loading...</span><br>
-            Uptime: <span id="server-uptime" style="color:#1976d2;font-weight:600;">Loading...</span></span>
-        </div>
-        <div style="margin-bottom:0.9em;">
-            <textarea id="env-textarea" style="width:100%;min-height:230px;font-family: monospace;font-size:1em;border-radius:3px;border:1px solid #bdbdbd;resize:vertical;padding:0.5em 0.7em;"></textarea>
-        </div>
-        <div>
-            <button id="env-save-btn" class="btn btn-add" style="font-size:1em;">Save</button>
-            <button id="env-restart-btn" class="btn btn-add" style="margin-left:1em;background:#f9a825;color:#fff;font-weight:600;border:1px solid #bdb76b;">Restart UI</button>
-            <span id="env-success" style="color:#2e7d32;font-weight:500;"><!-- Success msg --></span>
-            <span id="env-error" style="color:#b71c1c;font-weight:500;margin-left:1.2em;"><!-- Error msg --></span>
-        </div>
-        <div style="margin-top:0.7em;color:#c57a00;font-weight:500;">
-            <span id="restart-warning">If you change any settings above, you must restart the UI for changes to take effect.</span>
-        </div>
-    </div>
-</div>
+
+{% include "footer.html" %}
 </body>
 </html>
