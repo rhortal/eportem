@@ -92,6 +92,7 @@ class EPortemAction:
         try:
             # Find and click the first button
             button1 = self.driver.find_element(By.XPATH, self.selectors["button1"])
+            print("Clicking button 1")
             button1.click()
 
             # Click the second button if needed
@@ -99,6 +100,7 @@ class EPortemAction:
                 time.sleep(1)  # Small delay to ensure dropdown is visible
                 try:
                     button2 = self.driver.find_element(By.XPATH, self.selectors["button2"])
+                    print("Clicking button 2")
                     button2.click()
                 except Exception as e:
                     if use_mock:
