@@ -432,7 +432,7 @@ SETTING_SCHEMA = [
         "description": "Format: xoxb-... (bot) or xoxp-... (user), e.g. xoxp-000000000000-000000000000-000000000000-abcdefghijklmnopqrstuvwxyz012345",
         "pattern": r"^xox[bpar]-[0-9]+-[0-9]+-[0-9]+-[a-zA-Z0-9]+$",
         "required": False,
-        "example": "xoxp-REDACTED-EXAMPLE-TOKEN"
+        "example": "xoxp-000000000000-000000000000-000000000000-abcdefghijklmnopqrstuvwxyz012345"
     },
     {
         "key": "SLACK_STATUS",

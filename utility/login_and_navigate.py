@@ -45,7 +45,7 @@ def login_and_navigate(driver=None):
 
     try:
         # find the username and password fields within the login form
-        username = driver.find_element(By.NAME, "user")
+        username = driver.find_element(By.NAME, "usuario")
         password = driver.find_element(By.NAME, "password")
 
         # Always use test credentials in mock mode
