@@ -12,6 +12,7 @@ ePortem is a SaaS solution used in Spain for HR-related tasks. These scripts aut
 - Support for start of day, lunch break, and end of day actions
 - Telegram and Slack notifications
 - Location override system
+- Holiday / business trip support (skips clock actions, sets a Slack status)
 - Mock server for testing without accessing the real ePortem service
 
 ## Deployment
@@ -54,6 +55,35 @@ python3 override_location.py home
 ```
 
 This will set the location to `home` for the current day. To set it back to the default, simply delete the `location_override.txt` file.
+
+### Holidays and Business Trips
+
+You can tell the automation to skip clock actions for one or more date ranges (holiday, business trip, etc.) by editing `config/holidays.json`:
+
+```json
+{
+  "holidays": [
+    {
+      "start": "2026-07-20",
+      "end": "2026-07-24",
+      "type": "holiday"
+    }
+  ]
+}
+```
+
+- `start` / `end` are inclusive, `YYYY-MM-DD` dates.
+- `type` is either `holiday` or `business_trip`.
+- You can list multiple entries; overlapping ranges are fine, the first match wins.
+
+On any day covered by an entry, `main.py` does not perform any ePortem clock action (start/lunch/stop) at all. If `SLACK_STATUS=YES` in your `.env`, it also sets your Slack status once, around the day's configured `start_the_day` time, to reflect the holiday/business trip:
+
+| type            | status text            | emoji         |
+|-----------------|-------------------------|---------------|
+| `holiday`       | On holiday               | `:palm_tree:` |
+| `business_trip` | On a business trip       | `:airplane:`  |
+
+The status is set with a `status_expiration` matching the entry's `end` date, so Slack automatically clears it once the holiday/trip is over. If there's no `config/holidays.json` file, or no entry covers today, ePortem runs as normal.
 
 ### Running Actions Directly
 
@@ -125,6 +155,8 @@ The mock server runs on http://localhost:8000 and provides simulated ePortem int
 ## Configuration
 
 The schedule for each day is configured in the `config/config.json` file, located in the `config` directory. The location (home or office) can also be configured in this file.
+
+Location can be overridden for a single day via `location_override.txt` (see [Usage](#usage)), and clock actions can be suppressed for date ranges via `config/holidays.json` (see [Holidays and Business Trips](#holidays-and-business-trips)).
 
 ## Development
 
