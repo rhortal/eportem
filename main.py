@@ -7,6 +7,52 @@ from eportem_action import execute_action
 
 load_environment()
 
+HOLIDAY_STATUS = {
+    "holiday": {"text": "On holiday", "emoji": ":palm_tree:"},
+    "business_trip": {"text": "On a business trip", "emoji": ":airplane:"},
+}
+
+def get_today_holiday():
+    """Return the holiday entry covering today, if any."""
+    holidays_file = "config/holidays.json"
+    if not os.path.exists(holidays_file):
+        return None
+    with open(holidays_file, "r") as f:
+        data = json.load(f)
+    today = datetime.date.today()
+    for entry in data.get("holidays", []):
+        start = datetime.date.fromisoformat(entry["start"])
+        end = datetime.date.fromisoformat(entry["end"])
+        if start <= today <= end:
+            return entry
+    return None
+
+def handle_holiday(holiday, now):
+    """On a holiday/business trip day: skip eportem actions, set Slack status once around the usual start time."""
+    print(f"Today is covered by a {holiday.get('type', 'holiday')} entry - skipping eportem actions.")
+
+    if os.getenv('SLACK_STATUS', 'NO') != 'YES':
+        return
+
+    with open("config/config.json", "r") as f:
+        config = json.load(f)
+    weekday_num = str(now.weekday())
+    schedule = config["schedule"].get(weekday_num, {})
+    start_time = schedule.get("start_the_day")
+    if not start_time:
+        return
+
+    task_hour, task_minute = map(int, start_time.split(":"))
+    if abs((now.hour * 60 + now.minute) - (task_hour * 60 + task_minute)) > 15:
+        return
+
+    from utility.slack_status import SlackStatusUpdater
+    status = HOLIDAY_STATUS.get(holiday.get("type", "holiday"), HOLIDAY_STATUS["holiday"])
+    end_date = datetime.date.fromisoformat(holiday["end"])
+    expiration = int(datetime.datetime.combine(end_date, datetime.time(23, 59)).timestamp())
+    updater = SlackStatusUpdater()
+    updater.set_status(status["text"], status["emoji"], expiration)
+
 def determine_location():
     """Determine the current location (from override file or config)"""
     override_file = "location_override.txt"
@@ -33,6 +79,11 @@ def main():
     now = datetime.datetime.now()
     hour = now.hour
     minute = now.minute
+
+    holiday = get_today_holiday()
+    if holiday:
+        handle_holiday(holiday, now)
+        return
 
     # Get location (from override or config)
     location = determine_location()
