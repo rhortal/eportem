@@ -44,6 +44,39 @@ be ~17:55 with a small random sleep — not 18:10, which can drift outside the
 window and silently no-op. When adding/editing schedule entries, keep base
 time = target − 5min and `sleep $[RANDOM%10]m`, matching the existing lines.
 
+## Web UI, Docker, and mock server are unused experiments
+
+`web_ui/`, `Dockerfile`/`docker-compose.yml`, and the mock server
+(`utility/server.py`, `mock_server/`, `run_mock_server.py`) were experiments
+that never got adopted — the user only runs the plain scripts (`run.sh` →
+`main.py` → `eportem_action.py`) via cron, as described above and in
+README.md. A 2026-08-10 full-codebase review found real problems in the web
+UI (Werkzeug debug mode bound to `0.0.0.0`, unauthenticated endpoints that
+return plaintext credentials) and the mock server (wrong template path,
+mock login form fields don't match the real ePortem login form since the
+`usuario` field rename). None of this was fixed — it's explicitly out of
+scope until/unless the user decides to actually use one of them. Don't
+assume it's safe to run `web_ui/server.py` or the Docker image as-is if
+asked to; flag the known issues first.
+
+## Slack credentials: SLACK_WEBHOOK split into SLACK_TOKEN / SLACK_WEBHOOK_URL (2026-08-10)
+
+`config/.env` used to have a single `SLACK_WEBHOOK` var doing double duty as
+both a webhook URL suffix (for `SLACK_NOTIFY`) and an OAuth bearer token
+(for `SLACK_STATUS`) — since only a token-shaped value actually worked for
+status updates, `SLACK_NOTIFY=YES` was silently sending that token in a URL
+to `hooks.slack.com` instead of delivering a notification. This host's real
+`config/.env` was migrated: the existing token value now lives under
+`SLACK_TOKEN`, and `SLACK_WEBHOOK_URL` was added empty (there was never a
+real Incoming Webhook configured, so Slack *notifications* — as opposed to
+status updates — have never actually worked here; `SlackChannel.send` now
+skips cleanly with a log line instead of making a malformed request). If
+Slack notifications should actually start working, `SLACK_WEBHOOK_URL`
+needs a real Incoming Webhook URL from Slack, not just a truthy value.
+`config/.env` and `config/.env.bak` are `chmod 600` (the `.bak` file is
+owned by `root`, left over from the web UI writing it — needed `sudo` to
+fix).
+
 ## Mail (cron failure notifications)
 
 Postfix relays outbound mail via `mail.hortal.me:465` (implicit TLS) as
