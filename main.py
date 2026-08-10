@@ -7,22 +7,65 @@ from eportem_action import execute_action
 
 load_environment()
 
-def is_holiday():
-    """Check whether today falls within a holiday range set via holiday_override.py"""
+HOLIDAY_STATUS = {
+    "holiday": {"text": "On holiday", "emoji": ":palm_tree:"},
+    "business_trip": {"text": "On a business trip", "emoji": ":airplane:"},
+}
+
+def _read_holiday_override():
+    """Parse holiday_override.txt. Returns (start_date, end_date, holiday_type),
+    or None if the file is missing or invalid. holiday_type defaults to
+    "holiday" for files written before --type existed (2 fields instead of 3)."""
     override_file = "holiday_override.txt"
     if not os.path.exists(override_file):
-        return False
+        return None
 
     with open(override_file, "r") as f:
         try:
-            start_str, end_str = f.read().strip().split(",")
+            parts = f.read().strip().split(",")
+            if len(parts) == 2:
+                start_str, end_str = parts
+                holiday_type = "holiday"
+            elif len(parts) == 3:
+                start_str, end_str, holiday_type = parts
+            else:
+                raise ValueError("expected 2 or 3 comma-separated fields")
             start_date = datetime.date.fromisoformat(start_str)
             end_date = datetime.date.fromisoformat(end_str)
         except ValueError:
             print("Invalid holiday override file format.")
-            return False
+            return None
 
-    return start_date <= datetime.date.today() <= end_date
+    return start_date, end_date, holiday_type
+
+def get_today_holiday():
+    """Return {"type", "start", "end"} if today falls within the range set via
+    holiday_override.py, else None."""
+    parsed = _read_holiday_override()
+    if not parsed:
+        return None
+
+    start_date, end_date, holiday_type = parsed
+    if start_date <= datetime.date.today() <= end_date:
+        return {"type": holiday_type, "start": start_date, "end": end_date}
+    return None
+
+def is_holiday():
+    """Check whether today falls within a holiday range set via holiday_override.py"""
+    return get_today_holiday() is not None
+
+def update_holiday_slack_status(holiday):
+    """Set the Slack status for today's holiday/business trip, if SLACK_STATUS
+    is enabled. Safe to call on every run - it's just an idempotent status
+    update, not a one-time notification."""
+    if os.getenv('SLACK_STATUS', 'NO') != 'YES':
+        return
+
+    status = HOLIDAY_STATUS.get(holiday["type"], HOLIDAY_STATUS["holiday"])
+    expiration = int(datetime.datetime.combine(holiday["end"], datetime.time(23, 59)).timestamp())
+
+    from utility.slack_status import SlackStatusUpdater
+    SlackStatusUpdater().set_status(status["text"], status["emoji"], expiration)
 
 def determine_location():
     """Determine the current location (from override file or config)"""
@@ -47,8 +90,10 @@ def determine_location():
     return "office"  # Default to office if not specified
 
 def main():
-    if is_holiday():
-        print("On holiday today - skipping check-in.")
+    holiday = get_today_holiday()
+    if holiday:
+        print(f"On {holiday['type'].replace('_', ' ')} today - skipping check-in.")
+        update_holiday_slack_status(holiday)
         return
 
     now = datetime.datetime.now()
