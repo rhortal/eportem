@@ -4,6 +4,26 @@ See README.md for what this project does and how to run it. This file covers
 host-specific state that isn't visible from the repo itself but matters when
 debugging why automated runs fail.
 
+## Keep README.md current
+
+README.md is the actual project documentation (features, usage, CLI
+commands, testing, dev notes) — CLAUDE.md is only for host/operational
+context that doesn't belong there. When a change alters user-visible
+behavior — a new script or CLI flag, a changed file format, a renamed env
+var, a feature added/removed/relocated (e.g. the business-trip move from
+`holiday_override.py` to `override_location.py`, or the 2026-08-10 removal
+of the web UI/Docker/mock server below) — update README.md in the same
+commit, not as a follow-up.
+
+Separately, check README.md for drift at the start of a session if it's
+been a while: run `git log -1 --format=%cd -- README.md` and compare
+against `git log -10 --oneline` (or `git log --format=%cd -1` for the
+latest commit overall). If meaningful commits have landed since the last
+README touch — roughly a couple of weeks, or several feature-shaped
+commits, whichever comes first — read through README.md against the
+current state of the scripts/CLI and fix what's gone stale, even if the
+user didn't ask.
+
 ## Host: this runs on `omv` (Raspberry Pi / OMV NAS, Debian 13 trixie, Intel N95)
 
 ## Chromium hold history — was pinned at 149.x, unheld 2026-07-27
@@ -44,20 +64,31 @@ be ~17:55 with a small random sleep — not 18:10, which can drift outside the
 window and silently no-op. When adding/editing schedule entries, keep base
 time = target − 5min and `sleep $[RANDOM%10]m`, matching the existing lines.
 
-## Web UI, Docker, and mock server are unused experiments
+## Web UI, Docker, and mock server were removed (2026-08-10)
 
 `web_ui/`, `Dockerfile`/`docker-compose.yml`, and the mock server
-(`utility/server.py`, `mock_server/`, `run_mock_server.py`) were experiments
-that never got adopted — the user only runs the plain scripts (`run.sh` →
-`main.py` → `eportem_action.py`) via cron, as described above and in
-README.md. A 2026-08-10 full-codebase review found real problems in the web
-UI (Werkzeug debug mode bound to `0.0.0.0`, unauthenticated endpoints that
-return plaintext credentials) and the mock server (wrong template path,
-mock login form fields don't match the real ePortem login form since the
-`usuario` field rename). None of this was fixed — it's explicitly out of
-scope until/unless the user decides to actually use one of them. Don't
-assume it's safe to run `web_ui/server.py` or the Docker image as-is if
-asked to; flag the known issues first.
+(`utility/server.py`, `mock_server/`, `run_mock_server.py`, plus the tests
+that only existed to cover them: `tests/test_api.py`, `tests/test_ui_live.py`,
+`tests/conftest.py`, `tests/test_with_mock.py`) were experiments that never
+got adopted — the user only ever ran the plain scripts (`run.sh` → `main.py`
+→ `eportem_action.py`) via cron. A full-codebase review earlier the same day
+found real problems in the web UI (Werkzeug debug mode bound to `0.0.0.0`,
+unauthenticated endpoints returning plaintext credentials) and the mock
+server (wrong template path, mock login fields that didn't match the real
+ePortem login form since the `usuario` rename) — rather than fix unused,
+broken code, the user asked to delete it.
+
+Nothing is truly gone: the full pre-removal tree is preserved on the remote
+branch `archive/web-ui-docker-mock-server` (branched off the last commit
+before the removal). `eportem_action.py` and
+`utility/login_and_navigate.py` also got a cleanup pass to drop the
+`USE_MOCK_SERVER`/`--mock`/`--use-mock-server` branches that existed only to
+support the mock server — the real automation path's behavior is unchanged
+(those branches only ever swallowed errors or diverged when mocking).
+
+If asked to add a web UI, dashboard, or Docker packaging back: this isn't
+starting from scratch, there's a whole prior implementation on that archive
+branch worth looking at first (with known issues to fix, not copy as-is).
 
 ## Slack credentials: SLACK_WEBHOOK split into SLACK_TOKEN / SLACK_WEBHOOK_URL (2026-08-10)
 
