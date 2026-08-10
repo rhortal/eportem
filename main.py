@@ -7,6 +7,23 @@ from eportem_action import execute_action
 
 load_environment()
 
+def is_holiday():
+    """Check whether today falls within a holiday range set via holiday_override.py"""
+    override_file = "holiday_override.txt"
+    if not os.path.exists(override_file):
+        return False
+
+    with open(override_file, "r") as f:
+        try:
+            start_str, end_str = f.read().strip().split(",")
+            start_date = datetime.date.fromisoformat(start_str)
+            end_date = datetime.date.fromisoformat(end_str)
+        except ValueError:
+            print("Invalid holiday override file format.")
+            return False
+
+    return start_date <= datetime.date.today() <= end_date
+
 def determine_location():
     """Determine the current location (from override file or config)"""
     override_file = "location_override.txt"
@@ -30,6 +47,10 @@ def determine_location():
     return "office"  # Default to office if not specified
 
 def main():
+    if is_holiday():
+        print("On holiday today - skipping check-in.")
+        return
+
     now = datetime.datetime.now()
     hour = now.hour
     minute = now.minute
