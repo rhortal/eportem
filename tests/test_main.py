@@ -93,7 +93,7 @@ class TestMain(_ChdirTempDirMixin, unittest.TestCase):
     def test_holiday_short_circuits_before_any_action(self):
         today = datetime.date.today()
         with open("holiday_override.txt", "w") as f:
-            f.write(f"{today},{today},business_trip")
+            f.write(f"{today},{today}")
         # update_holiday_slack_status is unit-tested separately (test_holiday_override.py);
         # patch it here too so this test can never make a real Slack API call
         # regardless of what SLACK_STATUS the host's real config/.env has set.
@@ -101,9 +101,7 @@ class TestMain(_ChdirTempDirMixin, unittest.TestCase):
              patch('main.update_holiday_slack_status') as mock_update_status:
             main.main()
         mock_execute.assert_not_called()
-        mock_update_status.assert_called_once_with({
-            "type": "business_trip", "start": today, "end": today
-        })
+        mock_update_status.assert_called_once_with({"start": today, "end": today})
 
     def test_no_schedule_for_today_does_not_call_execute_action(self):
         _write_config({"0": {"day": "Monday", "location": "office", "start_the_day": "09:00"}})

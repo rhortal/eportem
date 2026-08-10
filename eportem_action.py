@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import time
 import argparse
+import datetime
 import os
 from selenium.webdriver.common.by import By
 from utility.login_and_navigate import login_and_navigate
@@ -12,6 +13,29 @@ from utility.env_check import check_env_variable
 # platform constant - if ePortem ever renumbers session types, update here.
 SESSION_ID_HOME = "1293"
 SESSION_ID_OFFICE_DEFAULT = "1"
+
+BUSINESS_TRIP_STATUS_TEXT = "On a business trip"
+BUSINESS_TRIP_STATUS_EMOJI = ":airplane:"
+
+def _active_business_trip_end_date():
+    """If business_trip_override.txt (written by override_location.py
+    business-trip) covers today, return its end date, else None."""
+    override_file = "business_trip_override.txt"
+    if not os.path.exists(override_file):
+        return None
+
+    with open(override_file, "r") as f:
+        try:
+            start_str, end_str = f.read().strip().split(",")
+            start_date = datetime.date.fromisoformat(start_str)
+            end_date = datetime.date.fromisoformat(end_str)
+        except ValueError:
+            print("Invalid business trip override file format.")
+            return None
+
+    if start_date <= datetime.date.today() <= end_date:
+        return end_date
+    return None
 
 class EPortemAction:
     def __init__(self, action_type, location="office", driver=None):
@@ -139,22 +163,36 @@ class EPortemAction:
             if os.getenv('SLACK_STATUS', 'NO') == 'YES':
                 from utility.slack_status import SlackStatusUpdater
                 status_updater = SlackStatusUpdater()
-                if self.action_type == "start_day":
+
+                trip_end_date = _active_business_trip_end_date()
+                if trip_end_date:
+                    # On a business trip, every check-in (including stop_day)
+                    # keeps the same status instead of reverting to "Done for
+                    # the day" - it only changes once the trip range ends.
+                    status_text = BUSINESS_TRIP_STATUS_TEXT
+                    emoji = BUSINESS_TRIP_STATUS_EMOJI
+                    expiration = int(datetime.datetime.combine(trip_end_date, datetime.time(23, 59)).timestamp())
+                elif self.action_type == "start_day":
                     status_text = f"Working at {self.location}"
                     emoji = ":house:" if self.location == "home" else ":office:"
+                    expiration = 0
                 elif self.action_type == "lunch_break":
                     status_text = "Away for lunch"
                     emoji = ":fork_and_knife:"
+                    expiration = 0
                 elif self.action_type == "after_lunch":
                     status_text = f"Working at {self.location}"
                     emoji = ":house:" if self.location == "home" else ":office:"
+                    expiration = 0
                 elif self.action_type == "stop_day":
                     status_text = "Done for the day"
                     emoji = ":palm_tree:"
+                    expiration = 0
                 else:
                     status_text = "Working"
                     emoji = ":computer:"
-                status_updater.set_status(status_text, emoji)
+                    expiration = 0
+                status_updater.set_status(status_text, emoji, expiration)
         else:
             print(f"MOCK NOTIFICATION: {self._get_message()}")
 

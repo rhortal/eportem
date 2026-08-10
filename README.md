@@ -11,7 +11,8 @@ ePortem is a SaaS solution used in Spain for HR-related tasks. These scripts aut
 - Automated time tracking for office and remote work
 - Support for start of day, lunch break, and end of day actions
 - Telegram and Slack notifications
-- Location override system
+- Location override system, including a Slack-status-only business trip mode
+- Holiday support (skips check-ins/notifications entirely)
 - Mock server for testing without accessing the real ePortem service
 
 ## Deployment
@@ -64,40 +65,51 @@ You can also override the location for a specific day using the `override_locati
 
 ```bash
 python3 override_location.py home
+python3 override_location.py office
 ```
 
-This will set the location to `home` for the current day. To set it back to the default, simply delete the `location_override.txt` file.
+This will set the location to `home`/`office` for the current day only. To set it back to the default, simply delete the `location_override.txt` file.
 
-### Marking Holidays and Business Trips
+### Marking Holidays
 
-If you're on holiday, on a business trip, or otherwise out, use the `holiday_override.py` script so `main.py` skips ePortem check-ins entirely for those days:
+If you're on holiday (not working at all), use the `holiday_override.py` script so `main.py` skips ePortem check-ins and the normal start/lunch/stop Telegram and Slack notifications entirely for those days:
 
 ```bash
-# Single day, holiday (the default type)
+# Single day
 python3 holiday_override.py 2026-08-17
 
 # Date range (inclusive)
 python3 holiday_override.py 2026-08-17 2026-08-21
-
-# Business trip instead of a holiday
-python3 holiday_override.py 2026-08-17 2026-08-21 --type business_trip
 ```
 
-While the override is active, `main.py` skips every ePortem check-in and the
-normal start/lunch/stop Telegram and Slack notifications. If `SLACK_STATUS=YES`
-in your `.env`, it instead sets your Slack status to match, on every run:
+If `SLACK_STATUS=YES` in your `.env`, it also sets your Slack status to "On
+holiday" `:palm_tree:` on every run while the override is active, with an
+expiration of end-of-day on the range's last date so Slack clears it
+automatically once you're back. Setting it repeatedly (once per cron run for
+the whole range) is harmless - it's just overwriting the same status each
+time. To cancel early, delete the `holiday_override.txt` file.
 
-| `--type`        | status text        | emoji         |
-|------------------|---------------------|---------------|
-| `holiday` (default) | On holiday       | `:palm_tree:` |
-| `business_trip`  | On a business trip  | `:airplane:`  |
+### Marking Business Trips
 
-The status is set with an expiration of end-of-day on the range's last date,
-so Slack clears it automatically once you're back - no separate cleanup
-needed. Setting it repeatedly (once per cron run for the whole range) is
-harmless, since it's just overwriting the same status each time.
+A business trip isn't a day off - your normal ePortem check-ins, lunch break,
+etc. still run exactly as usual (same schedule and location as any other
+day; the crontab-based trigger doesn't adjust for the destination's local
+time). What changes is your Slack status: instead of the usual "Working at
+X" / "Away for lunch" / "Done for the day" per action, it stays "On a
+business trip" for the whole trip - including at end of day, so it doesn't
+flip back to "Done for the day" or go offline between clock-outs.
 
-To cancel early, delete the `holiday_override.txt` file.
+```bash
+# Single day
+python3 override_location.py business-trip 2026-08-20
+
+# Date range (inclusive)
+python3 override_location.py business-trip 2026-08-20 2026-08-22
+```
+
+Only takes effect if `SLACK_STATUS=YES`; the status uses `:airplane:` and
+expires at end-of-day on the range's last date, same as holidays. To cancel
+early, delete the `business_trip_override.txt` file.
 
 ### Running Actions Directly
 
