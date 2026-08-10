@@ -1,5 +1,3 @@
 python-dotenv
 Requests
 selenium
-Flask
-colorama

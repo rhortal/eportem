@@ -110,11 +110,7 @@ class EPortemAction:
 
     def perform(self):
         """Perform the action"""
-        use_mock = os.getenv('USE_MOCK_SERVER', 'NO') == 'YES'
-
-        # Check if we should run (unless using mock server)
-        if not use_mock:
-            check_env_variable()
+        check_env_variable()
 
         # Log in to ePortem
         self.driver = login_and_navigate(self.driver)
@@ -128,119 +124,77 @@ class EPortemAction:
             # Click the second button if needed
             if self.selectors["button2"]:
                 time.sleep(1)  # Small delay to ensure dropdown is visible
-                try:
-                    button2 = self.driver.find_element(By.XPATH, self.selectors["button2"])
-                    print("Clicking button 2")
-                    button2.click()
-                except Exception as e:
-                    if use_mock:
-                        print(f"Mock driver couldn't find second button: {e}")
-                        print("Continuing with mock test...")
-                    else:
-                        raise
+                button2 = self.driver.find_element(By.XPATH, self.selectors["button2"])
+                print("Clicking button 2")
+                button2.click()
 
             time.sleep(3)
-        except Exception as e:
-            if not use_mock:
-                raise
-            else:
-                print(f"Mock driver encountered an error: {e}")
-                print("Continuing with mock test...")
         finally:
             # Close the browser window
             self.driver.quit()
 
-        # Send notification (unless using mock server)
-        if not use_mock:
-            manager = NotificationManager()
-            if os.getenv('TELEGRAM_NOTIFY') == "YES":
-                manager.register_channel(TelegramChannel())
-            if os.getenv('SLACK_NOTIFY') == "YES":
-                manager.register_channel(SlackChannel())
-            manager.notify(self._get_message())
+        manager = NotificationManager()
+        if os.getenv('TELEGRAM_NOTIFY') == "YES":
+            manager.register_channel(TelegramChannel())
+        if os.getenv('SLACK_NOTIFY') == "YES":
+            manager.register_channel(SlackChannel())
+        manager.notify(self._get_message())
 
-            # Slack status update
-            if os.getenv('SLACK_STATUS', 'NO') == 'YES':
-                from utility.slack_status import SlackStatusUpdater
-                status_updater = SlackStatusUpdater()
+        # Slack status update
+        if os.getenv('SLACK_STATUS', 'NO') == 'YES':
+            from utility.slack_status import SlackStatusUpdater
+            status_updater = SlackStatusUpdater()
 
-                trip_end_date = _active_business_trip_end_date()
-                if trip_end_date:
-                    # On a business trip, every check-in (including stop_day)
-                    # keeps the same status instead of reverting to "Done for
-                    # the day" - it only changes once the trip range ends.
-                    status_text = BUSINESS_TRIP_STATUS_TEXT
-                    emoji = BUSINESS_TRIP_STATUS_EMOJI
-                    expiration = int(datetime.datetime.combine(trip_end_date, datetime.time(23, 59)).timestamp())
-                elif self.action_type == "start_day":
-                    status_text = f"Working at {self.location}"
-                    emoji = ":house:" if self.location == "home" else ":office:"
-                    expiration = 0
-                elif self.action_type == "lunch_break":
-                    status_text = "Away for lunch"
-                    emoji = ":fork_and_knife:"
-                    expiration = 0
-                elif self.action_type == "after_lunch":
-                    status_text = f"Working at {self.location}"
-                    emoji = ":house:" if self.location == "home" else ":office:"
-                    expiration = 0
-                elif self.action_type == "stop_day":
-                    status_text = "Done for the day"
-                    emoji = ":palm_tree:"
-                    expiration = 0
-                else:
-                    status_text = "Working"
-                    emoji = ":computer:"
-                    expiration = 0
-                status_updater.set_status(status_text, emoji, expiration)
-        else:
-            print(f"MOCK NOTIFICATION: {self._get_message()}")
+            trip_end_date = _active_business_trip_end_date()
+            if trip_end_date:
+                # On a business trip, every check-in (including stop_day)
+                # keeps the same status instead of reverting to "Done for
+                # the day" - it only changes once the trip range ends.
+                status_text = BUSINESS_TRIP_STATUS_TEXT
+                emoji = BUSINESS_TRIP_STATUS_EMOJI
+                expiration = int(datetime.datetime.combine(trip_end_date, datetime.time(23, 59)).timestamp())
+            elif self.action_type == "start_day":
+                status_text = f"Working at {self.location}"
+                emoji = ":house:" if self.location == "home" else ":office:"
+                expiration = 0
+            elif self.action_type == "lunch_break":
+                status_text = "Away for lunch"
+                emoji = ":fork_and_knife:"
+                expiration = 0
+            elif self.action_type == "after_lunch":
+                status_text = f"Working at {self.location}"
+                emoji = ":house:" if self.location == "home" else ":office:"
+                expiration = 0
+            elif self.action_type == "stop_day":
+                status_text = "Done for the day"
+                emoji = ":palm_tree:"
+                expiration = 0
+            else:
+                status_text = "Working"
+                emoji = ":computer:"
+                expiration = 0
+            status_updater.set_status(status_text, emoji, expiration)
 
         return True
 
 
-def execute_action(action_type, location="office", mock=False, use_mock_server=False):
+def execute_action(action_type, location="office"):
     """Helper function to execute an action with proper setup"""
-    driver = None
-    use_mock = use_mock_server or os.getenv('USE_MOCK_SERVER', 'NO') == 'YES'
-
-    if mock or use_mock:
-        if use_mock:
-            # Use our custom MockWebDriver
-            try:
-                from mock_server.mock_driver import create_mock_driver
-                driver = create_mock_driver()
-                print(f"Using mock driver for {action_type} action at {location}")
-            except ImportError as e:
-                print(f"Warning: Could not import mock driver: {e}")
-                print("Falling back to real WebDriver in headless mode")
-                mock = True
-                use_mock = False
-
-        if mock and not use_mock:
-            # Use real Chrome in headless mode
-            from selenium import webdriver
-            from selenium.webdriver.chrome.options import Options as ChromeOptions
-            chrome_options = ChromeOptions()
-            chrome_options.add_argument("--headless")
-            driver = webdriver.Chrome(options=chrome_options)
-
-    action = EPortemAction(action_type, location, driver)
+    action = EPortemAction(action_type, location)
     return action.perform()
 
 
 def run_fixed_action(action_type, description):
     """CLI entrypoint shared by start_day.py, lunch_break_unified.py, after_lunch.py
     and stop_day.py, each of which pins action_type and only needs to parse
-    --location/--mock."""
+    --location."""
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--location", choices=["home", "office"], default="office",
                       help="Location (home or office)")
-    parser.add_argument("--mock", action="store_true", help="Run with a mock driver.")
     args = parser.parse_args()
 
     check_env_variable()
-    execute_action(action_type, args.location, args.mock)
+    execute_action(action_type, args.location)
 
 
 if __name__ == "__main__":
@@ -249,8 +203,6 @@ if __name__ == "__main__":
                       help="The action to perform")
     parser.add_argument("--location", choices=["home", "office"], default="office",
                       help="Location (home or office)")
-    parser.add_argument("--mock", action="store_true", help="Run with a mock driver.")
-    parser.add_argument("--use-mock-server", action="store_true", help="Use the mock server instead of real ePortem.")
     args = parser.parse_args()
 
     if args.action == "help":
@@ -265,13 +217,9 @@ if __name__ == "__main__":
             "  python3 eportem_action.py stop_day --location office\n"
             "  python3 eportem_action.py stop_day --location home\n"
             "\n"
-            "OPTIONS:\n"
-            "  --mock             Run with a mock driver\n"
-            "  --use-mock-server  Use the mock server instead of real ePortem\n"
-            "\n"
             "ACTIONS:\n"
             "  start_day, lunch_break, after_lunch, stop_day\n"
             "  (use --location to specify 'office' or 'home')\n"
         )
     else:
-        execute_action(args.action, args.location, args.mock, args.use_mock_server)
+        execute_action(args.action, args.location)
