@@ -7,6 +7,12 @@ from utility.login_and_navigate import login_and_navigate
 from utility.notification_send import NotificationManager, TelegramChannel, SlackChannel
 from utility.env_check import check_env_variable
 
+# ePortem session-type IDs used in the "start"/"resume" button selectors below.
+# These are specific to this account's ePortem configuration, not a fixed
+# platform constant - if ePortem ever renumbers session types, update here.
+SESSION_ID_HOME = "1293"
+SESSION_ID_OFFICE_DEFAULT = "1"
+
 class EPortemAction:
     def __init__(self, action_type, location="office", driver=None):
         """
@@ -32,7 +38,7 @@ class EPortemAction:
                 },
                 "home": {
                     "button1": "//*[@id=\"buttonsRegBox\"]/div/button[@data-toggle=\"dropdown\"]",
-                    "button2": "//*[@id=\"_ststart\" and @name=\"1293\"]"
+                    "button2": f"//*[@id=\"_ststart\" and @name=\"{SESSION_ID_HOME}\"]"
                 }
             },
             "lunch_break": {
@@ -48,11 +54,11 @@ class EPortemAction:
             "after_lunch": {
                 "office": {
                     "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
-                    "button2": "//a[@id=\"_stini\" and @name=\"1\"]"
+                    "button2": f"//a[@id=\"_stini\" and @name=\"{SESSION_ID_OFFICE_DEFAULT}\"]"
                 },
                 "home": {
                     "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
-                    "button2": "//a[@id=\"_stini\" and @name=\"1293\"]"
+                    "button2": f"//a[@id=\"_stini\" and @name=\"{SESSION_ID_HOME}\"]"
                 }
             },
             "stop_day": {
@@ -105,17 +111,7 @@ class EPortemAction:
                 except Exception as e:
                     if use_mock:
                         print(f"Mock driver couldn't find second button: {e}")
-                        print(f"Attempting alternative approach for mock driver...")
-                        try:
-                            # Try finding by ID instead of full XPath in mock mode
-                            button_id = self.selectors["button2"].split("'")[-2] if "'" in self.selectors["button2"] else None
-                            if button_id:
-                                button2 = self.driver.find_element(By.ID, button_id)
-                                button2.click()
-                        except Exception as e2:
-                            print(f"Alternative approach also failed: {e2}")
-                            if not use_mock:
-                                raise
+                        print("Continuing with mock test...")
                     else:
                         raise
 
@@ -193,6 +189,20 @@ def execute_action(action_type, location="office", mock=False, use_mock_server=F
 
     action = EPortemAction(action_type, location, driver)
     return action.perform()
+
+
+def run_fixed_action(action_type, description):
+    """CLI entrypoint shared by start_day.py, lunch_break_unified.py, after_lunch.py
+    and stop_day.py, each of which pins action_type and only needs to parse
+    --location/--mock."""
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--location", choices=["home", "office"], default="office",
+                      help="Location (home or office)")
+    parser.add_argument("--mock", action="store_true", help="Run with a mock driver.")
+    args = parser.parse_args()
+
+    check_env_variable()
+    execute_action(action_type, args.location, args.mock)
 
 
 if __name__ == "__main__":
