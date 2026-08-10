@@ -38,6 +38,19 @@ The software takes configuration including ePortem and Telegram credentials from
 - Copy config/.env.template to config/.env
 - Open .env with your favourite editor (`nano config/.env` or `code config/.env`)
 - Enter values for all variables as per comments in the file
+- Set permissions so only you can read it: `chmod 600 config/.env`
+
+### Slack notification credentials
+
+Slack notifications and Slack status updates use two different Slack
+features and need two different credentials, both read from `config/.env`:
+- `SLACK_WEBHOOK_URL` — a full Incoming Webhook URL
+  (`https://hooks.slack.com/services/...`), used when `SLACK_NOTIFY=YES`.
+- `SLACK_TOKEN` — an OAuth user token (`xoxp-...`) with the
+  `users.profile:write` scope, used when `SLACK_STATUS=YES`.
+
+If one of them is missing, that feature is skipped (a webhook cannot set
+your status, and a token is not a valid webhook URL).
 
 ## Usage
 
@@ -136,6 +149,8 @@ The mock server runs on http://localhost:8000 and provides simulated ePortem int
 
 > **Important Security Note**: When using the mock server, your real ePortem credentials are never used. The system automatically uses test credentials (`test_user`/`test_password`) for all mock server interactions.
 
+> **Status**: the mock server and mock driver are currently not maintained and known to be broken (wrong template path in `utility/server.py`, and the mock login form fields no longer match the real ePortem login form). `run_tests.sh` does not run anything that depends on them. Production use (`run.sh` / `main.py` / `eportem_action.py` against the real site) is unaffected.
+
 ## Configuration
 
 The schedule for each day is configured in the `config/config.json` file, located in the `config` directory. The location (home or office) can also be configured in this file.
@@ -145,8 +160,8 @@ The schedule for each day is configured in the `config/config.json` file, locate
 The codebase follows DRY (Don't Repeat Yourself) principles with unified components:
 
 - `eportem_action.py` - Core action handler for all operations
-- `start_day.py`, `lunch_break_unified.py`, etc. - Simplified action scripts
-- `utility/server.py` - Testing environment that simulates ePortem
+- `start_day.py`, `lunch_break_unified.py`, `after_lunch.py`, `stop_day.py` - thin CLI wrappers, each pinning one action and delegating to `eportem_action.run_fixed_action()`
+- `utility/server.py` - Testing environment that simulates ePortem (currently unmaintained, see Testing section)
 
 To switch between real ePortem and the mock server, set the environment variable:
 
