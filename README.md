@@ -68,19 +68,36 @@ python3 override_location.py home
 
 This will set the location to `home` for the current day. To set it back to the default, simply delete the `location_override.txt` file.
 
-### Marking Holidays
+### Marking Holidays and Business Trips
 
-If you're on holiday (or otherwise out), use the `holiday_override.py` script so `main.py` skips check-ins and Slack/Telegram notifications entirely for those days:
+If you're on holiday, on a business trip, or otherwise out, use the `holiday_override.py` script so `main.py` skips ePortem check-ins entirely for those days:
 
 ```bash
-# Single day
+# Single day, holiday (the default type)
 python3 holiday_override.py 2026-08-17
 
 # Date range (inclusive)
 python3 holiday_override.py 2026-08-17 2026-08-21
+
+# Business trip instead of a holiday
+python3 holiday_override.py 2026-08-17 2026-08-21 --type business_trip
 ```
 
-While a holiday is set, `main.py` exits before performing any action or sending any notification - no ePortem check-in, no Telegram message, no Slack notification or status update. To cancel a holiday early, delete the `holiday_override.txt` file.
+While the override is active, `main.py` skips every ePortem check-in and the
+normal start/lunch/stop Telegram and Slack notifications. If `SLACK_STATUS=YES`
+in your `.env`, it instead sets your Slack status to match, on every run:
+
+| `--type`        | status text        | emoji         |
+|------------------|---------------------|---------------|
+| `holiday` (default) | On holiday       | `:palm_tree:` |
+| `business_trip`  | On a business trip  | `:airplane:`  |
+
+The status is set with an expiration of end-of-day on the range's last date,
+so Slack clears it automatically once you're back - no separate cleanup
+needed. Setting it repeatedly (once per cron run for the whole range) is
+harmless, since it's just overwriting the same status each time.
+
+To cancel early, delete the `holiday_override.txt` file.
 
 ### Running Actions Directly
 
