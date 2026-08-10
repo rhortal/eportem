@@ -23,13 +23,15 @@ class TelegramChannel(NotificationChannel):
             print(f"Telegram notification failed with status code {response.status_code}: {response.text}")
 
 class SlackChannel(NotificationChannel):
-    def __init__(self, webhook=None):
-        self.webhook = webhook or os.getenv('SLACK_WEBHOOK')
+    def __init__(self, webhook_url=None):
+        self.webhook_url = webhook_url or os.getenv('SLACK_WEBHOOK_URL')
 
     def send(self, message_text: str):
-        url = f'https://hooks.slack.com/services/{self.webhook}'
+        if not self.webhook_url:
+            print("Slack notification skipped: SLACK_WEBHOOK_URL is not configured.")
+            return
         data = {'text': message_text}
-        response = requests.post(url, json=data)
+        response = requests.post(self.webhook_url, json=data)
         if response.status_code == 200:
             print("Slack notification sent successfully.")
         else:

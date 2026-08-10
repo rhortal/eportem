@@ -3,10 +3,9 @@ import requests
 
 class SlackStatusUpdater:
     def __init__(self, token=None):
-        # Use SLACK_WEBHOOK as the OAuth token for status updates
-        self.token = token or os.getenv('SLACK_WEBHOOK')
+        self.token = token or os.getenv('SLACK_TOKEN')
         if not self.token:
-            raise ValueError("Slack OAuth token not found in SLACK_WEBHOOK environment variable.")
+            raise ValueError("Slack OAuth token not found in SLACK_TOKEN environment variable.")
 
     def set_status(self, text, emoji, expiration=0):
         """

@@ -1,19 +1,5 @@
 #!/usr/bin/env python3
-import argparse
-from eportem_action import execute_action
-from utility.env_check import check_env_variable
-
-# Check if we should run
-check_env_variable()
-
-def main():
-    parser = argparse.ArgumentParser(description="Start the day script.")
-    parser.add_argument("--location", choices=["home", "office"], default="office", 
-                      help="Location (home or office)")
-    parser.add_argument("--mock", action="store_true", help="Run with a mock driver.")
-    args = parser.parse_args()
-    
-    execute_action("start_day", args.location, args.mock)
+from eportem_action import run_fixed_action
 
 if __name__ == "__main__":
-    main()
+    run_fixed_action("start_day", "Start the day script.")
