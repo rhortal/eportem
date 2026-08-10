@@ -55,6 +55,20 @@ python3 override_location.py home
 
 This will set the location to `home` for the current day. To set it back to the default, simply delete the `location_override.txt` file.
 
+### Marking Holidays
+
+If you're on holiday (or otherwise out), use the `holiday_override.py` script so `main.py` skips check-ins and Slack/Telegram notifications entirely for those days:
+
+```bash
+# Single day
+python3 holiday_override.py 2026-08-17
+
+# Date range (inclusive)
+python3 holiday_override.py 2026-08-17 2026-08-21
+```
+
+While a holiday is set, `main.py` exits before performing any action or sending any notification - no ePortem check-in, no Telegram message, no Slack notification or status update. To cancel a holiday early, delete the `holiday_override.txt` file.
+
 ### Running Actions Directly
 
 You can invoke any action directly using `eportem_action.py` without relying on the config file or the main runner script. This is useful for manual runs, debugging, or scripting.

@@ -166,3 +166,4 @@ telegram.txt
 .DS_Store
 .env
 location_override.txt
+holiday_override.txt
