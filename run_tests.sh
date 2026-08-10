@@ -4,4 +4,4 @@
 source venv/bin/activate
 
 # Run the tests
-python3 -m unittest tests/test_eportem.py
+python3 -m unittest tests/test_eportem.py tests/test_holiday_override.py
