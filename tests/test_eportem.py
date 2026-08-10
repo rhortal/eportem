@@ -82,7 +82,27 @@ class TestEPortem(unittest.TestCase):
             action.perform()
         mock_telegram_send.assert_called_once()
         mock_slack_send.assert_called_once()
-        mock_set_status.assert_called_once_with("Working at office", ":office:")
+        mock_set_status.assert_called_once_with("Working at office", ":office:", 0)
+
+    def test_business_trip_overrides_status_for_every_action_type(self):
+        """A business trip keeps the same Slack status across all actions,
+        including stop_day - no reverting to 'Done for the day'."""
+        import datetime
+        trip_end = datetime.date(2026, 8, 22)
+        expected_expiration = int(datetime.datetime.combine(trip_end, datetime.time(23, 59)).timestamp())
+
+        for action_type in ["start_day", "lunch_break", "after_lunch", "stop_day"]:
+            with self.subTest(action_type=action_type):
+                mock_driver = MagicMock()
+                action = EPortemAction(action_type, "office", mock_driver)
+                env = dict(NO_NOTIFY_ENV, SLACK_STATUS="YES", SLACK_TOKEN="REDACTED-SLACK-TOKEN")
+                with patch.dict(os.environ, env, clear=False), \
+                     patch('eportem_action._active_business_trip_end_date', return_value=trip_end), \
+                     patch('utility.slack_status.SlackStatusUpdater.set_status') as mock_set_status:
+                    action.perform()
+                mock_set_status.assert_called_once_with(
+                    "On a business trip", ":airplane:", expected_expiration
+                )
 
 if __name__ == '__main__':
     unittest.main()
