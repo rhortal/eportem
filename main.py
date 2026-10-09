@@ -26,7 +26,11 @@ def get_today_holiday():
             print("Invalid holiday override file format.")
             return None
 
-    if start_date <= datetime.date.today() <= end_date:
+    today = datetime.date.today()
+    if end_date < today:
+        os.remove(override_file)  # every date in the range has passed
+        return None
+    if start_date <= today:
         return {"start": start_date, "end": end_date}
     return None
 
@@ -53,8 +57,11 @@ def determine_location():
         with open(override_file, "r") as f:
             try:
                 override_location, override_date = f.read().strip().split(",")
-                if override_date == str(datetime.date.today()):
+                today = str(datetime.date.today())
+                if override_date == today:
                     return override_location
+                if override_date < today:
+                    os.remove(override_file)  # the day has passed
             except ValueError:
                 print("Invalid override file format.")
     
