@@ -33,7 +33,11 @@ def _active_business_trip_end_date():
             print("Invalid business trip override file format.")
             return None
 
-    if start_date <= datetime.date.today() <= end_date:
+    today = datetime.date.today()
+    if end_date < today:
+        os.remove(override_file)  # every date in the range has passed
+        return None
+    if start_date <= today:
         return end_date
     return None
 

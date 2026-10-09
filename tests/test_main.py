@@ -87,6 +87,43 @@ class TestDetermineLocation(_ChdirTempDirMixin, unittest.TestCase):
             mock_dt.date.today.return_value = datetime.date(2026, 8, 10)
             self.assertEqual(main.determine_location(), "home")
 
+    def test_stale_location_override_file_is_deleted(self):
+        _write_config({"0": {"day": "Monday", "location": "home"}})
+        _write_location_override("office", datetime.date.today() - datetime.timedelta(days=1))
+        main.determine_location()
+        self.assertFalse(os.path.exists("location_override.txt"))
+
+    def test_todays_location_override_file_is_kept(self):
+        _write_config({"0": {"day": "Monday", "location": "home"}})
+        _write_location_override("office", datetime.date.today())
+        main.determine_location()
+        self.assertTrue(os.path.exists("location_override.txt"))
+
+
+class TestGetTodayHolidayExpiry(_ChdirTempDirMixin, unittest.TestCase):
+
+    def _write(self, start, end):
+        with open("holiday_override.txt", "w") as f:
+            f.write(f"{start},{end}")
+
+    def test_expired_file_is_deleted(self):
+        past = datetime.date.today() - datetime.timedelta(days=1)
+        self._write(past, past)
+        self.assertIsNone(main.get_today_holiday())
+        self.assertFalse(os.path.exists("holiday_override.txt"))
+
+    def test_future_file_is_kept(self):
+        future = datetime.date.today() + datetime.timedelta(days=3)
+        self._write(future, future)
+        self.assertIsNone(main.get_today_holiday())
+        self.assertTrue(os.path.exists("holiday_override.txt"))
+
+    def test_range_ending_today_is_kept(self):
+        today = datetime.date.today()
+        self._write(today - datetime.timedelta(days=1), today)
+        self.assertIsNotNone(main.get_today_holiday())
+        self.assertTrue(os.path.exists("holiday_override.txt"))
+
 
 class TestMain(_ChdirTempDirMixin, unittest.TestCase):
 

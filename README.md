@@ -77,7 +77,8 @@ python3 override_location.py office
 
 This sets the location to `home`/`office` for the current day only - it's
 read by `main.py` and used for both which ePortem buttons to click and the
-Slack status text. To cancel, delete the `location_override.txt` file.
+Slack status text. To cancel, delete the `location_override.txt` file. Once the
+day has passed, the next run that reads it deletes it automatically.
 
 ### Marking Holidays
 
@@ -98,7 +99,8 @@ holiday" `:palm_tree:` on every run while the override is active, with an
 expiration of end-of-day on the range's last date so Slack clears it
 automatically once you're back. Setting it repeatedly (once per cron run for
 the whole range) is harmless - it's just overwriting the same status each
-time. To cancel early, delete the `holiday_override.txt` file.
+time. To cancel early, delete the `holiday_override.txt` file. Once every date in the file has passed, the next run that reads it deletes it
+automatically.
 
 ### Marking Business Trips
 
@@ -120,7 +122,8 @@ python3 override_location.py business-trip 2026-08-20 2026-08-22
 
 Only takes effect if `SLACK_STATUS=YES`; the status uses `:airplane:` and
 expires at end-of-day on the range's last date, same as holidays. To cancel
-early, delete the `business_trip_override.txt` file.
+early, delete the `business_trip_override.txt` file. Once every date in the file has passed, the next run that reads it deletes it
+automatically.
 
 ### Running Actions Directly
 

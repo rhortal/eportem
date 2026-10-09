@@ -44,6 +44,18 @@ class TestActiveBusinessTripEndDate(unittest.TestCase):
         self._write_override(past, past)
         self.assertIsNone(eportem_action._active_business_trip_end_date())
 
+    def test_expired_file_is_deleted(self):
+        past = datetime.date.today() - datetime.timedelta(days=1)
+        self._write_override(past, past)
+        eportem_action._active_business_trip_end_date()
+        self.assertFalse(os.path.exists("business_trip_override.txt"))
+
+    def test_future_file_is_kept(self):
+        future = datetime.date.today() + datetime.timedelta(days=3)
+        self._write_override(future, future)
+        eportem_action._active_business_trip_end_date()
+        self.assertTrue(os.path.exists("business_trip_override.txt"))
+
     def test_range_in_the_future_returns_none(self):
         today = datetime.date.today()
         future = today + datetime.timedelta(days=10)
