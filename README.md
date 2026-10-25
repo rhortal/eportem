@@ -33,7 +33,7 @@ install Homebrew then do
 ```shell
 brew install --cask chromedriver
 ```
-Install requirements by running `./run.sh` in the root - it creates a `venv` and installs `requirements.txt` on first run.
+Install requirements by running `./run.sh` in the root - it creates a `venv` and installs `requirements.txt` on first run, and rebuilds the `venv` if its packages no longer import (e.g. after a system Python upgrade).
 
 The software takes configuration including ePortem, Telegram and Slack credentials from a `.env` file. To set this up:
 - Copy `config/.env.template` to `config/.env`
