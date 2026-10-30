@@ -4,7 +4,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException
 import time
 import os
 
@@ -12,6 +11,11 @@ import os
 # plain headless Chrome, so the browser is made to look like a normal desktop one.
 USER_AGENT = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36")
+
+
+def uses_recaptcha(driver):
+    return driver.execute_script(
+        "return [...document.scripts].some(s => /recaptcha/i.test(s.src))")
 
 
 def login_and_navigate(driver=None):
@@ -37,13 +41,12 @@ def login_and_navigate(driver=None):
         })
         driver.get("https://eportem.es/Usuario/Login?ReturnUrl=%2faplicaciones")
 
-    # wait for reCAPTCHA to load, the form submit handler needs it for its token.
-    # ePortem dropped the script again on 2026-10-30, so carry on if it never loads.
-    try:
-        WebDriverWait(driver, 10).until(
+    # ePortem has turned reCAPTCHA v3 on (2026-10-29) and off again (2026-10-30). When
+    # the page loads its script, wait for it, since the form submit handler needs it
+    # for its token; otherwise log in straight away.
+    if uses_recaptcha(driver):
+        WebDriverWait(driver, 20).until(
             lambda d: d.execute_script("return typeof grecaptcha !== 'undefined' && !!grecaptcha.execute"))
-    except TimeoutException:
-        pass
     time.sleep(3)
 
     # find the username and password fields within the login form
