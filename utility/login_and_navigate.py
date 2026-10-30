@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
 import time
 import os
 
@@ -32,13 +33,17 @@ def login_and_navigate(driver=None):
         chrome_options.add_experimental_option("useAutomationExtension", False)
         driver = webdriver.Chrome(options=chrome_options)
         driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-            "source": "Object.defineProperty(navigator, webdriver, {get: () => undefined})"
+            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
         })
         driver.get("https://eportem.es/Usuario/Login?ReturnUrl=%2faplicaciones")
 
-    # wait for reCAPTCHA to load, the form submit handler needs it for its token
-    WebDriverWait(driver, 20).until(
-        lambda d: d.execute_script("return typeof grecaptcha !== undefined && !!grecaptcha.execute"))
+    # wait for reCAPTCHA to load, the form submit handler needs it for its token.
+    # ePortem dropped the script again on 2026-10-30, so carry on if it never loads.
+    try:
+        WebDriverWait(driver, 10).until(
+            lambda d: d.execute_script("return typeof grecaptcha !== 'undefined' && !!grecaptcha.execute"))
+    except TimeoutException:
+        pass
     time.sleep(3)
 
     # find the username and password fields within the login form
