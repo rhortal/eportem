@@ -2,8 +2,10 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
+from selenium.common.exceptions import NoSuchElementException
 from eportem_action import EPortemAction
 
 # Force every notification/status path off regardless of what the host's
@@ -23,6 +25,34 @@ class TestEPortem(unittest.TestCase):
         patcher = patch.dict(os.environ, NO_NOTIFY_ENV, clear=False)
         patcher.start()
         self.addCleanup(patcher.stop)
+
+    @patch("eportem_action.BUTTON_WAIT_SECONDS", 0)
+    def test_missing_button_reopens_page_once_then_clicks(self):
+        mock_driver = MagicMock()
+        mock_driver.find_elements.side_effect = [[], [MagicMock()]]
+        EPortemAction("start_day", "home", mock_driver).perform()
+        mock_driver.get.assert_called_once_with("https://eportem.es/aplicaciones/e-portem/registro/")
+        mock_driver.find_element.assert_any_call("xpath", '//*[@id="buttonsRegBox"]/div/button[@data-toggle="dropdown"]')
+        mock_driver.save_screenshot.assert_not_called()
+
+    @patch("eportem_action.BUTTON_WAIT_SECONDS", 0)
+    def test_button_never_appears_saves_diagnostics_and_raises(self):
+        mock_driver = MagicMock()
+        mock_driver.find_elements.return_value = []
+        mock_driver.page_source = "<html>page</html>"
+        def find_element(by, value):
+            # the login form's fields, found by name, must still work
+            if by == "xpath":
+                raise NoSuchElementException("missing")
+            return MagicMock()
+        mock_driver.find_element.side_effect = find_element
+        with tempfile.TemporaryDirectory() as tmp, patch("eportem_action.DIAGNOSTICS_DIR", tmp):
+            with self.assertRaises(NoSuchElementException):
+                EPortemAction("start_day", "home", mock_driver).perform()
+            self.assertEqual(len([f for f in os.listdir(tmp) if f.endswith(".html")]), 1)
+        mock_driver.get.assert_called_once()
+        mock_driver.save_screenshot.assert_called_once()
+        mock_driver.quit.assert_called_once()
 
     def test_start_day_office(self):
         mock_driver = MagicMock()

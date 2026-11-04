@@ -170,6 +170,10 @@ Each cron line's `base time + max random sleep` needs to land inside the
 ±15 minute window of the corresponding `config/config.json` entry, or that
 action silently won't fire.
 
+### When a button is missing
+
+An action waits up to 30 seconds for its first button and reopens the registro page once if it doesn't appear; nothing has been clicked at that point, so this can't record anything twice. If the button is still missing, the run prints the URL and page title, saves the HTML and a screenshot to `diagnostics/` (git-ignored), and fails as before, which sends the cron mail.
+
 ## Testing
 
 To run the tests, use the `run_tests.sh` script in the root directory:

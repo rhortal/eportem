@@ -168,3 +168,6 @@ telegram.txt
 location_override.txt
 holiday_override.txt
 business_trip_override.txt
+
+# Screenshots and HTML from failed runs (contain personal data)
+diagnostics/

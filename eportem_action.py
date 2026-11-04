@@ -3,7 +3,9 @@ import time
 import argparse
 import datetime
 import os
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
 from utility.login_and_navigate import login_and_navigate
 from utility.notification_send import NotificationManager, TelegramChannel, SlackChannel
 from utility.env_check import check_env_variable
@@ -13,6 +15,10 @@ from utility.env_check import check_env_variable
 # platform constant - if ePortem ever renumbers session types, update here.
 SESSION_ID_HOME = "1293"
 SESSION_ID_OFFICE_DEFAULT = "1"
+
+REGISTRO_URL = "https://eportem.es/aplicaciones/e-portem/registro/"
+BUTTON_WAIT_SECONDS = 30
+DIAGNOSTICS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "diagnostics")
 
 BUSINESS_TRIP_STATUS_TEXT = "On a business trip"
 BUSINESS_TRIP_STATUS_EMOJI = ":airplane:"
@@ -112,6 +118,40 @@ class EPortemAction:
         }
         return messages.get(self.action_type, "RePortem action completed")
 
+    def _button_appears(self, xpath):
+        """Wait for a button without clicking it; True if it showed up in time."""
+        try:
+            WebDriverWait(self.driver, BUTTON_WAIT_SECONDS).until(
+                lambda d: d.find_elements(By.XPATH, xpath))
+            return True
+        except TimeoutException:
+            return False
+
+    def _save_diagnostics(self):
+        """Record what the browser was showing, for the cron failure mail and later study."""
+        print(f"Button not found. URL: {self.driver.current_url} Title: {self.driver.title}")
+        try:
+            os.makedirs(DIAGNOSTICS_DIR, mode=0o700, exist_ok=True)
+            stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            base = os.path.join(DIAGNOSTICS_DIR, f"{stamp}-{self.action_type}")
+            with open(f"{base}.html", "w") as f:
+                f.write(self.driver.page_source)
+            self.driver.save_screenshot(f"{base}.png")
+            print(f"Diagnostics saved to {base}.html and .png")
+        except Exception as e:  # must never hide the real failure
+            print(f"Could not save diagnostics: {e}")
+
+    def _ensure_button(self, xpath):
+        """Give the first button time to appear, reopening the page once. Clicks nothing,
+        so a retry can't record anything twice. If it is still missing, save diagnostics
+        and let the caller's find_element raise as usual."""
+        if self._button_appears(xpath):
+            return
+        print(f"Button not found after {BUTTON_WAIT_SECONDS}s, reopening the page")
+        self.driver.get(REGISTRO_URL)
+        if not self._button_appears(xpath):
+            self._save_diagnostics()
+
     def perform(self):
         """Perform the action"""
         check_env_variable()
@@ -121,6 +161,7 @@ class EPortemAction:
 
         try:
             # Find and click the first button
+            self._ensure_button(self.selectors["button1"])
             button1 = self.driver.find_element(By.XPATH, self.selectors["button1"])
             print("Clicking button 1")
             button1.click()
