@@ -3,10 +3,10 @@ import time
 import argparse
 import datetime
 import os
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import NoSuchElementException, WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from utility.login_and_navigate import login_and_navigate
+from utility.login_and_navigate import LOGIN_URL, create_driver, login_and_navigate
 from utility.notification_send import NotificationManager, TelegramChannel, SlackChannel
 from utility.env_check import check_env_variable
 
@@ -18,6 +18,11 @@ SESSION_ID_OFFICE_DEFAULT = "1"
 
 REGISTRO_URL = "https://eportem.es/aplicaciones/e-portem/registro/"
 BUTTON_WAIT_SECONDS = 30
+# ePortem has short server outages (500 pages from database timeouts, 2026-11-05).
+# Keep reopening the page for this long before giving up; nothing has been clicked yet.
+RETRY_BUDGET_SECONDS = 600
+RETRY_PAUSE_SECONDS = 60
+LOGIN_ATTEMPTS = 3  # kept low so a rejected login can't hammer the account
 DIAGNOSTICS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "diagnostics")
 
 BUSINESS_TRIP_STATUS_TEXT = "On a business trip"
@@ -124,13 +129,13 @@ class EPortemAction:
             WebDriverWait(self.driver, BUTTON_WAIT_SECONDS).until(
                 lambda d: d.find_elements(By.XPATH, xpath))
             return True
-        except TimeoutException:
+        except WebDriverException:  # includes the wait's TimeoutException
             return False
 
     def _save_diagnostics(self):
         """Record what the browser was showing, for the cron failure mail and later study."""
-        print(f"Button not found. URL: {self.driver.current_url} Title: {self.driver.title}")
         try:
+            print(f"URL: {self.driver.current_url} Title: {self.driver.title}")
             os.makedirs(DIAGNOSTICS_DIR, mode=0o700, exist_ok=True)
             stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
             base = os.path.join(DIAGNOSTICS_DIR, f"{stamp}-{self.action_type}")
@@ -141,25 +146,72 @@ class EPortemAction:
         except Exception as e:  # must never hide the real failure
             print(f"Could not save diagnostics: {e}")
 
+    def _login(self):
+        """Log in, retrying a few times if the site is failing. Nothing is clicked on
+        the registro page here, so a retry can't record anything."""
+        new_browser = self.driver is None
+        if new_browser:
+            self.driver = create_driver()
+        for attempt in range(1, LOGIN_ATTEMPTS + 1):
+            try:
+                if new_browser or attempt > 1:
+                    self.driver.get(LOGIN_URL)
+                self.driver = login_and_navigate(self.driver)
+                return
+            except WebDriverException as e:
+                print(f"Login attempt {attempt} of {LOGIN_ATTEMPTS} failed: {type(e).__name__}")
+                if attempt == LOGIN_ATTEMPTS:
+                    self._save_diagnostics()
+                    raise
+                time.sleep(RETRY_PAUSE_SECONDS)
+
     def _ensure_button(self, xpath):
-        """Give the first button time to appear, reopening the page once. Clicks nothing,
-        so a retry can't record anything twice. If it is still missing, save diagnostics
-        and let the caller's find_element raise as usual."""
-        if self._button_appears(xpath):
-            return
-        print(f"Button not found after {BUTTON_WAIT_SECONDS}s, reopening the page")
-        self.driver.get(REGISTRO_URL)
-        if not self._button_appears(xpath):
-            self._save_diagnostics()
+        """Give the first button time to appear, reopening the page until
+        RETRY_BUDGET_SECONDS have passed and logging in again if the session was lost.
+        Clicks nothing, so a retry can't record anything twice. If it is still missing,
+        save diagnostics and let the caller's find_element raise as usual."""
+        deadline = time.monotonic() + RETRY_BUDGET_SECONDS
+        while not self._button_appears(xpath):
+            if time.monotonic() >= deadline:
+                print(f"Button not found after {RETRY_BUDGET_SECONDS}s of retries")
+                self._save_diagnostics()
+                return
+            print(f"{datetime.datetime.now():%H:%M:%S} Button not found, "
+                  f"reopening the page in {RETRY_PAUSE_SECONDS}s")
+            time.sleep(RETRY_PAUSE_SECONDS)
+            try:
+                self.driver.get(REGISTRO_URL)
+                if "/Usuario/Login" in self.driver.current_url:
+                    print("Session lost, logging in again")
+                    self._login()
+            except WebDriverException as e:
+                print(f"Reopening failed: {type(e).__name__}")
+
+    def _page_state(self):
+        """The label on ePortem's main button (Iniciar, Pausar, Reanudar), for messages."""
+        try:
+            button = self.driver.find_element(By.XPATH, "//*[@id=\"buttonsRegBox\"]//button")
+            return " ".join(button.get_attribute("textContent").split())
+        except WebDriverException:
+            return "unknown"
+
+    def _report_missing_option(self):
+        """The dropdown doesn't offer this action. Opening it records nothing, so say so."""
+        print(f"{self.action_type} ({self.location}) is not available: ePortem shows "
+              f"'{self._page_state()}' and doesn't offer this option. Nothing was recorded.")
+        if self.action_type == "after_lunch":
+            print("There is no lunch break to resume, so the lunch_break run probably failed "
+                  "(look for its cron mail). Correct the day in Registro Jornada > Detalle registro.")
+        self._save_diagnostics()
 
     def perform(self):
         """Perform the action"""
         check_env_variable()
 
-        # Log in to ePortem
-        self.driver = login_and_navigate(self.driver)
-
         try:
+            # Log in to ePortem
+            self._login()
+
             # Find and click the first button
             self._ensure_button(self.selectors["button1"])
             button1 = self.driver.find_element(By.XPATH, self.selectors["button1"])
@@ -169,14 +221,19 @@ class EPortemAction:
             # Click the second button if needed
             if self.selectors["button2"]:
                 time.sleep(1)  # Small delay to ensure dropdown is visible
-                button2 = self.driver.find_element(By.XPATH, self.selectors["button2"])
+                try:
+                    button2 = self.driver.find_element(By.XPATH, self.selectors["button2"])
+                except NoSuchElementException:
+                    self._report_missing_option()
+                    raise
                 print("Clicking button 2")
                 button2.click()
 
             time.sleep(3)
         finally:
             # Close the browser window
-            self.driver.quit()
+            if self.driver:
+                self.driver.quit()
 
         manager = NotificationManager()
         if os.getenv('TELEGRAM_NOTIFY') == "YES":

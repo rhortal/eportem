@@ -2,11 +2,14 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import contextlib
+import io
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
 from eportem_action import EPortemAction
+from utility.login_and_navigate import LOGIN_URL
 
 # Force every notification/status path off regardless of what the host's
 # real config/.env contains, so these tests never hit Telegram, Slack, or
@@ -26,15 +29,78 @@ class TestEPortem(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
+    @patch("eportem_action.RETRY_PAUSE_SECONDS", 0)
     @patch("eportem_action.BUTTON_WAIT_SECONDS", 0)
-    def test_missing_button_reopens_page_once_then_clicks(self):
+    def test_missing_button_reopens_page_until_it_appears_then_clicks(self):
         mock_driver = MagicMock()
-        mock_driver.find_elements.side_effect = [[], [MagicMock()]]
+        mock_driver.find_elements.side_effect = [[], [], [], [MagicMock()]]
         EPortemAction("start_day", "home", mock_driver).perform()
-        mock_driver.get.assert_called_once_with("https://eportem.es/aplicaciones/e-portem/registro/")
+        self.assertEqual(mock_driver.get.call_count, 3)
+        mock_driver.get.assert_called_with("https://eportem.es/aplicaciones/e-portem/registro/")
         mock_driver.find_element.assert_any_call("xpath", '//*[@id="buttonsRegBox"]/div/button[@data-toggle="dropdown"]')
         mock_driver.save_screenshot.assert_not_called()
 
+    @patch("eportem_action.RETRY_PAUSE_SECONDS", 0)
+    @patch("eportem_action.BUTTON_WAIT_SECONDS", 0)
+    def test_reopen_error_is_retried(self):
+        mock_driver = MagicMock()
+        mock_driver.find_elements.side_effect = [[], [], [MagicMock()]]
+        mock_driver.get.side_effect = [WebDriverException("net"), None]
+        EPortemAction("start_day", "office", mock_driver).perform()
+        self.assertEqual(mock_driver.get.call_count, 2)
+        mock_driver.find_element.assert_any_call("xpath", '//*[@id="buttonsRegBox"]/div/div/button')
+
+    @patch("eportem_action.RETRY_PAUSE_SECONDS", 0)
+    @patch("eportem_action.BUTTON_WAIT_SECONDS", 0)
+    def test_lost_session_logs_in_again(self):
+        mock_driver = MagicMock()
+        mock_driver.find_elements.side_effect = [[], [MagicMock()]]
+        with patch("eportem_action.login_and_navigate", side_effect=lambda d: d) as login:
+            mock_driver.current_url = "https://eportem.es/Usuario/Login?ReturnUrl=x"
+            EPortemAction("start_day", "office", mock_driver).perform()
+        self.assertEqual(login.call_count, 2)
+
+    @patch("eportem_action.RETRY_PAUSE_SECONDS", 0)
+    def test_login_failure_is_retried_then_raises_and_closes_browser(self):
+        mock_driver = MagicMock()
+        with patch("eportem_action.login_and_navigate", side_effect=TimeoutException("no")) as login, \
+                tempfile.TemporaryDirectory() as tmp, patch("eportem_action.DIAGNOSTICS_DIR", tmp):
+            with self.assertRaises(TimeoutException):
+                EPortemAction("start_day", "office", mock_driver).perform()
+        self.assertEqual(login.call_count, 3)
+        mock_driver.quit.assert_called_once()
+
+    def test_login_recovers_on_second_attempt(self):
+        mock_driver = MagicMock()
+        with patch("eportem_action.RETRY_PAUSE_SECONDS", 0), \
+                patch("eportem_action.login_and_navigate", side_effect=[TimeoutException("no"), mock_driver]):
+            EPortemAction("start_day", "office", mock_driver).perform()
+        mock_driver.get.assert_called_once_with(LOGIN_URL)
+        mock_driver.find_element.assert_any_call("xpath", '//*[@id="buttonsRegBox"]/div/div/button')
+
+    def test_after_lunch_without_pause_explains_and_raises(self):
+        mock_driver = MagicMock()
+        mock_driver.page_source = "<html>page</html>"
+        def find_element(by, value):
+            if by == "xpath" and "_stini" in value:
+                raise NoSuchElementException("missing")
+            button = MagicMock()
+            button.get_attribute.return_value = " Pausar "
+            return button
+        mock_driver.find_element.side_effect = find_element
+        out = io.StringIO()
+        with patch("eportem_action.login_and_navigate", side_effect=lambda d: d), \
+                tempfile.TemporaryDirectory() as tmp, patch("eportem_action.DIAGNOSTICS_DIR", tmp), \
+                contextlib.redirect_stdout(out):
+            with self.assertRaises(NoSuchElementException):
+                EPortemAction("after_lunch", "office", mock_driver).perform()
+            self.assertEqual(len([f for f in os.listdir(tmp) if f.endswith(".html")]), 1)
+        self.assertIn("'Pausar'", out.getvalue())
+        self.assertIn("no lunch break to resume", out.getvalue())
+        mock_driver.quit.assert_called_once()
+
+    @patch("eportem_action.RETRY_BUDGET_SECONDS", 0.05)
+    @patch("eportem_action.RETRY_PAUSE_SECONDS", 0.02)
     @patch("eportem_action.BUTTON_WAIT_SECONDS", 0)
     def test_button_never_appears_saves_diagnostics_and_raises(self):
         mock_driver = MagicMock()
@@ -50,7 +116,7 @@ class TestEPortem(unittest.TestCase):
             with self.assertRaises(NoSuchElementException):
                 EPortemAction("start_day", "home", mock_driver).perform()
             self.assertEqual(len([f for f in os.listdir(tmp) if f.endswith(".html")]), 1)
-        mock_driver.get.assert_called_once()
+        self.assertGreaterEqual(mock_driver.get.call_count, 1)
         mock_driver.save_screenshot.assert_called_once()
         mock_driver.quit.assert_called_once()
 

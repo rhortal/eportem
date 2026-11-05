@@ -11,6 +11,8 @@ import os
 # plain headless Chrome, so the browser is made to look like a normal desktop one.
 USER_AGENT = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36")
+LOGIN_URL = "https://eportem.es/Usuario/Login?ReturnUrl=%2faplicaciones"
+PAGE_LOAD_TIMEOUT_SECONDS = 90
 
 
 def uses_recaptcha(driver):
@@ -18,28 +20,34 @@ def uses_recaptcha(driver):
         "return [...document.scripts].some(s => /recaptcha/i.test(s.src))")
 
 
+def create_driver():
+    headless = os.getenv('HEADLESS_BROWSING')
+    chrome_options = ChromeOptions()
+    chrome_options.add_argument("--disable-gpu")
+    if headless == "YES":
+        chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--window-size=1366,900")
+    chrome_options.add_argument("--lang=es-ES")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_argument(f"user-agent={USER_AGENT}")
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option("useAutomationExtension", False)
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT_SECONDS)
+    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+    })
+    return driver
+
+
 def login_and_navigate(driver=None):
     uname = os.getenv('EPORTEM_USERNAME')
     pwd = os.getenv('EPORTEM_PASSWORD')
-    headless = os.getenv('HEADLESS_BROWSING')
 
     # create a new Chrome browser instance if one isn't passed in
     if driver is None:
-        chrome_options = ChromeOptions()
-        chrome_options.add_argument("--disable-gpu")
-        if headless == "YES":
-            chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--window-size=1366,900")
-        chrome_options.add_argument("--lang=es-ES")
-        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-        chrome_options.add_argument(f"user-agent={USER_AGENT}")
-        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        chrome_options.add_experimental_option("useAutomationExtension", False)
-        driver = webdriver.Chrome(options=chrome_options)
-        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-            "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-        })
-        driver.get("https://eportem.es/Usuario/Login?ReturnUrl=%2faplicaciones")
+        driver = create_driver()
+        driver.get(LOGIN_URL)
 
     # ePortem has turned reCAPTCHA v3 on (2026-10-29) and off again (2026-10-30). When
     # the page loads its script, wait for it, since the form submit handler needs it

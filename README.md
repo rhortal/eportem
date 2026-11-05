@@ -172,7 +172,9 @@ action silently won't fire.
 
 ### When a button is missing
 
-An action waits up to 30 seconds for its first button and reopens the registro page once if it doesn't appear; nothing has been clicked at that point, so this can't record anything twice. If the button is still missing, the run prints the URL and page title, saves the HTML and a screenshot to `diagnostics/` (git-ignored), and fails as before, which sends the cron mail.
+An action waits up to 30 seconds for its first button. If it doesn't appear, for example during an ePortem 500 outage, the run reopens the registro page every minute for up to 10 minutes, logging in again if the session was lost; a failed login is tried 3 times. Nothing has been clicked at that point, so this can't record anything twice, but the recorded time can be up to about 10 minutes late. If the button is still missing, the run prints the URL and page title, saves the HTML and a screenshot to `diagnostics/` (git-ignored), and fails, which sends the cron mail.
+
+If the page doesn't offer the action, the run doesn't retry. For example, `after_lunch` finds nothing to resume when `lunch_break` failed. Opening the dropdown records nothing, so the run prints what ePortem shows, saves diagnostics and fails with the cron mail; correct the day in Detalle registro.
 
 ## Testing
 
