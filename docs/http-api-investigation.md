@@ -18,7 +18,7 @@ needed to pick the work up in a new session, without the earlier conversation.
   without a fallback, so nothing is clocked twice, and cron mails the output.
 - Crontab backups: `/home/pi/crontab.bak-20261116-102837` (before any HTTP)
   and `/home/pi/crontab.bak-20261116-run_http` (lunch line on the old
-  `run_http.sh`, removed in `ac9aefb`).
+  `run_http.sh`, removed in `fc420dc`).
 - Saved session: `config/.session_cookies.json`, browser login at 10:27, last
   used at 15:02 (a read-only dashboard check).
 - `at` (installed 2026-11-16) has one job left: the 18:30
@@ -27,7 +27,7 @@ needed to pick the work up in a new session, without the earlier conversation.
 ### Review changes of 2026-11-16: deployed to `omv` that afternoon
 
 A full review on the afternoon of 2026-11-16 changed most files (commit
-`3f8ce17`, deployed before the 17:55 `stop_day`, so that is the first cron run
+`e9bf6cb`, deployed before the 17:55 `stop_day`, so that is the first cron run
 on it). Where the rest of this handoff disagrees with the list below, the
 list is current. What changed:
 
@@ -165,7 +165,7 @@ Blocks before 14:57 on 2026-11-16 are in the older `run_http.sh` format
 | 13:34 | **First real HTTP clock event**: lunch, via the old `run_http.sh` cron line. Recorded (`LastDescAct` "Comida"). |
 | 13:40 | Paused-dashboard capture by hand (the 14:00 `at` job was removed). Confirmed the `after_lunch` buttons. |
 | 14:28 | After lunch, still via Selenium (it predates the deploy). |
-| 14:57 | Deployed `ac9aefb`: HTTP/Selenium choice moved into `EPortemAction.perform()`, `run_http.sh` removed, `EPORTEM_HTTP=YES`, lunch cron line back on `run.sh`. |
+| 14:57 | Deployed `fc420dc`: HTTP/Selenium choice moved into `EPortemAction.perform()`, `run_http.sh` removed, `EPORTEM_HTTP=YES`, lunch cron line back on `run.sh`. |
 | 15:02 | Read-only dashboard check: working, in the office. Session still valid. |
 | 15:05 | Merged into `main`; `omv` switched to `main`. |
 
@@ -218,11 +218,21 @@ cron run you want to measure**, because it refreshes the session.
 Old example values shaped like Slack and Telegram bot tokens were scrubbed
 from **all** branches with `git filter-repo`. GitHub push protection had
 been blocking the Gitea → GitHub mirror since 2026-10-25. Every commit hash
-from May 2025 onwards changed (e.g. `main` `f7c3fa7` → `a96920c`). Any clone
-made before that needs a fresh clone. Backups of the pre-rewrite refs (they
-still contain the values) are in `/home/pi/backups/` on `omv`, `chmod 600`.
-If those tokens were ever real, they should be revoked: they were public on
-GitHub from May 2025.
+from May 2025 onwards changed. Any clone made before that needs a fresh
+clone. Backups of the pre-rewrite refs (they still contain the values) are in
+`/home/pi/backups/` on `omv`, `chmod 600`. If those tokens were ever real,
+they should be revoked: they were public on GitHub from May 2025.
+
+It was rewritten again on the evening of 2026-11-16 to remove personal data:
+every author, committer and tagger email became the GitHub noreply address
+(and an old work-account author name became `Roberto Hortal`), and personal
+email addresses, the mail relay host and sender, and the home host name were
+replaced with neutral descriptions in every file and commit message. Every
+commit hash changed again; the hashes quoted in this document are the new
+ones. Backup of the refs from before this rewrite:
+`/home/pi/backups/eportem-before-personal-data-scrub-20261116.bundle` on
+`omv`, `chmod 600`. GitHub may keep serving the old commits by hash for a
+while; that can only be cleared by asking GitHub Support to purge them.
 
 ## Findings
 
