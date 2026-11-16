@@ -86,19 +86,20 @@ Deployment notes (still true for later deploys):
 
 | When | What runs | What to check |
 |---|---|---|
-| 2026-11-16 17:55–18:05 | `stop_day` | **First action on the new path.** Expect `stop_day office: recorded over HTTP` in the log. The `Session:` line is a lifetime data point (idle since 15:02). |
-| 2026-11-16 18:30 | `at` capture | The **not-started** dashboard. Confirms or corrects the office start button (see below). |
-| 2026-11-17 08:55–09:05 | `start_day` | **First `start_day` over HTTP**, and almost certainly the first overnight session expiry, so it should log in with the browser first. Expect `Session: saved session expired ...` then `recorded over HTTP`. A fallback means the office start button was guessed wrong. |
+| 2026-11-16 17:55–18:05 | `stop_day` | **Done**: recorded over HTTP at 17:58, on the code deployed at 16:37. Session still valid (7h30m after login, idle 2h55m). |
+| 2026-11-16 18:30 | `at` capture | **Done**: `capture/20261116-183000/`. Office start button confirmed (see below). |
+| 2026-11-17 08:55–09:05 | `start_day` | **First `start_day` over HTTP**, and almost certainly the first overnight session expiry, so it should log in with the browser first. Expect `Session: saved session expired ...` then `recorded over HTTP`. A fallback would now mean the dashboard changed. |
 | 2026-11-17 13:25, 14:25 | lunch, after lunch | First `after_lunch` over HTTP. |
 
-**The office start button is still a guess.** `select_button()` picks
-`_ststart` name `1`, else the first `_ststart` that isn't `1293`. The
-Selenium XPath is a plain button, `//*[@id="buttonsRegBox"]/div/div/button`,
-so check in the 18:30 capture that the office start button really has
-`id="_ststart"` and `onclick="_doPostJor(this)"`. If it doesn't, fix
-`select_button()` and the `NOT_STARTED_HTML` fixture in
-`tests/test_http_clock.py`. Until then a wrong guess costs nothing: it raises
-`ButtonNotFound` and the run falls back to the browser.
+**The office start button is confirmed** by the 18:30 capture: the
+not-started dashboard offers `_ststart` for every activity, `1` Trabajo,
+`1293` Trabajo en Casa and all the absence types (`2` Comida, `3` Ausencia,
+Vacaciones, Baja Laboral, ...), each with `onclick="_doPostJor(this)"`.
+`select_button()` now picks exactly `1` (office) or `1293` (home). The old
+fallback ("the first `_ststart` that isn't `1293`") was removed, because on
+this page it would have been `2` Comida, so a missing `1` would have started
+the day on a pause. `NOT_STARTED_HTML` in `tests/test_http_clock.py` now
+follows the capture.
 
 ### How to check
 
@@ -136,8 +137,8 @@ Blocks before 14:57 on 2026-11-16 are in the older `run_http.sh` format
 
 ### Button choices (`select_button()` in `utility/http_clock.py`)
 
-- `start_day` office: `_ststart` name `1`, else the first `_ststart` that
-  isn't `1293`. *Assumed*, see "Open checks".
+- `start_day` office: `_ststart` name `1` (Trabajo), and nothing else.
+  **Confirmed** by the 18:30 capture.
 - `start_day` home: `_ststart` name `1293`.
 - `lunch_break`: `_stpause` name `2` (Comida). **Verified**: recorded over
   HTTP at 13:34 on 2026-11-16.
@@ -149,8 +150,7 @@ Blocks before 14:57 on 2026-11-16 are in the older `run_http.sh` format
 
 ### Next steps, after the open checks
 
-1. Fix `select_button()` if the 18:30 capture or the 08:55 run shows the
-   office start button is different.
+1. Done: the 18:30 capture confirmed the office start button.
 2. Delete the captures in `capture/` on `omv` once read: they hold account
    data.
 3. Delete the two crontab backups once a few days have run cleanly.

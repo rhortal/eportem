@@ -135,10 +135,10 @@ def select_button(buttons, action_type, location):
         raise ValueError(f"Unknown location {location!r}, expected 'home' or 'office'")
     home = location == "home"
     if action_type == "start_day":
-        button = (_first(buttons, "_ststart", SESSION_ID_HOME) if home
-                  else _first(buttons, "_ststart", SESSION_ID_OFFICE_DEFAULT)
-                  or next((b for b in buttons if b.get("id") == "_ststart"
-                           and b.get("name") != SESSION_ID_HOME), None))
+        # Exact ids only: the not-started dashboard (captured 2026-11-16 18:30) also
+        # offers _ststart for every absence type (2 Comida, 3 Ausencia, Vacaciones...),
+        # so "any other _ststart" could start the day on a pause.
+        button = _first(buttons, "_ststart", SESSION_ID_HOME if home else SESSION_ID_OFFICE_DEFAULT)
     elif action_type == "lunch_break":
         # No fallback to another _stpause: those are Ausencia, Vacaciones, Baja...
         button = _first(buttons, "_stpause", LUNCH_PAUSE_ID)

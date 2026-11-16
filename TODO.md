@@ -15,15 +15,12 @@ and note anything learnt in `docs/http-api-investigation.md` or `CLAUDE.md`.
 
 ## Open checks from the HTTP rollout
 
-- [ ] 2026-11-16 18:30 `at` capture: confirm the office start button on the
-      not-started dashboard is `id="_ststart"` with `name="1"`. If not, fix
-      `select_button()` in `utility/http_clock.py` and the `NOT_STARTED_HTML`
-      fixture in `tests/test_http_clock.py`.
+- [x] 2026-11-16 18:30 `at` capture: office start button confirmed
+      (`_ststart` name `1`); the fallback to another `_ststart` was removed.
 - [ ] 2026-11-17 08:55 `start_day`: first `start_day` over HTTP, and likely
       the first browser login after an overnight session expiry. Expect
       `Session: saved session expired` then `recorded over HTTP` in
-      `logs/http_clock.log`. A fallback to the browser means the office start
-      button guess was wrong.
+      `logs/http_clock.log`.
 - [ ] Session lifetime: try ticking `recordar` ("remember me") at login for a
       longer-lived session, which would cut the morning browser logins. Add the
       result to the session data points in `docs/http-api-investigation.md`.

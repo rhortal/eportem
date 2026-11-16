@@ -21,13 +21,18 @@ WORKING_HTML = """
 </ul></div>
 """
 
-# Not yet captured from the live site: modelled on the Selenium XPaths
-# (a direct office start button plus a home entry in a dropdown).
+# The not-started dashboard as captured on 2026-11-16 18:30 (attributes only):
+# every activity, work or absence, is a _ststart entry.
 NOT_STARTED_HTML = """
 <div id="buttonsRegBox"><div class="btn-group">
-<button id="_ststart" name="1" name2="W" name3="Inicio Trabajo" onclick="_doPostJor(this)">Inicio</button>
-<button data-toggle="dropdown"></button>
-<ul><li><a id="_ststart" name="1293" name2="W" name3="Trabajo en Casa" onclick="_doPostJor(this)">Casa</a></li></ul>
+<button data-toggle="dropdown" onclick="myFunction1(event)">Iniciar</button>
+<ul>
+<li><a id="_ststart" name="1" name2="W" name3="Trabajo" onclick="_doPostJor(this)">Trabajo</a></li>
+<li><a id="_ststart" name="1293" name2="W" name3="Trabajo en Casa" onclick="_doPostJor(this)">Casa</a></li>
+<li><a id="_ststart" name="2" name2="P" name3="Comida" onclick="_doPostJor(this)">Comida</a></li>
+<li><a id="_ststart" name="3" name2="P" name3="Ausencia" onclick="_doPostJor(this)">Ausencia</a></li>
+<li><a id="_ststart" name="5916" name2="P" name3="Vacaciones" onclick="_doPostJor(this)">Vacaciones</a></li>
+</ul>
 </div></div>
 """
 
@@ -44,7 +49,8 @@ class TestButtonSelection(unittest.TestCase):
 
     def test_parse_ignores_non_clock_elements(self):
         buttons = parse_buttons(NOT_STARTED_HTML)
-        self.assertEqual([b["id"] for b in buttons], ["_ststart", "_ststart"])
+        self.assertEqual({b["id"] for b in buttons}, {"_ststart"})
+        self.assertEqual(len(buttons), 5)
 
     def test_lunch_break_picks_comida(self):
         b = select_button(parse_buttons(WORKING_HTML), "lunch_break", "office")
@@ -63,9 +69,11 @@ class TestButtonSelection(unittest.TestCase):
         self.assertEqual(select_button(buttons, "start_day", "office")["name"], "1")
         self.assertEqual(select_button(buttons, "start_day", "home")["name"], "1293")
 
-    def test_start_day_office_without_name_falls_back_to_non_home(self):
-        buttons = [{"id": "_ststart"}, {"id": "_ststart", "name": "1293"}]
-        self.assertNotIn("name", select_button(buttons, "start_day", "office"))
+    def test_start_day_office_never_picks_an_absence(self):
+        # Without "1" (Trabajo) on offer, don't start the day on Comida or Ausencia
+        buttons = [b for b in parse_buttons(NOT_STARTED_HTML) if b.get("name") != "1"]
+        with self.assertRaises(ButtonNotFound):
+            select_button(buttons, "start_day", "office")
 
     def test_after_lunch_by_location(self):
         buttons = parse_buttons(PAUSED_HTML)
