@@ -9,6 +9,7 @@ ePortem is a SaaS solution used in Spain for HR-related tasks. These scripts aut
 ## Features
 
 - Automated time tracking for office and remote work, triggered by cron
+- Clocks with a direct HTTP request (the browser only logs in when the saved session has expired), falling back to the browser click flow when that fails
 - Start of day, lunch break, return from lunch, and end of day actions
 - Telegram and Slack notifications, plus live Slack status updates
 - Per-day location override (home/office)
@@ -67,7 +68,8 @@ Nothing else changes: cron still calls `run.sh`, and `main.py` still applies the
 schedule, holidays and location overrides before any action is sent, whichever
 way it is sent. Chromium is still used to log in, because the login page has
 reCAPTCHA, but only when the saved session in `config/.session_cookies.json`
-(gitignored, `chmod 600`) has expired.
+(gitignored, `chmod 600`) has expired, which in practice means the first
+action of each day.
 
 If HTTP recorded nothing (for example the button wasn't on the dashboard, or
 the login failed), the same run falls back to the Selenium click flow. If the
@@ -158,7 +160,7 @@ automatically.
 
 ### Running Actions Directly
 
-You can invoke any action directly using `eportem_action.py` without relying on the config file or the main runner script. This is useful for manual runs, debugging, or scripting.
+You can invoke any action directly using `eportem_action.py` without relying on the config file or the main runner script. This is useful for manual runs, debugging, or scripting. It records a real clock event, over HTTP or the browser as `EPORTEM_HTTP` says, but it skips `main.py`'s schedule, holiday and location-override checks.
 
 ```bash
 python3 eportem_action.py ACTION --location LOCATION
@@ -216,10 +218,13 @@ To run the tests, use the `run_tests.sh` script in the root directory:
 ```
 
 Tests cover `main.py`'s scheduling/holiday logic, `eportem_action.py`'s
-click flow and Slack status handling, and the `override_location.py` /
-`holiday_override.py` CLIs - all against a mocked Selenium driver
+click flow, HTTP/browser choice and fallback, and Slack status handling,
+`utility/http_clock.py`'s button selection, session cookies and outcome
+checks, and the `override_location.py` / `holiday_override.py` CLIs - all
+against a mocked Selenium driver and HTTP session
 (`unittest.mock.MagicMock`), with no real ePortem, Telegram, or Slack calls
-made during a test run.
+made during a test run. The full run takes about 2½ minutes, because the
+click-flow tests really wait between clicks.
 
 ## Configuration
 
@@ -229,12 +234,12 @@ The schedule for each day is configured in the `config/config.json` file, locate
 
 The codebase follows DRY (Don't Repeat Yourself) principles with unified components:
 
-- `eportem_action.py` - Core action handler for all operations (Selenium click flow, notifications, Slack status)
+- `eportem_action.py` - Core action handler for all operations: chooses HTTP or the Selenium click flow (with the fallback), then notifications and Slack status
 - `main.py` - Scheduler entrypoint called by cron; decides which action (if any) to run based on the current time and `config/config.json`
 - `start_day.py`, `lunch_break_unified.py`, `after_lunch.py`, `stop_day.py` - thin CLI wrappers, each pinning one action and delegating to `eportem_action.run_fixed_action()`
 - `override_location.py` / `holiday_override.py` - write the override files that `main.py`/`eportem_action.py` read
 - `utility/` - shared helpers: env loading/checking, Selenium login, Telegram/Slack notifications, Slack status
-- `utility/http_clock.py` - HTTP clock client used when `EPORTEM_HTTP=YES` (browser only for login)
+- `utility/http_clock.py` - HTTP clock client for the actions `EPORTEM_HTTP` enables (browser only for login); `clock_and_verify()` tells "nothing recorded" (safe to fall back) from "outcome unknown"
 - `utility/capture_dashboard.py` - read-only diagnostic for the direct-HTTP work (see `docs/http-api-investigation.md`): logs in, saves the dashboard HTML/scripts/network log to `capture/` (gitignored) without clicking anything. Run with `python3 -m utility.capture_dashboard`
 
 ## Acknowledgements

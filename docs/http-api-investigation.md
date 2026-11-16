@@ -1,147 +1,134 @@
 # Replacing Selenium with direct HTTP calls
 
-Branch `http-clock-actions`. This document is the handoff: it holds everything
+Merged into `main` on 2026-11-16 (the work was done on the branch
+`http-clock-actions`). This document is the handoff: it holds everything
 needed to pick the work up in a new session, without the earlier conversation.
 
-## Handoff: state as of 2026-11-16 11:05 (Monday)
-
-### All actions over HTTP, with fallback in the orchestrator (deployed 2026-11-16 14:57)
-
-`run_http.sh` is gone. The choice between HTTP and Selenium now lives in
-`EPortemAction.perform()`, which `main.py` calls **after** it has applied
-the schedule, holidays and the location / business-trip overrides. So the
-overrides hold whichever way an action is sent, and cron goes back to calling
-`run.sh` for every line.
-
-- `EPORTEM_HTTP` in `config/.env` picks the actions sent over HTTP: `YES`/`ALL`,
-  `NO`/unset, or a list such as `lunch_break,after_lunch`.
-- `HttpClock.clock_and_verify()` returns on success, raises `NotRecorded`
-  (falling back to Selenium in the same run is safe) or `OutcomeUnknown`
-  (no fallback, the run fails so cron mails). Any other error also fails
-  without fallback.
-- Every HTTP attempt still goes to `logs/http_clock.log`, now as
-  `=== date action location: outcome` followed by the HTTP client's output
-  (including the `Session:` line).
-
-**On `omv` since 2026-11-16 14:57:** `config/.env` has `EPORTEM_HTTP=YES`
-(all four actions), and the 13:25 line calls `run.sh` again like every other
-line (crontab before this change: `/home/pi/crontab.bak-20261116-run_http`).
-The 14:25 after-lunch run predates the deploy and used Selenium; the first
-run on the new path is 17:55 (stop).
-The first `start_day` over HTTP is Tuesday 2026-11-17 08:55; its office button
-was a guess until the 18:30 capture, and if it's wrong the run falls back to
-the browser (check `logs/http_clock.log`).
-
-The rest of this section describes `omv` as it was before that change.
+## Handoff: state as of 2026-11-16 15:05 (Monday)
 
 ### What is live on `omv`
 
-- `/home/pi/Apps/eportem` is checked out on **`http-clock-actions`** (not
-  `main`). The branch is a superset of `main`, and with `EPORTEM_HTTP` unset,
-  `run.sh` behaves exactly as on `main`.
-- **Only the lunch cron line uses HTTP**:
-  `25 13 * * 1-5 ... /home/pi/Apps/eportem/run_http.sh lunch_break office`
-  (same random 0–9 min sleep and mail-on-failure wrapper as the other lines).
-  Start, after-lunch and stop still call `run.sh`, i.e. Selenium.
-  The previous crontab is saved in `/home/pi/crontab.bak-20261116-102837`.
-- `config/.env` on `omv` does **not** set `EPORTEM_HTTP`; `run_http.sh` calls
-  `utility.http_clock` directly, so it doesn't need it.
-- Saved session: `config/.session_cookies.json` on `omv`, created by a
-  browser login at **10:27**. It was last used by a dry run at about **10:56**.
-  On purpose, nothing has used it since, so the lunch run measures how long a
-  session lasts.
-- `at` was installed on 2026-11-16 for one-off jobs. Two jobs are queued for
-  today, see below. `atq` lists them.
+- `/home/pi/Apps/eportem` is on **`main`**. `config/.env` has
+  **`EPORTEM_HTTP=YES`** (since 14:57), so all four actions are sent over HTTP.
+- Every cron line calls `run.sh` → `main.py`, which applies the schedule,
+  holidays and location / business-trip overrides, then calls
+  `EPortemAction.perform()`. That tries HTTP and falls back to Selenium in the
+  same run only when nothing was recorded (`NotRecorded`). If the outcome is
+  unknown (`OutcomeUnknown`) or there's an unexpected error, the run fails
+  without a fallback, so nothing is clocked twice, and cron mails the output.
+- Crontab backups: `/home/pi/crontab.bak-20261116-102837` (before any HTTP)
+  and `/home/pi/crontab.bak-20261116-run_http` (lunch line on the old
+  `run_http.sh`, removed in `ac9aefb`).
+- Saved session: `config/.session_cookies.json`, browser login at 10:27, last
+  used at 15:02 (a read-only dashboard check).
+- `at` (installed 2026-11-16) has one job left: the 18:30
+  `utility.capture_dashboard` run. `atq` lists it.
 
-### Today's timeline (2026-11-16)
+### Open checks
 
-| Time | Job | Purpose |
+| When | What runs | What to check |
 |---|---|---|
-| 13:25–13:35 | cron `run_http.sh lunch_break office` | **First real HTTP clock event.** Falls back to `run.sh` only if nothing was recorded. |
-| ~~14:00~~ 13:40 | `utility.capture_dashboard`, run by hand (the 14:00 `at` job was removed) | **Done**: `capture/20261116-134022/`, paused dashboard. Confirms lunch was recorded. |
-| 14:25–14:35 | cron `run.sh` (Selenium) | After lunch. It fails if lunch wasn't recorded. |
-| 17:55–18:05 | cron `run.sh` (Selenium) | End of day. |
-| 18:30 | `at` job: `utility.capture_dashboard` | Captures the **stopped / not started** dashboard. |
+| 2026-11-16 17:55–18:05 | `stop_day` | **First action on the new path.** Expect `stop_day office: recorded over HTTP` in the log. The `Session:` line is a lifetime data point (idle since 15:02). |
+| 2026-11-16 18:30 | `at` capture | The **not-started** dashboard. Confirms or corrects the office start button (see below). |
+| 2026-11-17 08:55–09:05 | `start_day` | **First `start_day` over HTTP**, and almost certainly the first overnight session expiry, so it should log in with the browser first. Expect `Session: saved session expired ...` then `recorded over HTTP`. A fallback means the office start button was guessed wrong. |
+| 2026-11-17 13:25, 14:25 | lunch, after lunch | First `after_lunch` over HTTP. |
 
-### How to check the results (after 18:30; the paused capture is done)
+**The office start button is still a guess.** `select_button()` picks
+`_ststart` name `1`, else the first `_ststart` that isn't `1293`. The
+Selenium XPath is a plain button, `//*[@id="buttonsRegBox"]/div/div/button`,
+so check in the 18:30 capture that the office start button really has
+`id="_ststart"` and `onclick="_doPostJor(this)"`. If it doesn't, fix
+`select_button()` and the `NOT_STARTED_HTML` fixture in
+`tests/test_http_clock.py`. Until then a wrong guess costs nothing: it raises
+`ButtonNotFound` and the run falls back to the browser.
+
+### How to check
 
 From the Mac, `omv` is reachable as **`omve`** (external address). Use
 `omv` only on the home LAN.
 
 ```bash
-ssh omve 'cd /home/pi/Apps/eportem && cat logs/http_clock.log; tail -20 logs/capture.log; ls capture/'
+ssh omve 'cd /home/pi/Apps/eportem && tail -60 logs/http_clock.log; tail -20 logs/capture.log; ls capture/'
 # each capture folder: buttons.html (read this first), hits.txt, cookies.json (names only),
 # session_check.txt, dashboard.html, scripts/
 ssh omve 'cd /home/pi/Apps/eportem/capture && for d in */; do echo "== $d"; grep -o "id=\"_st[a-z]*\"[^>]*" $d/buttons.html; done'
 ```
 
 Also check that cron didn't send a failure mail (it mails `pi` and the
-work address only when a run exits non-zero).
+work address only when a run exits non-zero). To see the dashboard state
+without clicking anything, `HttpClock().ensure_session()` returns the
+buttons on offer (note: that refreshes the session's "last used" time).
 
-**Reading `logs/http_clock.log`** (one block per attempt, `=== date action location exit=N`):
-- `exit=0` plus `Response: {...}`: recorded over HTTP. Note the JSON's
-  `LastDescAct`; it should be "Comida".
-- `exit=3`: nothing was recorded over HTTP, so it fell back to Selenium. The
-  first line says why (`ButtonNotFound`, login failure, ...). Check the cron
-  mail and the ePortem dashboard to see whether the Selenium fallback worked.
-- `exit=4`: the request went out but the outcome is unknown, so it **did not**
-  retry. Check the dashboard by hand.
-- `exit=5`: recorded, but notifications or Slack status failed.
+**Reading `logs/http_clock.log`.** Each attempt is one block:
+`=== date action location: outcome`, then the HTTP client's output.
+
+- `recorded over HTTP`: done. The `Response: {...}` JSON's `LastDescAct`
+  names the new state.
+- `not recorded, falling back to the browser: <reason>`: Selenium ran next
+  in the same run. Check the cron mail and the dashboard to see whether it
+  worked.
+- `OUTCOME UNKNOWN` or `ERROR, no fallback`: the run failed on purpose.
+  Check the dashboard by hand and correct it in Registro Jornada.
 - The `Session:` line is a **session-lifetime data point**: "still valid
-  (login HH:MM, XhYYm ago; last used ...)" or "expired (...)". On this first
-  run "last used" shows as unknown because the file predates that field; the
-  real last use was about 10:56. Add the result to the table under
-  "Session lifetime" below.
+  (login HH:MM, XhYYm ago; last used HH:MM, ...)" or "expired (...)". Add it
+  to the table under "Session lifetime data points".
 
-### What to do next, depending on the results
+Blocks before 14:57 on 2026-11-16 are in the older `run_http.sh` format
+(`=== date action location exit=N`).
 
-1. **Confirm the button choices against the captures.** `select_button()` in
-   `utility/http_clock.py` picks:
-   - `start_day` office: `_ststart` name `1`, else the first `_ststart` that
-     isn't `1293`. *Assumed, not yet seen.* The Selenium XPath for this is a
-     plain button, `//*[@id="buttonsRegBox"]/div/div/button`, so check in the
-     18:30 capture that the office start button really has `id="_ststart"`
-     and an `onclick="_doPostJor(this)"`. If it doesn't, fix
-     `select_button()` and the `NOT_STARTED_HTML` fixture in
-     `tests/test_http_clock.py`.
-   - `start_day` home: `_ststart` name `1293`.
-   - `after_lunch`: `_stini` name `1` (office) or `1293` (home).
-     **Confirmed** by the 13:40 capture (`capture/20261116-134022/`): the paused
-     dashboard shows `_stini` name `1` (name3 "Trabajo") and `1293` ("Trabajo
-     en Casa"), plus `_ststop` and seven `_stpause` absence types. The
-     `PAUSED_HTML` fixture's name3 was corrected from "Inicio Trabajo" to
-     "Trabajo" to match.
-   - `lunch_break`: `_stpause` name `2` (Comida). *Verified.*
-   - `stop_day`: `_ststop` (no `name`). *Verified* from markup.
-2. **Lunch worked over HTTP (2026-11-16).** Add actions to
-   `EPORTEM_HTTP` in `config/.env` on `omv`; the crontab doesn't change.
-   `main.py` supplies the location, holidays and overrides.
-3. **If lunch failed:** read the log and the capture. The fallback should
-   have recorded it through Selenium, so check that first.
-4. When everything has been on HTTP for a while, merge `http-clock-actions`
-   into `main` and switch `omv` back to `main`.
-5. Clean up: the captures in `capture/` hold account data and can be
-   deleted once read.
+### Button choices (`select_button()` in `utility/http_clock.py`)
+
+- `start_day` office: `_ststart` name `1`, else the first `_ststart` that
+  isn't `1293`. *Assumed*, see "Open checks".
+- `start_day` home: `_ststart` name `1293`.
+- `lunch_break`: `_stpause` name `2` (Comida). **Verified**: recorded over
+  HTTP at 13:34 on 2026-11-16.
+- `after_lunch`: `_stini` name `1` (office, name3 "Trabajo") or `1293`
+  (home, "Trabajo en Casa"). **Confirmed** by the 13:40 capture
+  (`capture/20261116-134022/`).
+- `stop_day`: `_ststop` (no `name`). Seen on the working and paused
+  dashboards.
+
+### Next steps, after the open checks
+
+1. Fix `select_button()` if the 18:30 capture or the 08:55 run shows the
+   office start button is different.
+2. Delete the captures in `capture/` on `omv` once read: they hold account
+   data.
+3. Delete the two crontab backups once a few days have run cleanly.
+4. Optional: try ticking `recordar` ("remember me") at login for a longer
+   session, which would cut the morning browser logins.
+
+### Rollout history (2026-11-16)
+
+| Time | Event |
+|---|---|
+| 10:27 | Browser login on `omv`, session saved. |
+| 13:34 | **First real HTTP clock event**: lunch, via the old `run_http.sh` cron line. Recorded (`LastDescAct` "Comida"). |
+| 13:40 | Paused-dashboard capture by hand (the 14:00 `at` job was removed). Confirmed the `after_lunch` buttons. |
+| 14:28 | After lunch, still via Selenium (it predates the deploy). |
+| 14:57 | Deployed `ac9aefb`: HTTP/Selenium choice moved into `EPortemAction.perform()`, `run_http.sh` removed, `EPORTEM_HTTP=YES`, lunch cron line back on `run.sh`. |
+| 15:02 | Read-only dashboard check: working, in the office. Session still valid. |
+| 15:05 | Merged into `main`; `omv` switched to `main`. |
 
 ### Known gaps / open questions
 
-- **Holidays and overrides: solved** by moving the HTTP/Selenium choice
-  into `EPortemAction.perform()`, after `main.py`'s checks (see the top of
-  this handoff). Before that, `run_http.sh` skipped them, which would have
-  clocked `start_day` in on a holiday.
 - **Session lifetime is only partly known.** `.ASPXAUTH` has no expiry
-  attribute. So far a session survived 3h06m after login with ~2h38m idle
-  (see the data points below); the real server-side timeout, and whether it
-  slides, are still unknown. Ticking `recordar`
-  ("remember me") at login may give a longer-lived cookie; not tried yet.
+  attribute. So far a session survived 4h35m after login, with idle gaps of
+  up to ~2h38m (see the data points below); the real server-side timeout, and
+  whether it slides, are still unknown. Ticking `recordar` ("remember me")
+  at login may give a longer-lived cookie; not tried yet.
 - The 15-minute schedule window in `main.py` applies to HTTP actions too.
+- The `utility.http_clock` CLI (for runs by hand) skips the schedule,
+  holiday and override checks; only `main.py` applies them.
 
 ### Session lifetime data points
 
 | Date | Login | Checked | Idle since last use | Result |
 |---|---|---|---|---|
 | 2026-11-16 | 10:13 (Mac) | 11:00 | ~0h46m | valid |
-| 2026-11-16 | 10:27 (omv) | lunch run, 13:34 | ~2h38m (last use ~10:56) | valid (3h06m after login); lunch recorded over HTTP, `exit=0` |
+| 2026-11-16 | 10:27 (omv) | lunch run, 13:34 | ~2h38m (last use ~10:56) | valid (3h06m after login); lunch recorded over HTTP |
+| 2026-11-16 | 10:27 (omv) | dashboard read by hand, 15:02 | 1h28m (last use 13:34) | valid (4h35m after login) |
 
 ### How to deploy changes to `omv`
 
@@ -151,21 +138,22 @@ of Gitea, so don't push to GitHub directly: the next mirror sync overwrites
 it. Deploy from the Mac like this:
 
 ```bash
-git push omve:/home/pi/Apps/eportem http-clock-actions:refs/heads/incoming
-ssh omve 'cd /home/pi/Apps/eportem && git merge --ff-only incoming && git branch -D incoming && git push origin http-clock-actions'
+git push omve:/home/pi/Apps/eportem main:refs/heads/incoming
+ssh omve 'cd /home/pi/Apps/eportem && git merge --ff-only incoming && git branch -D incoming && git push origin main'
 ```
 
-You can't push straight to `http-clock-actions` on `omv` because it's
-checked out there. Gitea's push mirror to `github.com/rhortal/eportem` syncs
-on commit and every 8 h. Check it with
-`gt api /api/v1/repos/roberto/eportem/push_mirrors` (look at `last_error`).
+You can't push straight to `main` on `omv` because it's checked out there.
+Gitea's push mirror to `github.com/rhortal/eportem` syncs on commit and every
+8 h. Check it with `gt api /api/v1/repos/roberto/eportem/push_mirrors` (look
+at `last_error`).
 
-Tests: `python3 -m unittest tests/test_*.py` (or `run_tests.sh`). They never
-touch the network or the real cookie file. Dry runs
+Tests: `python3 -m unittest discover -s tests -t .` (or `run_tests.sh`). They
+never touch the network or the real cookie file. `test_eportem` takes about
+2½ minutes because its Selenium tests really sleep between clicks. Dry runs
 (`python3 -m utility.http_clock ACTION --location L`) never record a clock
 event. Only `--send`, or `EPORTEM_HTTP` enabling an action for
-`main.py`/`eportem_action.py`, do. **Don't run a dry run on `omv` before a cron run you
-want to measure**, because it refreshes the session.
+`main.py`/`eportem_action.py`, do. **Don't run a dry run on `omv` before a
+cron run you want to measure**, because it refreshes the session.
 
 ### Repository history was rewritten on 2026-11-16
 
@@ -254,8 +242,10 @@ Buttons on the page while working (2026-11-16): `_stpause` entries
 2 Comida, 3 Ausencia, 5916/1190 Vacaciones, 1191 Baja Laboral, 1193 Médico,
 1192 Maternidad/Paternidad, 1195 Permiso Retribuido; `_stini` 1293 Trabajo en
 Casa; `_ststop` (no `name`, `name2="P"`, `name3="Inicio Trabajo"`). The buttons
-available depend on the current state. The paused and not-started markup is
-being captured on 2026-11-16 (see the timeline above).
+available depend on the current state. The paused dashboard (13:40 capture)
+offers `_stini` 1 Trabajo and 1293 Trabajo en Casa, `_ststop` and the same
+seven `_stpause` absence types. The not-started markup is captured at 18:30
+on 2026-11-16.
 
 ## Implementation
 

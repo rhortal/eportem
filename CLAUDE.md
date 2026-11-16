@@ -124,7 +124,7 @@ misdeliver mail). `/etc/postfix/recipient_canonical` (pre-existing) maps
 local system users (root/pi/admin/@omv.local) to `<owner's personal email>` for
 local cron/system mail — unrelated to ePortem specifically, don't remove it.
 
-## Direct-HTTP (no browser) clocking — lunch only, since 2026-11-16
+## Direct-HTTP (no browser) clocking — all actions, since 2026-11-16
 
 **Picking this up in a new session: read the "Handoff" section at the top of
 `docs/http-api-investigation.md` first.** It has the live state, what ran on
@@ -133,17 +133,18 @@ HTTP (reCAPTCHA v3), so `utility/http_clock.py` logs in with Selenium only when
 the saved cookies (`config/.session_cookies.json`) have expired, then sends
 the clock action as `GET .../registro/reghorario.cshtml`.
 
-On this host the checkout is on branch **`http-clock-actions`** (not `main`).
-Which actions go over HTTP is set by `EPORTEM_HTTP` in `config/.env`
+On this host the checkout is on **`main`** (the work was merged from
+`http-clock-actions` on 2026-11-16). Which actions go over HTTP is set by `EPORTEM_HTTP` in `config/.env`
 (`YES`, `NO` or a list like `lunch_break,after_lunch`); cron calls `run.sh`
 for every line, and `main.py` applies holidays and overrides before
 `EPortemAction.perform()` tries HTTP and falls back to Selenium only when
-nothing was recorded. Since 2026-11-16 14:57 `omv` has `EPORTEM_HTTP=YES`. The
-previous crontab is saved as `/home/pi/crontab.bak-20261116-102837`. Every
+nothing was recorded. Since 2026-11-16 14:57 `omv` has `EPORTEM_HTTP=YES`. Earlier
+crontabs are saved as `/home/pi/crontab.bak-20261116-*`. Every
 HTTP attempt is logged to `logs/http_clock.log`. A dry run
 (`python3 -m utility.http_clock ACTION`) never changes clock status, but it
 skips the holiday/override checks.
 
 `at` was installed on 2026-11-16 for one-off jobs (e.g. timed
 `utility.capture_dashboard` runs; output in `logs/capture.log`). Use `atq` to
-list pending jobs.
+list pending jobs. The first `start_day` over HTTP (2026-11-17 08:55) is still
+an open check, listed in the handoff.
