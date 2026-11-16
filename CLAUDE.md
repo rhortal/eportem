@@ -124,11 +124,12 @@ misdeliver mail). `/etc/postfix/recipient_canonical` (pre-existing) maps
 local system users (root/pi/admin/@omv.local) to `<owner's personal email>` for
 local cron/system mail — unrelated to ePortem specifically, don't remove it.
 
-## Direct-HTTP (no browser) investigation — paused 2026-11-16
+## Direct-HTTP (no browser) clocking — implemented, not yet switched on (2026-11-16)
 
-Findings and next steps are in `docs/http-api-investigation.md`. In short:
-login can't be done with plain HTTP (the server checks a reCAPTCHA v3
-token), so the plan is a hybrid: Selenium logs in, then `requests` performs
-the clock action. It's blocked on capturing the dashboard's clock
-endpoints. `utility/capture_dashboard.py` (branch `http-clock-actions`) does that
-capture without clicking anything. It needs a run on this host with real credentials.
+Details in `docs/http-api-investigation.md`. Login can't be done with plain
+HTTP (reCAPTCHA v3), so `utility/http_clock.py` logs in with Selenium only when
+the saved cookies (`config/.session_cookies.json`) have expired, then sends
+the clock action as `GET .../registro/reghorario.cshtml`. It's enabled with
+`EPORTEM_HTTP=YES`. That isn't set on `omv` yet, so cron still clicks through
+Chromium. A dry run (`python3 -m utility.http_clock ACTION`) never changes
+clock status. Only `--send` or `EPORTEM_HTTP=YES` does.

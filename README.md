@@ -53,6 +53,23 @@ features and need two different credentials, both read from `config/.env`:
 If one of them is missing, that feature is skipped (a webhook cannot set
 your status, and a token is not a valid webhook URL).
 
+### Experimental: clocking without the browser (`EPORTEM_HTTP`)
+
+With `EPORTEM_HTTP=YES` in `config/.env`, actions are sent as a direct HTTP
+request (the same `reghorario.cshtml` call the dashboard's buttons make)
+instead of clicking through Chromium. Chromium is still used to log in, because
+the login page has reCAPTCHA, but only when the saved session in
+`config/.session_cookies.json` (gitignored, `chmod 600`) has expired. Leave it
+unset (or `NO`) to keep the Selenium click flow. Details:
+`docs/http-api-investigation.md`.
+
+To see which request an action would send, without sending it:
+
+```bash
+python3 -m utility.http_clock lunch_break --location office          # dry run
+python3 -m utility.http_clock lunch_break --location office --send   # real clock event
+```
+
 ## Usage
 
 To run the script, use the `run.sh` script in the root directory:
@@ -203,6 +220,7 @@ The codebase follows DRY (Don't Repeat Yourself) principles with unified compone
 - `start_day.py`, `lunch_break_unified.py`, `after_lunch.py`, `stop_day.py` - thin CLI wrappers, each pinning one action and delegating to `eportem_action.run_fixed_action()`
 - `override_location.py` / `holiday_override.py` - write the override files that `main.py`/`eportem_action.py` read
 - `utility/` - shared helpers: env loading/checking, Selenium login, Telegram/Slack notifications, Slack status
+- `utility/http_clock.py` - HTTP clock client used when `EPORTEM_HTTP=YES` (browser only for login)
 - `utility/capture_dashboard.py` - read-only diagnostic for the direct-HTTP work (see `docs/http-api-investigation.md`): logs in, saves the dashboard HTML/scripts/network log to `capture/` (gitignored) without clicking anything. Run with `python3 -m utility.capture_dashboard`
 
 ## Acknowledgements

@@ -1,8 +1,8 @@
 # Investigation: replacing Selenium with direct HTTP calls
 
-Status: **capture script written, waiting for a run with credentials**
-(2026-11-16, branch `http-clock-actions`). This records what was found so the
-work can be picked up later.
+Status: **implemented behind `EPORTEM_HTTP=YES`, not yet verified with a real
+clock event** (2026-11-16, branch `http-clock-actions`). Cron still uses the
+Selenium click flow by default. See "Remaining before switching" below.
 
 ## Goal
 
@@ -69,34 +69,69 @@ the employer's bot detection, so it is ruled out.
    later runs. Fall back to a fresh browser login only when the session has
    expired. This would make most runs browser-free.
 
-### Blocker: the clock endpoints are unknown
+### Clock endpoint (captured 2026-11-16)
 
-The buttons (`#_ststart`, `#_stpause`, `#_stini`, `#_ststop` inside
-`#buttonsRegBox`) live on the authenticated dashboard. The request they send
-(URL, method, parameters, anti-forgery token) cannot be seen without logging
-in. Next step is a **capture script run once on the host** with real
-credentials:
+Found with `utility/capture_dashboard.py`. It's a read-only capture: it logs in
+and saves the page, scripts and cookie names, without clicking anything. Every
+button in `#buttonsRegBox` has `onclick="_doPostJor(this)"`, defined in
+`/Content/js/reghorjor1.3.js`. That function first gets the browser's location
+(the dashboard sets `_geoRequerida = true`), then sends:
 
-- Launch Chromium with `goog:loggingPrefs = {"performance": "ALL"}`, log in
-  via `login_and_navigate(driver)`, then save:
-  - the dashboard HTML, especially the buttons' `onclick` / `data-*` /
-    `href` attributes and any hidden `__RequestVerificationToken`,
-  - every script the dashboard loads (inline and external), searched for
-    `$.ajax`, `$.post` and `url:`, and for the `_st*` ids,
-  - the cookie **names** and expiry times (never the values),
-  - the `Network.requestWillBeSent` events from the performance log, with
-    the password and cookie values redacted.
-**Done:** this is `utility/capture_dashboard.py`. Run it on the host
-(`python3 -m utility.capture_dashboard`); it writes to `capture/<timestamp>/`
-(gitignored, `chmod 700`). It never clicks and never POSTs, so it doesn't
-register a clock event. It also checks whether a `requests.Session` with the
-copied cookies can load `/aplicaciones`, which shows whether step 2 of the plan
-works. Read `hits.txt` and `buttons.html` first.
+```
+GET /aplicaciones/e-portem/registro/reghorario.cshtml
+    ?action=<button id>        _ststart / _stpause / _stini / _ststop
+    &_codactiv=<name attr>     activity id, e.g. 2 Comida, 1293 Trabajo en Casa
+    &_tipoactiv=<name2 attr>   W work / P pause
+    &_descactiv=<name3 attr>   label, e.g. "Comida"
+    &_geolocation=<lat,lon>    empty when location is unavailable/denied
+    &_localip=<WebRTC ip>      empty or an mDNS name in current browsers
+```
 
-- Reading the HTML and scripts is enough to find the endpoint **without
-  clicking anything**. Only if that fails, add a `--click ACTION` mode that
-  records one real action. Run that at the normal clock time, because it
-  registers a real clock event.
+The response is JSON (`isActive`, `LastDescAct`, `listActiv` = the new
+buttons' HTML, ...). There is no anti-forgery token. The only auth is the
+`.ASPXAUTH` cookie (a session cookie, no expiry attribute) together with
+`ASP.NET_SessionId`. According to the page's own message, a clock event
+without a location is still recorded ("El fichaje se ha registrado sin
+geolocalización"). Headless Selenium most likely sends it empty already.
+
+Buttons on the page while working (2026-11-16): `_stpause` entries
+2 Comida, 3 Ausencia, 5916/1190 Vacaciones, 1191 Baja Laboral, 1193 Médico,
+1192 Maternidad/Paternidad, 1195 Permiso Retribuido; `_stini` 1293 Trabajo en
+Casa; `_ststop` (no `name`). The buttons available depend on the current state.
+**The "not started" and "paused" markup hasn't been captured yet.**
+
+### Implementation
+
+`utility/http_clock.py`:
+1. Load the cookies from `config/.session_cookies.json` and GET the dashboard.
+   If the response is the login page, log in with Selenium (as today) and save
+   the new cookies.
+2. Parse the clock buttons out of the dashboard and pick the one the Selenium
+   XPaths would click (e.g. `lunch_break` → `_stpause` name 2, `after_lunch`
+   home → `_stini` 1293). If it's missing (wrong state), raise
+   `ButtonNotFound` listing the buttons that are there.
+3. Send the GET with that button's attributes, with location and IP left empty.
+
+`python3 -m utility.http_clock ACTION --location L` is a dry run. It resolves
+the request against the live dashboard and prints it without sending.
+Verified on 2026-11-16 for `lunch_break` and `stop_day` (both match the
+captured button attributes exactly). `after_lunch` correctly refused while
+working.
+
+### Remaining before switching cron to it
+
+1. **One real `--send`** at a normal clock time (e.g. lunch), to confirm the
+   server records it and to see the JSON response. That's the only step that
+   changes clock status, so it's left to the user.
+2. **Capture the not-started and paused markup** (run
+   `utility/capture_dashboard.py` before the day starts and during lunch) to
+   confirm the `start_day` office button really is `_ststart` name 1, and that
+   paused shows `_stini` 1 / 1293. The tests model them from the Selenium XPaths.
+3. **Session lifetime:** run a dry run some hours after the last login and
+   see whether it reports "Saved session expired". If `.ASPXAUTH` lasts across
+   the day, most runs won't need a browser at all. Ticking `recordar` at login
+   may give a longer-lived cookie; not tried yet.
+4. Then set `EPORTEM_HTTP=YES` in `config/.env` on `omv`.
 
 ## Side risk to the current Selenium setup
 

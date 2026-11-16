@@ -208,6 +208,22 @@ class EPortemAction:
         """Perform the action"""
         check_env_variable()
 
+        if os.getenv('EPORTEM_HTTP', 'NO') == 'YES' and self.driver is None:
+            self._perform_http()
+        else:
+            self._perform_selenium()
+
+        self.after_action()
+        return True
+
+    def _perform_http(self):
+        """Clock via a direct HTTP request; the browser is only used to log in
+        when the saved session has expired (see utility/http_clock.py)."""
+        from utility.http_clock import HttpClock
+        params, result = HttpClock().clock(self.action_type, self.location, send=True)
+        print(f"HTTP clock action sent: {params['action']} {params['_descactiv']}")
+
+    def _perform_selenium(self):
         try:
             # Log in to ePortem
             self._login()
@@ -235,6 +251,8 @@ class EPortemAction:
             if self.driver:
                 self.driver.quit()
 
+    def after_action(self):
+        """Notifications and Slack status, once the action has been recorded."""
         manager = NotificationManager()
         if os.getenv('TELEGRAM_NOTIFY') == "YES":
             manager.register_channel(TelegramChannel())
@@ -276,8 +294,6 @@ class EPortemAction:
                 emoji = ":computer:"
                 expiration = 0
             status_updater.set_status(status_text, emoji, expiration)
-
-        return True
 
 
 def execute_action(action_type, location="office"):

@@ -174,3 +174,5 @@ diagnostics/
 
 # Dashboard captures (utility/capture_dashboard.py) - contain account data
 capture/
+# Saved ePortem session cookies (utility/http_clock.py)
+config/.session_cookies.json
