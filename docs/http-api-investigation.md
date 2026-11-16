@@ -24,11 +24,12 @@ needed to pick the work up in a new session, without the earlier conversation.
 - `at` (installed 2026-11-16) has one job left: the 18:30
   `utility.capture_dashboard` run. `atq` lists it.
 
-### Review changes of 2026-11-16: in the working tree, not committed or deployed
+### Review changes of 2026-11-16: deployed to `omv` that afternoon
 
-A full review on the afternoon of 2026-11-16 changed most files. Until these
-are committed and deployed, `omv` still runs `fd05812`, and everything else
-in this handoff describes that version. What changes once they are deployed:
+A full review on the afternoon of 2026-11-16 changed most files (commit
+`3f8ce17`, deployed before the 17:55 `stop_day`, so that is the first cron run
+on it). Where the rest of this handoff disagrees with the list below, the
+list is current. What changed:
 
 - **Outcome checks** (`utility/http_clock.py`). A 200 answer only counts as
   recorded if it is a clock result (it has `isActive`, `LastDescAct` or
@@ -57,24 +58,26 @@ in this handoff describes that version. What changes once they are deployed:
 - **`requirements.txt`** is pinned to what `omv`'s venv already has, so
   deploying doesn't trigger a reinstall.
 
-Things to know when deploying:
+Deployment notes (still true for later deploys):
 
 - Don't deploy between a cron line firing and its run finishing. The safest
   moment is mid-morning or mid-afternoon.
 - The live crontab was checked: every line lands inside its window, so exit 3
   should never fire. If a cron mail with "No action matches the current time"
   arrives, a crontab line is wrong.
+- Before switching, the suite was run on `omv` in a throwaway worktree
+  (Python 3.13: 279 tests OK), plus `main.py --check` and `run.sh`'s lock.
 - After deploying, run `./run.sh --check` on `omv`. It validates the config
   and override files and clocks nothing.
 - The first run after the deploy rewrites `config/.session_cookies.json` in
   the new format. The old format still loads.
 - `logs/` on `omv` is `755` with `644` files; the first HTTP attempt after
   the deploy tightens it to `700`/`600`.
-- Not done, needs a decision: deleting `feature/user-auth-and-multiuser` on
-  Gitea (and so on the GitHub mirror). Its history holds a sample `.jwt` file
-  with an email claim (commits `9c104b8`, `414b842`), default signing
-  secrets, and a debug server bound to `0.0.0.0`. It is the only place the
-  `.jwt` file is reachable from.
+- `feature/user-auth-and-multiuser` was deleted from Gitea and GitHub on
+  2026-11-16 (its history held a sample `.jwt` file with an email claim and
+  default signing secrets). Backup bundle, `chmod 600`:
+  `/home/pi/backups/eportem-feature-user-auth-and-multiuser-20261116.bundle`
+  on `omv`.
 - Small leftovers on `omv`: `USE_MOCK_SERVER` is still in `config/.env`
   (nothing reads it), and the comment above the first ePortem crontab line is
   out of date.
