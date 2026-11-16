@@ -171,3 +171,6 @@ business_trip_override.txt
 
 # Screenshots and HTML from failed runs (contain personal data)
 diagnostics/
+
+# Dashboard captures (utility/capture_dashboard.py) - contain account data
+capture/

@@ -130,4 +130,5 @@ Findings and next steps are in `docs/http-api-investigation.md`. In short:
 login can't be done with plain HTTP (the server checks a reCAPTCHA v3
 token), so the plan is a hybrid: Selenium logs in, then `requests` performs
 the clock action. It's blocked on capturing the dashboard's clock
-endpoints, which needs a run on this host with real credentials.
+endpoints. `utility/capture_dashboard.py` (branch `http-clock-actions`) does that
+capture without clicking anything. It needs a run on this host with real credentials.

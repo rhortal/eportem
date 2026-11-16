@@ -1,7 +1,8 @@
 # Investigation: replacing Selenium with direct HTTP calls
 
-Status: **paused, nothing implemented yet** (2026-11-16). This records what
-was found so the work can be picked up later.
+Status: **capture script written, waiting for a run with credentials**
+(2026-11-16, branch `http-clock-actions`). This records what was found so the
+work can be picked up later.
 
 ## Goal
 
@@ -44,6 +45,11 @@ the employer's bot detection, so it is ruled out.
 
 ### No alternative API found
 
+- The site is a PWA (`/manifest.json`, `start_url: /aplicaciones`), but
+  it's only a wrapper around the same web pages, not a separate API.
+  `/sw.js` is 58 bytes. Unknown paths return a 200 "not found" page of about 21.9 KB, so you can't
+  find hidden endpoints by guessing paths.
+
 - No public ePortem API documentation or open-source client exists (web and
   GitHub searches).
 - No ePortem mobile app turned up that might expose a captcha-free API.
@@ -80,6 +86,13 @@ credentials:
   - the cookie **names** and expiry times (never the values),
   - the `Network.requestWillBeSent` events from the performance log, with
     the password and cookie values redacted.
+**Done:** this is `utility/capture_dashboard.py`. Run it on the host
+(`python3 -m utility.capture_dashboard`); it writes to `capture/<timestamp>/`
+(gitignored, `chmod 700`). It never clicks and never POSTs, so it doesn't
+register a clock event. It also checks whether a `requests.Session` with the
+copied cookies can load `/aplicaciones`, which shows whether step 2 of the plan
+works. Read `hits.txt` and `buttons.html` first.
+
 - Reading the HTML and scripts is enough to find the endpoint **without
   clicking anything**. Only if that fails, add a `--click ACTION` mode that
   records one real action. Run that at the normal clock time, because it

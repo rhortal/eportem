@@ -203,6 +203,7 @@ The codebase follows DRY (Don't Repeat Yourself) principles with unified compone
 - `start_day.py`, `lunch_break_unified.py`, `after_lunch.py`, `stop_day.py` - thin CLI wrappers, each pinning one action and delegating to `eportem_action.run_fixed_action()`
 - `override_location.py` / `holiday_override.py` - write the override files that `main.py`/`eportem_action.py` read
 - `utility/` - shared helpers: env loading/checking, Selenium login, Telegram/Slack notifications, Slack status
+- `utility/capture_dashboard.py` - read-only diagnostic for the direct-HTTP work (see `docs/http-api-investigation.md`): logs in, saves the dashboard HTML/scripts/network log to `capture/` (gitignored) without clicking anything. Run with `python3 -m utility.capture_dashboard`
 
 ## Acknowledgements
 
