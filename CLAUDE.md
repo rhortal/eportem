@@ -48,7 +48,10 @@ security-update track again.
 If ePortem's automation silently stops firing again, check
 `chromium --version` and try
 `chromium --headless --disable-gpu --no-sandbox --dump-dom about:blank`
-before assuming the ePortem site's HTML/selectors changed — and don't rule
+before assuming the ePortem site's HTML/selectors changed. Also check whether
+the login page now rejects the headless browser via reCAPTCHA v3 (error
+"No se ha podido verificar que no es un robot" in the page after submit) —
+see `docs/http-api-investigation.md` — and don't rule
 out a fresh regression in whatever version unattended-upgrades has since
 pushed, since `--single-process` still crashes on this host as of 150.x.
 
@@ -120,3 +123,11 @@ Key files: `/etc/postfix/sasl_passwd` (relay credentials),
 misdeliver mail). `/etc/postfix/recipient_canonical` (pre-existing) maps
 local system users (root/pi/admin/@omv.local) to `<owner's personal email>` for
 local cron/system mail — unrelated to ePortem specifically, don't remove it.
+
+## Direct-HTTP (no browser) investigation — paused 2026-11-16
+
+Findings and next steps are in `docs/http-api-investigation.md`. In short:
+login can't be done with plain HTTP (the server checks a reCAPTCHA v3
+token), so the plan is a hybrid: Selenium logs in, then `requests` performs
+the clock action. It's blocked on capturing the dashboard's clock
+endpoints, which needs a run on this host with real credentials.
