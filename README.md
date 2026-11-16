@@ -70,6 +70,14 @@ python3 -m utility.http_clock lunch_break --location office          # dry run
 python3 -m utility.http_clock lunch_break --location office --send   # real clock event
 ```
 
+For cron, `run_http.sh ACTION [LOCATION]` sends the action over HTTP with the
+usual notifications and Slack status. It falls back to `run.sh` (the browser
+flow, with `main.py`'s schedule and holiday checks) only when the HTTP attempt
+recorded nothing. If the outcome is unknown, for example the request went out
+and the dashboard then couldn't be read, it fails without retrying so nothing
+is clocked twice, and cron mails the output. Every attempt is appended to
+`logs/http_clock.log`.
+
 ## Usage
 
 To run the script, use the `run.sh` script in the root directory:

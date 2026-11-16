@@ -124,12 +124,21 @@ misdeliver mail). `/etc/postfix/recipient_canonical` (pre-existing) maps
 local system users (root/pi/admin/@omv.local) to `<owner's personal email>` for
 local cron/system mail — unrelated to ePortem specifically, don't remove it.
 
-## Direct-HTTP (no browser) clocking — implemented, not yet switched on (2026-11-16)
+## Direct-HTTP (no browser) clocking — lunch only, since 2026-11-16
 
 Details in `docs/http-api-investigation.md`. Login can't be done with plain
 HTTP (reCAPTCHA v3), so `utility/http_clock.py` logs in with Selenium only when
 the saved cookies (`config/.session_cookies.json`) have expired, then sends
-the clock action as `GET .../registro/reghorario.cshtml`. It's enabled with
-`EPORTEM_HTTP=YES`. That isn't set on `omv` yet, so cron still clicks through
-Chromium. A dry run (`python3 -m utility.http_clock ACTION`) never changes
-clock status. Only `--send` or `EPORTEM_HTTP=YES` does.
+the clock action as `GET .../registro/reghorario.cshtml`.
+
+On this host the checkout is on branch **`http-clock-actions`** (not `main`),
+and only the **13:25 lunch cron line** uses it, via
+`run_http.sh lunch_break office`. The other lines still call `run.sh`. The
+previous crontab is saved as `/home/pi/crontab.bak-20261116-102837`. Every
+HTTP attempt is logged to `logs/http_clock.log`. Exit codes and fallback rules
+are documented in `run_http.sh`. A dry run (`python3 -m utility.http_clock
+ACTION`) never changes clock status.
+
+`at` was installed on 2026-11-16 for one-off jobs (e.g. timed
+`utility.capture_dashboard` runs; output in `logs/capture.log`). Use `atq` to
+list pending jobs.
