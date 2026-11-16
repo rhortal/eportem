@@ -2,9 +2,14 @@
 """Scheduler entrypoint called by cron (via run.sh).
 
 Exit codes:
-  0  clocked an action, or nothing to do (holiday, no schedule today), or --check passed
+  0  clocked an action, or nothing to do (holiday, no schedule today, EPORTEM_ENABLED
+     is not YES), or --check passed, or --verify-day found everything recorded
   2  config/config.json or holiday_override.txt is invalid: nothing was clocked
   3  today has a schedule but the current time is outside every action's window
+  4  --verify-day: a scheduled action was not recorded today, or was recorded twice
+
+A failed run (exit 2, 3 or an exception) also sends a short alert on the
+notification channels, on top of the cron mail.
 """
 import argparse
 import datetime
@@ -12,6 +17,9 @@ import json
 import os
 import re
 import sys
+from utility import alerts
+from utility.action_log import actions_recorded_on
+from utility.env_check import DISABLED_MESSAGE, is_enabled
 from utility.env_loader import load_environment
 from utility.paths import config_file, holiday_file, location_file
 from eportem_action import execute_action
@@ -21,9 +29,14 @@ load_environment()
 EXIT_OK = 0
 EXIT_INVALID = 2
 EXIT_NO_ACTION = 3
+EXIT_UNVERIFIED = 4
 
 # An action fires when the current time is within this many minutes of its target
 WINDOW_MINUTES = 15
+# --verify-day only judges an action once its window closed plus this much, which
+# covers the Selenium retry budget (RETRY_BUDGET_SECONDS in eportem_action.py,
+# 10 min) so a slow but successful run is not reported as missed.
+VERIFY_GRACE_MINUTES = 15
 
 HOLIDAY_STATUS_TEXT = "On holiday"
 HOLIDAY_STATUS_EMOJI = ":palm_tree:"
@@ -244,14 +257,47 @@ def _report_no_action(now, day, stream):
     print("\n".join(lines), file=stream)
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(
-        description="Clock the action scheduled for the current time (called by cron).")
-    parser.add_argument("--check", action="store_true",
-                        help="Validate config/overrides and show which action would run now "
-                             "and where, without clocking. Exits 0 unless validation fails.")
-    args = parser.parse_args(argv)
+def _join_names(names):
+    if len(names) <= 1:
+        return "".join(names)
+    return ", ".join(names[:-1]) + " and " + names[-1]
 
+
+def _verify_day(config, now, location):
+    """Compare today's scheduled actions whose window has closed with what
+    logs/actions.log recorded. Returns EXIT_OK or EXIT_UNVERIFIED."""
+    day = config["schedule"].get(str(now.weekday()))
+    if not day:
+        print("No schedule for today; nothing to verify.")
+        return EXIT_OK
+    minutes = now.hour * 60 + now.minute
+    due = [TASK_ACTIONS[name] for name, target in _targets(day)
+           if minutes >= target + WINDOW_MINUTES + VERIFY_GRACE_MINUTES]
+    if not due:
+        print("No scheduled action is past its window yet; nothing to verify.")
+        return EXIT_OK
+    recorded = actions_recorded_on(now.date())
+    missing = [a for a in due if recorded.count(a) == 0]
+    doubled = [a for a in due if recorded.count(a) > 1]
+    if not missing and not doubled:
+        print(f"Day check OK: {_join_names(due)} recorded today ({location}).")
+        return EXIT_OK
+    parts = []
+    if missing:
+        parts.append(f"today's {_join_names(missing)} {'was' if len(missing) == 1 else 'were'} not recorded.")
+    if doubled:
+        parts.append(f"today's {_join_names(doubled)} {'was' if len(doubled) == 1 else 'were'} "
+                     "recorded twice (possible double clock-in).")
+    text = "ePortem: " + " ".join(parts) + " Check Registro Jornada."
+    print(text, file=sys.stderr)
+    print(f"Scheduled and due: {', '.join(due)}. Recorded today: "
+          f"{', '.join(recorded) or 'nothing'}.", file=sys.stderr)
+    alerts.send_alert(text)
+    return EXIT_UNVERIFIED
+
+
+def _run(args, ctx):
+    """The body of main(). ctx collects what a failure alert needs to say."""
     # Validate everything first and report every problem, so a typo shows up in the cron mail
     problems = []
     config = None
@@ -261,7 +307,7 @@ def main(argv=None):
         problems.extend(f"{config_file()}: {p}" for p in e.problems)
     holiday = None
     try:
-        holiday = get_today_holiday(remove_stale=not args.check)
+        holiday = get_today_holiday(remove_stale=not (args.check or args.verify_day))
     except HolidayFileError as e:
         problems.append(f"{holiday_file()}: {e}. Refusing to clock because today may be a "
                         f"holiday: fix the file, or delete it, or re-run holiday_override.py.")
@@ -269,15 +315,20 @@ def main(argv=None):
         print("Nothing was clocked: invalid configuration.", file=sys.stderr)
         for p in problems:
             print(f"  - {p}", file=sys.stderr)
+        more = f" (+{len(problems) - 1} more)" if len(problems) > 1 else ""
+        ctx["reason"] = f"invalid configuration: {problems[0]}{more}"
         return EXIT_INVALID
 
     if holiday:
-        print("On holiday today - skipping check-in.")
-        if not args.check:
+        print("On holiday today - skipping check-in." if not args.verify_day
+              else "On holiday today; nothing to verify.")
+        if not (args.check or args.verify_day):
             update_holiday_slack_status(holiday)
         return EXIT_OK
 
     now = _now()
+    if args.verify_day:
+        return _verify_day(config, now, determine_location(config, remove_stale=False))
     day = config["schedule"].get(str(now.weekday()))
     if not day:
         print("No schedule for today.")
@@ -292,6 +343,7 @@ def main(argv=None):
                 print(f"Config OK. Would run {action} ({location}) now ({now:%H:%M}); "
                       f"{task} is scheduled for {_fmt(target)}.")
                 return EXIT_OK
+            ctx["action"] = action
             execute_action(action, location)
             return EXIT_OK
 
@@ -300,7 +352,53 @@ def main(argv=None):
         _report_no_action(now, day, sys.stdout)
         return EXIT_OK
     _report_no_action(now, day, sys.stderr)
+    ctx["reason"] = f"the time {now:%H:%M} is outside every scheduled action's window"
     return EXIT_NO_ACTION
 
+
+def _alert_failure(ctx, reason):
+    """Tell the notification channels that this run failed. Never raises."""
+    try:
+        alerts.send_alert(alerts.failure_text(ctx.get("action"), _now(), reason))
+    except Exception as e:
+        print(f"Failure alert not sent: {e}", file=sys.stderr)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Clock the action scheduled for the current time (called by cron).")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true",
+                      help="Validate config/overrides and show which action would run now "
+                           "and where, without clocking. Exits 0 unless validation fails.")
+    mode.add_argument("--verify-day", action="store_true",
+                      help="Compare today's scheduled actions (whose window has closed) with "
+                           "logs/actions.log; alert and exit 4 if one is missing or doubled.")
+    args = parser.parse_args(argv)
+
+    # Quiet off switch: not a failure, so no mail and no alert. --check still
+    # validates (it clocks nothing), with a note.
+    if not is_enabled():
+        if not args.check:
+            print(DISABLED_MESSAGE)
+            return EXIT_OK
+        print("Note: " + DISABLED_MESSAGE.replace("; nothing done.", "; a real run would do nothing."))
+
+    ctx = {"action": "verify-day" if args.verify_day else None}
+    try:
+        code = _run(args, ctx)
+    except Exception as e:
+        # The traceback still goes to cron (exit 1 as before); the alert is only a summary
+        if not args.check:
+            _alert_failure(ctx, alerts.describe_exception(e))
+        raise
+    if code in (EXIT_INVALID, EXIT_NO_ACTION) and not args.check:
+        _alert_failure(ctx, ctx.get("reason", f"exit code {code}"))
+    return code
+
+
 if __name__ == "__main__":
+    # Only for a real run, never on import (tests): every line gets HH:MM:SS
+    from utility.timestamps import install
+    install()
     sys.exit(main())

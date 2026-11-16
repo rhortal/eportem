@@ -207,3 +207,21 @@ skips the holiday/override checks.
 `utility.capture_dashboard` runs; output in `logs/capture.log`). Use `atq` to
 list pending jobs. The first `start_day` over HTTP (2026-11-17 08:55) is still
 an open check, listed in the handoff.
+
+## Alerts and the daily check (added 2026-11-16)
+
+Every recorded action is appended to `logs/actions.log` (time, date, action,
+location, `http`/`browser`). `./run.sh --verify-day`, from cron at 18:40 on
+weekdays, compares today's due actions with that file and alerts on Telegram
+and Slack (exit 4, so cron mails too) when one is missing or recorded twice.
+A cron run that fails (exception, exit 2 invalid config/holiday file, exit 3
+outside every window) also sends a short alert on the same channels. Output
+lines carry `HH:MM:SS` timestamps. `EPORTEM_ENABLED` other than `YES` is now a
+quiet off switch: one line and exit 0, no mail and no alert.
+
+`logs/actions.log` only exists from the deploy on the evening of 2026-11-16,
+so the verify line was added to the crontab after that day's 18:40 slot; a
+day's check is only meaningful once that day's actions were all run by the
+new code.
+
+Open items for the host live in `TODO.md` (tracked).

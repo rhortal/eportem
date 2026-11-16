@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run main.py from the project's venv (what cron calls). Extra arguments go to
-# main.py, e.g. ./run.sh --check. The exit code is main.py's.
+# main.py, e.g. ./run.sh --check or ./run.sh --verify-day. The exit code is main.py's.
 #   ./run.sh --install   only create/repair the venv, don't run main.py
 # Exit 75 means another run holds the lock and this one did nothing.
 set -u

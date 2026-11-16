@@ -14,6 +14,7 @@ from utility.login_and_navigate import LOGIN_URL, create_driver, login_and_navig
 from utility.notification_send import NotificationManager, TelegramChannel, SlackChannel, _describe_error
 from utility.paths import business_trip_file
 from utility.env_check import check_env_variable
+from utility.action_log import record_action
 
 # ePortem session-type IDs used in the "start"/"resume" button selectors below.
 # These are specific to this account's ePortem configuration, not a fixed
@@ -363,6 +364,7 @@ class EPortemAction:
         main.py), so they apply whichever way the action is sent."""
         check_env_variable()
 
+        how = "http"
         if self.driver is None and http_enabled_for(self.action_type):
             from utility.http_clock import NotRecorded, OutcomeUnknown
             tee = _Tee(sys.stdout)
@@ -376,6 +378,7 @@ class EPortemAction:
                                   f"not recorded, falling back to the browser: {e}",
                                   tee.copy.getvalue())
                 print(f"HTTP clock recorded nothing ({e}); falling back to the browser")
+                how = "browser"
                 self._perform_selenium()
             except OutcomeUnknown as e:
                 # Retrying could clock twice. Fail, so cron mails the output.
@@ -389,8 +392,11 @@ class EPortemAction:
                                   tee.copy.getvalue())
                 raise
         else:
+            how = "browser"
             self._perform_selenium()
 
+        # Before the follow-ups: main.py --verify-day reads this to spot missed actions
+        record_action(self.action_type, self.location, how)
         self.after_action()
         return True
 

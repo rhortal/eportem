@@ -15,7 +15,9 @@ ePortem is a SaaS solution used in Spain for HR-related tasks. These scripts aut
 - Per-day location override (home/office)
 - Business trip mode: check-ins run as normal, but Slack status stays "On a business trip" for the whole trip
 - Holiday mode: skips check-ins and notifications entirely for a date range, with a matching Slack status
-- Fails loudly: an invalid `config/config.json`, an unreadable holiday file, or a run that matches no scheduled action exits non-zero, so cron mails it
+- Fails loudly: an invalid `config/config.json`, an unreadable holiday file, or a run that matches no scheduled action exits non-zero, so cron mails it, and also sends a short alert on Telegram/Slack
+- Day check: `--verify-day` compares what was scheduled today with what was recorded and alerts if an action is missing or was recorded twice
+- Every output line of a cron run starts with a `HH:MM:SS` timestamp
 
 ## Deployment
 
@@ -52,7 +54,7 @@ The software takes configuration including ePortem, Telegram and Slack credentia
 - Set permissions so only you can read it: `chmod 600 config/.env`
 
 The `YES`/`NO` flags are exact matches: only the exact text `YES` turns a feature on. `TELEGRAM_NOTIFY`, `SLACK_NOTIFY` and `SLACK_STATUS` ship as `NO`; set each to `YES` only after filling in its credentials. Two general flags matter for cron:
-- `EPORTEM_ENABLED` is a kill switch: anything other than exactly `YES` makes every run stop before clocking, with a non-zero exit (so cron mails it).
+- `EPORTEM_ENABLED` is a quiet off switch: anything other than exactly `YES` makes every run print `ePortem is disabled (EPORTEM_ENABLED is not YES); nothing done.` and exit 0, so there is no cron mail and no alert. It is checked first, before the config is validated and before any holiday Slack status is set. The scripts run directly (`start_day.py`, `eportem_action.py`, ...) stop the same way, with exit status 0. `./run.sh --check` still validates (it clocks nothing) and adds a note that a real run would do nothing.
 - `HEADLESS_BROWSING` must be `YES` under cron; anything else opens a visible browser window.
 
 ### Slack notification credentials
@@ -85,6 +87,29 @@ Messages tab so you can see the DM with the app.
 If a notification fails with "the bot token lacks the chat:write scope", the
 scope is missing or the app was not reinstalled after adding it; if the app
 is not in the channel you set, invite it or use your user ID instead.
+
+### Failure alerts and the day check
+
+Besides the cron mail, a failed cron run sends a short alert on the same
+channels as the clock notifications (`TELEGRAM_NOTIFY` / `SLACK_NOTIFY`; the
+same credentials, 15-second timeout):
+
+```
+ePortem: lunch_break FAILED at 13:41 - OutcomeUnknown: the request timed out. Check ePortem by hand; details in the cron mail.
+```
+
+It is sent when `main.py` ends with an exception, exit 2 (invalid
+configuration) or exit 3 (no window matched). The alert names the action
+that was running when an exception hit, otherwise `run`. The reason is the exception type and
+a short one-line message with tokens, webhook URLs and the ePortem password
+removed; there is never a traceback (that is in the cron mail). Sending the
+alert can't fail the run or change its exit code. No alert is sent for
+`--check`, for a wrong command-line argument, when `EPORTEM_ENABLED` is off, or
+when the action was recorded and only a follow-up (notification, Slack status)
+failed: that run is still a success (see below).
+
+`--verify-day` (see [Usage](#usage)) uses the same channels to say that a
+scheduled action never got recorded.
 
 ### When a notification fails
 
@@ -188,13 +213,45 @@ Exit codes of `main.py` (and so of `run.sh`, which passes them through):
 
 | Code | Meaning |
 |------|---------|
-| 0 | An action ran, or there was nothing to do (holiday, no schedule for today's weekday) |
+| 0 | An action ran, or there was nothing to do (holiday, no schedule for today's weekday, `EPORTEM_ENABLED` not `YES`), or `--verify-day` found everything recorded |
 | 2 | `config/config.json` or `holiday_override.txt` is invalid; nothing was clocked |
 | 3 | Today has a schedule, but the current time is outside every action's window |
+| 4 | `--verify-day` only: a scheduled action was not recorded today, or was recorded twice |
 | 75 | `run.sh` only: another run holds the lock |
+
+Exit 2, exit 3 and a crash also send a failure alert (see
+[Failure alerts and the day check](#failure-alerts-and-the-day-check)).
+Every output line starts with the time (`09:01:12 `), so the cron mail and
+the logs show when each step happened; this applies to what `main.py` prints
+when run, not to the other scripts.
 
 Cron mails the output of any non-zero run. Exit 3 almost always means a
 crontab line fires outside its window (see [Automation](#automation)).
+
+To check at the end of the day that everything was clocked, use `--verify-day`:
+
+```bash
+./run.sh --verify-day
+```
+
+Each action that `main.py` records (over HTTP or the browser) appends a line
+to `logs/actions.log` (timestamp, date, action, location, `http` or `browser`;
+`chmod 600`, folder `700`). `--verify-day` takes today's schedule from
+`config/config.json`, the same way a normal run does, and compares the
+actions whose window has closed (target + 15 minutes + `VERIFY_GRACE_MINUTES`,
+another 15, in `main.py`) with that log, so it is safe to run at any time of
+day. An action that is still inside its window is not judged. Then:
+
+- Holiday, nothing scheduled today, or `EPORTEM_ENABLED` off: it prints a line
+  and exits 0, with no alert.
+- Everything recorded once: `Day check OK: ...`, exit 0.
+- Something missing, or recorded twice (a possible double clock-in): it prints
+  the details, sends an alert such as `ePortem: today's lunch_break and
+  after_lunch were not recorded. Check Registro Jornada.` and exits 4, so cron
+  mails it too.
+- Invalid config or holiday file: exit 2, as for a normal run.
+
+`--verify-day` and `--check` can't be combined.
 
 `main.py` and the action scripts need the `venv` created by `run.sh --install`.
 Run them with `venv/bin/python3`. Only `override_location.py` and
@@ -326,6 +383,14 @@ SHELL=/bin/bash
 55 17 * * 1-5 sleep $[RANDOM\%10]m ; /full_path/run.sh
 ```
 
+To get told when an action was missed, add a day check after the last action (no random sleep, so no `\%` here):
+
+```
+40 18 * * 1-5 /full_path/run.sh --verify-day
+```
+
+It alerts on Telegram/Slack (if enabled) and exits 4, which cron mails. Use the weekdays of your schedule.
+
 Things that have to be right:
 - `SHELL=/bin/bash` at the top. `$RANDOM` and `$[ ]` are bash features, and cron runs lines with `/bin/sh` (dash on Debian), where the `sleep` fails and the script runs immediately with no random delay.
 - `%` must be written `\%` in a crontab line; an unescaped one is turned into a newline.
@@ -353,7 +418,7 @@ To run the tests, use the `run_tests.sh` script in the root directory:
 
 It runs from any directory, uses `venv/bin/python3` (or `.venv/bin/python3`), runs every test found by `unittest discover` in `tests/`, and passes extra arguments to unittest (`./run_tests.sh -v`, or a module such as `tests.test_main`).
 
-Tests cover `main.py`'s scheduling/holiday logic, `eportem_action.py`'s
+Tests cover `main.py`'s scheduling/holiday logic, `--verify-day`, failure alerts, the kill switch and the timestamped output, `eportem_action.py`'s
 click flow, HTTP/browser choice and fallback, and Slack status handling,
 `utility/http_clock.py`'s button selection, session cookies and outcome
 checks, and the `override_location.py` / `holiday_override.py` CLIs - all
@@ -399,7 +464,7 @@ The codebase follows DRY (Don't Repeat Yourself) principles with unified compone
 - `main.py` - Scheduler entrypoint called by cron; decides which action (if any) to run based on the current time and `config/config.json`
 - `start_day.py`, `lunch_break_unified.py`, `after_lunch.py`, `stop_day.py` - thin CLI wrappers, each pinning one action and delegating to `eportem_action.run_fixed_action()`
 - `override_location.py` / `holiday_override.py` - write (atomically) the override files that `main.py`/`eportem_action.py` read, in the repository root (or `EPORTEM_STATE_DIR`); stdlib-only, so they run with plain `python3`
-- `utility/` - shared helpers: state file locations (`paths.py`), env loading/checking, Selenium login, Telegram/Slack notifications, Slack status
+- `utility/` - shared helpers: state file locations (`paths.py`), env loading/checking, Selenium login, Telegram/Slack notifications, Slack status, the recorded-actions log (`action_log.py`), failure/day-check alerts (`alerts.py`), and the timestamp wrapper for output (`timestamps.py`)
 - `utility/http_clock.py` - HTTP clock client for the actions `EPORTEM_HTTP` enables (browser only for login); `clock_and_verify()` tells "nothing recorded" (safe to fall back) from "outcome unknown"
 - `utility/capture_dashboard.py` - read-only diagnostic for the direct-HTTP work (see `docs/http-api-investigation.md`): logs in, saves the dashboard HTML, button markup, scripts, script hits, cookie names and a session check to `capture/` (gitignored) without clicking anything. Run with `venv/bin/python3 -m utility.capture_dashboard`
 

@@ -462,18 +462,25 @@ class TestEnvCheck(unittest.TestCase):
         with patch.dict(os.environ, {"EPORTEM_ENABLED": "YES"}):
             self.assertIsNone(env_check.check_env_variable())
 
-    def test_not_enabled_exits_non_zero(self):
+    def test_not_enabled_stops_quietly_with_status_zero(self):
         for value in ("NO", "yes", ""):
             with self.subTest(value=value), patch.dict(os.environ, {"EPORTEM_ENABLED": value}):
-                with self.assertRaises(SystemExit) as cm:
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out), self.assertRaises(SystemExit) as cm:
                     env_check.check_env_variable()
-                self.assertIn("EPORTEM_ENABLED", str(cm.exception.code))
+                self.assertEqual(cm.exception.code, 0)
+                self.assertEqual(out.getvalue().strip(), env_check.DISABLED_MESSAGE)
 
-    def test_unset_exits_non_zero(self):
+    def test_unset_stops_with_status_zero(self):
         with patch.dict(os.environ):
             os.environ.pop("EPORTEM_ENABLED", None)
-            with self.assertRaises(SystemExit):
+            with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as cm:
                 env_check.check_env_variable()
+            self.assertEqual(cm.exception.code, 0)
+
+    def test_message_text(self):
+        self.assertEqual(env_check.DISABLED_MESSAGE,
+                         "ePortem is disabled (EPORTEM_ENABLED is not YES); nothing done.")
 
 
 if __name__ == '__main__':

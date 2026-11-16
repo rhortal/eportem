@@ -13,6 +13,12 @@ from unittest.mock import patch
 
 import main
 
+ENV_ISOLATION = {
+    "EPORTEM_ENABLED": "YES", "TELEGRAM_NOTIFY": "NO", "SLACK_NOTIFY": "NO",
+    "SLACK_STATUS": "NO", "TELEGRAM_BOT_TOKEN": "", "TELEGRAM_CHAT_ID": "",
+    "SLACK_BOT_TOKEN": "", "SLACK_TOKEN": "", "SLACK_WEBHOOK_URL": "",
+}
+
 MONDAY = datetime.datetime(2026, 8, 10, 9, 0)
 TUESDAY = datetime.datetime(2026, 8, 11, 9, 0)
 
@@ -24,7 +30,10 @@ class _StateDirMixin:
     def setUp(self):
         self._tmpdir = tempfile.TemporaryDirectory()
         self.state = Path(self._tmpdir.name)
-        env = patch.dict(os.environ, {"EPORTEM_STATE_DIR": self._tmpdir.name})
+        # Whatever the host's config/.env says: enabled, and no channel or credential
+        # that a failure alert could really send through
+        env = patch.dict(os.environ, dict(
+            ENV_ISOLATION, EPORTEM_STATE_DIR=self._tmpdir.name))
         env.start()
         self.addCleanup(env.stop)
         self.addCleanup(self._tmpdir.cleanup)
