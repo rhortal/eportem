@@ -126,7 +126,9 @@ local cron/system mail — unrelated to ePortem specifically, don't remove it.
 
 ## Direct-HTTP (no browser) clocking — lunch only, since 2026-11-16
 
-Details in `docs/http-api-investigation.md`. Login can't be done with plain
+**Picking this up in a new session: read the "Handoff" section at the top of
+`docs/http-api-investigation.md` first.** It has the live state, what ran on
+2026-11-16 and how to check it, and the next steps. Login can't be done with plain
 HTTP (reCAPTCHA v3), so `utility/http_clock.py` logs in with Selenium only when
 the saved cookies (`config/.session_cookies.json`) have expired, then sends
 the clock action as `GET .../registro/reghorario.cshtml`.
