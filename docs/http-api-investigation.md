@@ -5,7 +5,7 @@ needed to pick the work up in a new session, without the earlier conversation.
 
 ## Handoff: state as of 2026-11-16 11:05 (Monday)
 
-### All actions over HTTP, with fallback in the orchestrator (deployed 2026-11-16 ~14:00)
+### All actions over HTTP, with fallback in the orchestrator (deployed 2026-11-16 14:57)
 
 `run_http.sh` is gone. The choice between HTTP and Selenium now lives in
 `EPortemAction.perform()`, which `main.py` calls **after** it has applied
@@ -23,10 +23,11 @@ overrides hold whichever way an action is sent, and cron goes back to calling
   `=== date action location: outcome` followed by the HTTP client's output
   (including the `Session:` line).
 
-**On `omv` since 2026-11-16 ~14:00:** `config/.env` has `EPORTEM_HTTP=YES`
+**On `omv` since 2026-11-16 14:57:** `config/.env` has `EPORTEM_HTTP=YES`
 (all four actions), and the 13:25 line calls `run.sh` again like every other
 line (crontab before this change: `/home/pi/crontab.bak-20261116-run_http`).
-The first runs on the new path were 14:25 (after lunch) and 17:55 (stop).
+The 14:25 after-lunch run predates the deploy and used Selenium; the first
+run on the new path is 17:55 (stop).
 The first `start_day` over HTTP is Tuesday 2026-11-17 08:55; its office button
 was a guess until the 18:30 capture, and if it's wrong the run falls back to
 the browser (check `logs/http_clock.log`).

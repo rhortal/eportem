@@ -138,7 +138,7 @@ Which actions go over HTTP is set by `EPORTEM_HTTP` in `config/.env`
 (`YES`, `NO` or a list like `lunch_break,after_lunch`); cron calls `run.sh`
 for every line, and `main.py` applies holidays and overrides before
 `EPortemAction.perform()` tries HTTP and falls back to Selenium only when
-nothing was recorded. Since 2026-11-16 ~14:00 `omv` has `EPORTEM_HTTP=YES`. The
+nothing was recorded. Since 2026-11-16 14:57 `omv` has `EPORTEM_HTTP=YES`. The
 previous crontab is saved as `/home/pi/crontab.bak-20261116-102837`. Every
 HTTP attempt is logged to `logs/http_clock.log`. A dry run
 (`python3 -m utility.http_clock ACTION`) never changes clock status, but it
