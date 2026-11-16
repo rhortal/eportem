@@ -65,7 +65,7 @@ class TestActionLog(IsolatedCase):
 
     def test_write_failure_never_raises_and_does_not_fail_the_run(self):
         out = io.StringIO()
-        with patch("utility.action_log.os.open", side_effect=OSError("disk full")), \
+        with patch("utility.logfiles.os.open", side_effect=OSError("disk full")), \
                 contextlib.redirect_stdout(out):
             action_log.record_action("start_day", "office", "http")  # must not raise
             self.assertTrue(EPortemAction("start_day", "office", MagicMock()).perform())

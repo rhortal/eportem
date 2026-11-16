@@ -15,6 +15,7 @@ from utility.notification_send import NotificationManager, TelegramChannel, Slac
 from utility.paths import business_trip_file
 from utility.env_check import check_env_variable
 from utility.action_log import record_action
+from utility import logfiles
 
 # ePortem session-type IDs used in the "start"/"resume" button selectors below.
 # These are specific to this account's ePortem configuration, not a fixed
@@ -34,7 +35,6 @@ LOGIN_ATTEMPTS = 3  # kept low so a rejected login can't hammer the account
 MAX_LOGINS_PER_RUN = 4
 MAX_DIAGNOSTICS_PER_RUN = 3
 MAX_DIAGNOSTICS_FILES = 20  # newest files kept in diagnostics/ (a set is .html + .png)
-HTTP_LOG_MAX_BYTES = 1_000_000  # rotated to http_clock.log.1 beyond this
 
 ACTIONS = ("start_day", "lunch_break", "after_lunch", "stop_day")
 LOCATIONS = ("home", "office")
@@ -106,24 +106,14 @@ class _Tee(io.TextIOBase):
 
 
 def _log_http_attempt(action_type, location, outcome, output=""):
-    """One block per HTTP attempt in logs/http_clock.log: the outcome, then what
-    the HTTP client printed (including the session-age line). Cron only mails on
-    failure, so this is the record of attempts and fallbacks that ended well.
-    The file holds server response excerpts, so it is private (0600, dir 0700)."""
+    """One block per clock run in logs/http_clock.log: the outcome, then
+    everything perform() printed (the HTTP attempt incl. the session-age line,
+    the browser fallback, the follow-ups). Cron only mails on failure, so this
+    is the record of runs that ended well. The file holds server response
+    excerpts, so it is private and rotated (utility/logfiles.py)."""
     try:
-        log_dir = os.path.dirname(HTTP_LOG)
-        os.makedirs(log_dir, mode=0o700, exist_ok=True)
-        with contextlib.suppress(OSError):
-            os.chmod(log_dir, 0o700)
-        with contextlib.suppress(OSError):
-            if os.path.getsize(HTTP_LOG) > HTTP_LOG_MAX_BYTES:
-                os.replace(HTTP_LOG, HTTP_LOG + ".1")
-        fd = os.open(HTTP_LOG, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
-        with os.fdopen(fd, "a") as f:
-            f.write(f"=== {datetime.datetime.now():%Y-%m-%d %H:%M:%S} "
-                    f"{action_type} {location}: {outcome}\n{output}")
-        with contextlib.suppress(OSError):
-            os.chmod(HTTP_LOG, 0o600)
+        logfiles.append(HTTP_LOG, f"=== {datetime.datetime.now():%Y-%m-%d %H:%M:%S} "
+                                  f"{action_type} {location}: {outcome}\n{output}")
     except OSError as e:  # never let logging hide the real result
         print(f"Could not write {HTTP_LOG}: {e}")
 
@@ -364,41 +354,56 @@ class EPortemAction:
         main.py), so they apply whichever way the action is sent."""
         check_env_variable()
 
-        how = "http"
+        # Everything printed from here on (HTTP attempt, browser fallback,
+        # follow-ups) is copied into this run's block in logs/http_clock.log.
+        tee = _Tee(sys.stdout)
+        run = {"outcome": None, "fallback": False}
+        try:
+            with contextlib.redirect_stdout(tee):
+                how = self._clock(run)
+                # Before the follow-ups: main.py --verify-day reads this to spot missed actions
+                record_action(self.action_type, self.location, how)
+                self.after_action()
+        except BaseException as e:
+            if run["outcome"] is None:
+                run["outcome"] = f"ERROR, browser run failed: {type(e).__name__}: {e}"
+            elif run["fallback"]:
+                tee.copy.write(f"Browser fallback failed: {type(e).__name__}: {e}\n")
+            raise
+        finally:
+            _log_http_attempt(self.action_type, self.location,
+                              run["outcome"] or "ERROR: run did not finish", tee.copy.getvalue())
+        return True
+
+    def _clock(self, run):
+        """Record the action over HTTP or the browser; returns how. Fills
+        run["outcome"] (the header for the log block) as soon as it is known."""
         if self.driver is None and http_enabled_for(self.action_type):
             from utility.http_clock import NotRecorded, OutcomeUnknown
-            tee = _Tee(sys.stdout)
             try:
-                with contextlib.redirect_stdout(tee):
-                    self._perform_http()
-                _log_http_attempt(self.action_type, self.location, "recorded over HTTP",
-                                  tee.copy.getvalue())
+                self._perform_http()
+                run["outcome"] = "recorded over HTTP"
+                return "http"
             except NotRecorded as e:
-                _log_http_attempt(self.action_type, self.location,
-                                  f"not recorded, falling back to the browser: {e}",
-                                  tee.copy.getvalue())
+                run["outcome"] = f"not recorded, falling back to the browser: {e}"
                 print(f"HTTP clock recorded nothing ({e}); falling back to the browser")
-                how = "browser"
-                self._perform_selenium()
             except OutcomeUnknown as e:
                 # Retrying could clock twice. Fail, so cron mails the output.
-                _log_http_attempt(self.action_type, self.location, f"OUTCOME UNKNOWN: {e}",
-                                  tee.copy.getvalue())
+                run["outcome"] = f"OUTCOME UNKNOWN: {e}"
                 raise
             except Exception as e:
                 # A bug, not a known "nothing sent" case: don't guess, fail loudly.
-                _log_http_attempt(self.action_type, self.location,
-                                  f"ERROR, no fallback: {type(e).__name__}: {e}",
-                                  tee.copy.getvalue())
+                run["outcome"] = f"ERROR, no fallback: {type(e).__name__}: {e}"
                 raise
+            run["fallback"] = True
         else:
-            how = "browser"
+            why = ("HTTP not enabled for this action" if self.driver is None
+                   else "browser supplied by the caller")
             self._perform_selenium()
-
-        # Before the follow-ups: main.py --verify-day reads this to spot missed actions
-        record_action(self.action_type, self.location, how)
-        self.after_action()
-        return True
+            run["outcome"] = f"recorded with the browser ({why})"
+            return "browser"
+        self._perform_selenium()
+        return "browser"
 
     def _perform_http(self):
         """Clock via a direct HTTP request; the browser is only used to log in

@@ -123,7 +123,7 @@ WARNING: the clock action WAS recorded, but these follow-ups failed: telegram, s
 ```
 
 and still exits 0, so cron doesn't mail it as a failed clock-in. The warning is
-in `logs/http_clock.log` for actions sent over HTTP. A notifier that is
+in that run's block in `logs/http_clock.log`. A notifier that is
 switched on without its credentials is skipped with a one-line message and
 isn't counted as a failure. Tokens and webhook URLs are removed from any error
 text before it is printed.
@@ -148,8 +148,14 @@ action of each day.
 If HTTP recorded nothing (for example the button wasn't on the dashboard, or
 the login failed), the same run falls back to the Selenium click flow. If the
 request went out and it can't be told whether it was recorded, it fails without
-retrying, so nothing is clocked twice, and cron mails the output. Every HTTP
-attempt, including fallbacks, is appended to `logs/http_clock.log`. Details:
+retrying, so nothing is clocked twice, and cron mails the output. Every clock
+run is appended to `logs/http_clock.log` as one block: a header line with the
+outcome (`recorded over HTTP`, `not recorded, falling back to the browser: ...`,
+`OUTCOME UNKNOWN: ...`, `ERROR, no fallback: ...`, or `recorded with the
+browser (HTTP not enabled for this action)`), then everything the run printed
+in order: the HTTP attempt, the browser fallback if there was one, and the
+notification and Slack status lines. Runs that only use the browser are in it
+too, so it is the record of every clock run, despite its name. Details:
 `docs/http-api-investigation.md`.
 
 How a run decides whether the action was recorded:
@@ -172,8 +178,8 @@ offer it, nothing is sent over HTTP. `EPORTEM_HTTP` is not case-sensitive
 isn't an action is reported with a warning and ignored.
 
 The log file and its folder are readable only by you (`chmod 600` / `700`).
-At about 1 MB the log is renamed to `http_clock.log.1`, replacing the previous
-one.
+At about 1 MB the log is rotated to `http_clock.log.1`, the older ones shift
+up to `.5` and the oldest is dropped (`utility/logfiles.py`).
 
 To see which request an action would send, without sending it (this skips the
 schedule, holiday and override checks, so use it for testing by hand only):
@@ -236,10 +242,11 @@ To check at the end of the day that everything was clocked, use `--verify-day`:
 
 Each action that `main.py` records (over HTTP or the browser) appends a line
 to `logs/actions.log` (timestamp, date, action, location, `http` or `browser`;
-`chmod 600`, folder `700`). `--verify-day` takes today's schedule from
+`chmod 600`, folder `700`; rotated like `http_clock.log`: 1 MB, 5 generations).
+`--verify-day` takes today's schedule from
 `config/config.json`, the same way a normal run does, and compares the
 actions whose window has closed (target + 15 minutes + `VERIFY_GRACE_MINUTES`,
-another 15, in `main.py`) with that log, so it is safe to run at any time of
+another 15, in `main.py`) with that log (and its rotated generations), so it is safe to run at any time of
 day. An action that is still inside its window is not judged. Then:
 
 - Holiday, nothing scheduled today, or `EPORTEM_ENABLED` off: it prints a line

@@ -470,7 +470,7 @@ class TestLogAndDiagnosticsHygiene(IsolatedCase):
         self.assertEqual(self._mode(os.path.dirname(self.http_log)), 0o700)
 
     def test_log_rotates_when_too_big(self):
-        with patch("eportem_action.HTTP_LOG_MAX_BYTES", 30):
+        with patch("utility.logfiles.MAX_BYTES", 30), patch("utility.logfiles.GENERATIONS", 1):
             eportem_action._log_http_attempt("start_day", "office", "first", "x" * 100)
             eportem_action._log_http_attempt("stop_day", "office", "second")
             eportem_action._log_http_attempt("stop_day", "office", "third")
