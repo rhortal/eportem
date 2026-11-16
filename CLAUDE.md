@@ -114,9 +114,12 @@ server (wrong template path, mock login fields that didn't match the real
 ePortem login form since the `usuario` rename) — rather than fix unused,
 broken code, the user asked to delete it.
 
-Nothing is truly gone: the full pre-removal tree is preserved on the remote
-branch `archive/web-ui-docker-mock-server` (branched off the last commit
-before the removal). `eportem_action.py` and
+Nothing is truly gone: the full pre-removal tree is the tag
+`archive/web-ui-docker-mock-server` (the last commit before the removal; it
+was a branch until 2026-11-16, when the archive branches became tags). The
+tag `archive/holidays-json-experiment` keeps an unmerged July 2026 experiment
+with holidays and business trips in a JSON file, superseded by
+`holiday_override.py` / `override_location.py`. `eportem_action.py` and
 `utility/login_and_navigate.py` also got a cleanup pass to drop the
 `USE_MOCK_SERVER`/`--mock`/`--use-mock-server` branches that existed only to
 support the mock server — the real automation path's behavior is unchanged
