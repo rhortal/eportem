@@ -24,6 +24,7 @@ CLI (dry run by default - prints the request without sending it):
 Exit codes (EXIT_* below) tell run_http.sh whether falling back to Selenium is safe.
 """
 import argparse
+import datetime
 import json
 import os
 import sys
@@ -44,6 +45,15 @@ SESSION_ID_OFFICE_DEFAULT = "1"
 LUNCH_PAUSE_ID = "2"  # "Comida", the first _stpause entry - what Selenium clicks
 
 CLOCK_IDS = ("_ststart", "_stpause", "_stini", "_ststop")
+
+
+def _parse_time(value):
+    return datetime.datetime.fromisoformat(value) if value else None
+
+
+def _fmt_delta(delta):
+    minutes = int(delta.total_seconds() // 60)
+    return f"{minutes // 60}h{minutes % 60:02d}m"
 
 
 class SessionExpired(Exception):
@@ -122,24 +132,50 @@ def build_params(button):
 
 class HttpClock:
     def __init__(self, session=None):
+        self.logged_in_at = None
+        self.last_used_at = None
         self.session = session or requests.Session()
         self.session.headers.setdefault("User-Agent", USER_AGENT)
 
     # --- cookies -------------------------------------------------------
     def load_cookies(self, path=COOKIE_FILE):
+        """Load saved cookies. The file is {"logged_in_at", "last_used_at",
+        "cookies"}; an older plain list is accepted, its mtime taken as the
+        login time."""
         if not path.exists():
             return False
-        for c in json.loads(path.read_text()):
+        data = json.loads(path.read_text())
+        if isinstance(data, list):
+            data = {"cookies": data, "last_used_at": None,
+                    "logged_in_at": datetime.datetime.fromtimestamp(path.stat().st_mtime).isoformat()}
+        self.logged_in_at = _parse_time(data.get("logged_in_at"))
+        self.last_used_at = _parse_time(data.get("last_used_at"))
+        for c in data["cookies"]:
             self.session.cookies.set(c["name"], c["value"],
                                      domain=c.get("domain"), path=c.get("path", "/"))
         return True
 
     def save_cookies(self, path=COOKIE_FILE):
-        data = [{"name": c.name, "value": c.value, "domain": c.domain, "path": c.path}
-                for c in self.session.cookies]
+        """Save the cookies (including any auth ticket the server renewed)
+        and record when the session was last used."""
+        self.last_used_at = datetime.datetime.now()
+        data = {
+            "logged_in_at": self.logged_in_at.isoformat() if self.logged_in_at else None,
+            "last_used_at": self.last_used_at.isoformat(),
+            "cookies": [{"name": c.name, "value": c.value, "domain": c.domain, "path": c.path}
+                        for c in self.session.cookies],
+        }
         path.touch(mode=0o600, exist_ok=True)
         os.chmod(path, 0o600)
         path.write_text(json.dumps(data))
+
+    def _session_age(self):
+        """'login 10:27, 3h05m ago; last used 10:56, 2h34m ago' - for the log, so
+        each run is a data point on how long an ePortem session lasts."""
+        now = datetime.datetime.now()
+        def part(label, t):
+            return f"{label} {t:%H:%M}, {_fmt_delta(now - t)} ago" if t else f"{label} unknown"
+        return f"{part('login', self.logged_in_at)}; {part('last used', self.last_used_at)}"
 
     def import_selenium_cookies(self, driver):
         self.session.cookies.clear()
@@ -157,6 +193,7 @@ class HttpClock:
             if "/Usuario/Login" in driver.current_url:
                 raise RuntimeError(f"Login failed, still on {driver.current_url}")
             self.import_selenium_cookies(driver)
+            self.logged_in_at = datetime.datetime.now()
         finally:
             driver.quit()
         self.save_cookies()
@@ -173,9 +210,15 @@ class HttpClock:
         """Return the dashboard buttons, logging in with a browser if needed."""
         if self.load_cookies():
             try:
-                return self.fetch_buttons()
+                buttons = self.fetch_buttons()
+                print(f"Session: saved session still valid ({self._session_age()})")
+                self.save_cookies()  # keep a renewed auth ticket, if the server sent one
+                return buttons
             except SessionExpired:
-                print("Saved session expired, logging in with the browser")
+                print(f"Session: saved session expired ({self._session_age()}); "
+                      "logging in with the browser")
+        else:
+            print("Session: no saved session; logging in with the browser")
         self.browser_login()
         return self.fetch_buttons()
 

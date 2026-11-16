@@ -221,5 +221,56 @@ class TestCliExitCodes(unittest.TestCase):
         self.assertTrue(clock.is_recorded({**self.PARAMS, "action": "_ststart", "_codactiv": "1"}))
 
 
+class TestCookieFile(unittest.TestCase):
+
+    def setUp(self):
+        import tempfile, pathlib
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        self.path = pathlib.Path(self.dir.name) / "cookies.json"
+
+    def test_round_trip_keeps_login_time_and_sets_last_used(self):
+        import datetime, json
+        clock = HttpClock(requests_session())
+        clock.session.cookies.set(".ASPXAUTH", "abc", domain="eportem.es", path="/")
+        clock.logged_in_at = datetime.datetime(2026, 11, 16, 10, 27)
+        clock.save_cookies(self.path)
+        self.assertEqual(oct(self.path.stat().st_mode & 0o777), "0o600")
+        data = json.loads(self.path.read_text())
+        self.assertEqual(data["logged_in_at"], "2026-11-16T10:27:00")
+        self.assertIsNotNone(data["last_used_at"])
+
+        again = HttpClock(requests_session())
+        self.assertTrue(again.load_cookies(self.path))
+        self.assertEqual(again.logged_in_at, datetime.datetime(2026, 11, 16, 10, 27))
+        self.assertEqual(again.session.cookies.get(".ASPXAUTH"), "abc")
+
+    def test_old_list_format_uses_file_time_as_login(self):
+        import json
+        self.path.write_text(json.dumps([{"name": "a", "value": "b", "domain": "eportem.es", "path": "/"}]))
+        clock = HttpClock(requests_session())
+        self.assertTrue(clock.load_cookies(self.path))
+        self.assertIsNotNone(clock.logged_in_at)
+        self.assertIsNone(clock.last_used_at)
+        self.assertIn("last used unknown", clock._session_age())
+
+    def test_valid_session_is_logged_and_resaved(self):
+        session = MagicMock()
+        session.headers = {}
+        session.get.return_value = _response(DASHBOARD_URL, WORKING_HTML)
+        clock = HttpClock(session)
+        with patch.object(HttpClock, "load_cookies", return_value=True), \
+             patch.object(HttpClock, "save_cookies") as save, \
+             patch("builtins.print") as out:
+            clock.ensure_session()
+        save.assert_called_once()
+        self.assertIn("still valid", out.call_args_list[0].args[0])
+
+
+def requests_session():
+    import requests
+    return requests.Session()
+
+
 if __name__ == "__main__":
     unittest.main()
