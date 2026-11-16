@@ -20,7 +20,8 @@ about the button attributes is hard-coded except how to pick one.
 
 CLI (dry run by default - prints the request without sending it):
     python3 -m utility.http_clock lunch_break --location office
-    python3 -m utility.http_clock lunch_break --location office --send
+    python3 -m utility.http_clock lunch_break --location office --send --notify
+Exit codes (EXIT_* below) tell run_http.sh whether falling back to Selenium is safe.
 """
 import argparse
 import json
@@ -35,8 +36,8 @@ BASE_URL = "https://eportem.es"
 DASHBOARD_URL = f"{BASE_URL}/aplicaciones/e-portem/registro/"
 CLOCK_URL = f"{DASHBOARD_URL}reghorario.cshtml"
 COOKIE_FILE = Path(__file__).parent.parent / "config" / ".session_cookies.json"
-USER_AGENT = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-              "(KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36")
+# Same browser identity the Selenium login uses, so the session looks consistent.
+from utility.login_and_navigate import USER_AGENT  # noqa: E402
 
 SESSION_ID_HOME = "1293"
 SESSION_ID_OFFICE_DEFAULT = "1"
@@ -179,13 +180,13 @@ class HttpClock:
         return self.fetch_buttons()
 
     # --- the clock action ---------------------------------------------
-    def clock(self, action_type, location, send=False):
-        """Resolve and (only if send=True) perform the clock request.
-        Returns (params, response_json_or_None)."""
-        button = select_button(self.ensure_session(), action_type, location)
-        params = build_params(button)
-        if not send:
-            return params, None
+    def resolve(self, action_type, location):
+        """The query parameters for this action, from the live dashboard.
+        Sends nothing that records a clock event."""
+        return build_params(select_button(self.ensure_session(), action_type, location))
+
+    def send(self, params):
+        """Send the clock request. This records a real clock event."""
         resp = self.session.get(CLOCK_URL, params=params, timeout=30, headers={
             "X-Requested-With": "XMLHttpRequest",
             "Referer": DASHBOARD_URL,
@@ -193,7 +194,29 @@ class HttpClock:
         resp.raise_for_status()
         result = json.loads(resp.text)
         self.save_cookies()  # keep any refreshed auth ticket
-        return params, result
+        return result
+
+    def is_recorded(self, params):
+        """After a send that may have failed: True if the dashboard no longer
+        offers the button that was sent (so the server recorded it), False if
+        it still does. Raises if the dashboard can't be read."""
+        buttons = self.fetch_buttons()
+        return not any(b.get("id") == params["action"]
+                       and (b.get("name") or "") == params["_codactiv"]
+                       for b in buttons)
+
+    def clock(self, action_type, location, send=False):
+        """Resolve and (only if send=True) perform the clock request.
+        Returns (params, response_json_or_None)."""
+        params = self.resolve(action_type, location)
+        return params, (self.send(params) if send else None)
+
+
+# Exit codes for the CLI, so a wrapper knows whether a Selenium fallback is safe.
+EXIT_RECORDED = 0          # the clock event is recorded (or dry run succeeded)
+EXIT_NOT_RECORDED = 3      # nothing was recorded: safe to fall back to Selenium
+EXIT_UNKNOWN = 4           # a request went out and its outcome is unknown: do NOT retry
+EXIT_NOTIFY_FAILED = 5     # recorded, but notifications/Slack status failed
 
 
 def main():
@@ -204,14 +227,45 @@ def main():
     parser.add_argument("--location", choices=["home", "office"], default="office")
     parser.add_argument("--send", action="store_true",
                         help="Actually send the request (registers a real clock event)")
+    parser.add_argument("--notify", action="store_true",
+                        help="After a recorded --send, send the usual notifications and Slack status")
     args = parser.parse_args()
 
-    params, result = HttpClock().clock(args.action, args.location, send=args.send)
-    print(("SENT " if args.send else "DRY RUN, would send ") + f"GET {CLOCK_URL}")
+    clock = HttpClock()
+    try:
+        params = clock.resolve(args.action, args.location)
+    except Exception as e:
+        print(f"HTTP clock: could not prepare the request, nothing sent: {type(e).__name__}: {e}")
+        return EXIT_NOT_RECORDED
+    print(("Sending " if args.send else "DRY RUN, would send ") + f"GET {CLOCK_URL}")
     print(json.dumps(params, ensure_ascii=False, indent=2))
-    if result is not None:
+    if not args.send:
+        return EXIT_RECORDED
+
+    try:
+        result = clock.send(params)
         print("Response:", json.dumps(result, ensure_ascii=False)[:500])
-    return 0
+    except Exception as e:
+        print(f"HTTP clock: request failed: {type(e).__name__}: {e}. Checking the dashboard.")
+        try:
+            recorded = clock.is_recorded(params)
+        except Exception as e2:
+            print(f"HTTP clock: can't read the dashboard either ({type(e2).__name__}); "
+                  "the action may or may not be recorded. Check ePortem by hand.")
+            return EXIT_UNKNOWN
+        if not recorded:
+            print("HTTP clock: the dashboard still offers the button, so nothing was recorded.")
+            return EXIT_NOT_RECORDED
+        print("HTTP clock: the dashboard shows the action as recorded despite the error.")
+
+    if args.notify:
+        try:
+            from eportem_action import EPortemAction
+            EPortemAction(args.action, args.location).after_action()
+        except Exception as e:
+            print(f"HTTP clock: recorded, but notifications failed: {type(e).__name__}: {e}")
+            return EXIT_NOTIFY_FAILED
+    return EXIT_RECORDED
 
 
 if __name__ == "__main__":

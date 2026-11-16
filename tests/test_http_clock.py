@@ -159,5 +159,67 @@ class TestEportemActionRouting(unittest.TestCase):
         clock.assert_not_called()
 
 
+class TestCliExitCodes(unittest.TestCase):
+    """The exit code decides whether run_http.sh falls back to Selenium, so a
+    request that may have been recorded must never come back as 3."""
+
+    PARAMS = {"action": "_stpause", "_codactiv": "2", "_tipoactiv": "P",
+              "_descactiv": "Comida", "_geolocation": "", "_localip": ""}
+
+    def _run(self, *argv, resolve=None, send=None, recorded=None):
+        clock = MagicMock()
+        clock.resolve.side_effect = resolve or (lambda *a: self.PARAMS)
+        clock.send.side_effect = send or (lambda p: {"isActive": "P"})
+        if isinstance(recorded, Exception):
+            clock.is_recorded.side_effect = recorded
+        else:
+            clock.is_recorded.return_value = recorded
+        with patch.object(http_clock, "HttpClock", return_value=clock), \
+             patch("utility.env_loader.load_environment"), \
+             patch.object(sys, "argv", ["http_clock", "lunch_break", *argv]), \
+             patch("builtins.print"):
+            return http_clock.main(), clock
+
+    def test_dry_run_does_not_send(self):
+        rc, clock = self._run()
+        self.assertEqual(rc, http_clock.EXIT_RECORDED)
+        clock.send.assert_not_called()
+
+    def test_success(self):
+        rc, clock = self._run("--send")
+        self.assertEqual(rc, http_clock.EXIT_RECORDED)
+        clock.send.assert_called_once()
+
+    def test_failure_before_sending_allows_fallback(self):
+        rc, clock = self._run("--send", resolve=ButtonNotFound("x"))
+        self.assertEqual(rc, http_clock.EXIT_NOT_RECORDED)
+        clock.send.assert_not_called()
+
+    def test_send_error_but_button_still_there_allows_fallback(self):
+        rc, _ = self._run("--send", send=ValueError("bad json"), recorded=False)
+        self.assertEqual(rc, http_clock.EXIT_NOT_RECORDED)
+
+    def test_send_error_but_recorded_is_success(self):
+        rc, _ = self._run("--send", send=ValueError("bad json"), recorded=True)
+        self.assertEqual(rc, http_clock.EXIT_RECORDED)
+
+    def test_send_error_and_dashboard_unreadable_blocks_fallback(self):
+        rc, _ = self._run("--send", send=ValueError("x"), recorded=SessionExpired("x"))
+        self.assertEqual(rc, http_clock.EXIT_UNKNOWN)
+
+    def test_notify_failure_is_reported_without_fallback(self):
+        with patch("eportem_action.EPortemAction.after_action", side_effect=RuntimeError("slack")):
+            rc, _ = self._run("--send", "--notify")
+        self.assertEqual(rc, http_clock.EXIT_NOTIFY_FAILED)
+
+    def test_is_recorded_checks_button_presence(self):
+        session = MagicMock()
+        session.headers = {}
+        session.get.return_value = _response(DASHBOARD_URL, WORKING_HTML)
+        clock = HttpClock(session)
+        self.assertFalse(clock.is_recorded(self.PARAMS))  # pause still offered
+        self.assertTrue(clock.is_recorded({**self.PARAMS, "action": "_ststart", "_codactiv": "1"}))
+
+
 if __name__ == "__main__":
     unittest.main()
