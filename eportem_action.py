@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import contextlib
+import io
+import sys
 import time
 import argparse
 import datetime
@@ -51,6 +54,46 @@ def _active_business_trip_end_date():
     if start_date <= today:
         return end_date
     return None
+
+HTTP_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs", "http_clock.log")
+
+
+def http_enabled_for(action_type):
+    """EPORTEM_HTTP in config/.env: YES (every action), NO or unset (none), or a
+    comma-separated list of actions, e.g. "lunch_break,after_lunch"."""
+    value = os.getenv("EPORTEM_HTTP", "NO").strip()
+    if value.upper() in ("YES", "ALL"):
+        return True
+    return action_type in {a.strip() for a in value.split(",")}
+
+
+class _Tee(io.TextIOBase):
+    """Write to the real stdout and keep a copy, for logs/http_clock.log."""
+
+    def __init__(self, stream):
+        self.stream = stream
+        self.copy = io.StringIO()
+
+    def write(self, text):
+        self.copy.write(text)
+        return self.stream.write(text)
+
+    def flush(self):
+        self.stream.flush()
+
+
+def _log_http_attempt(action_type, location, outcome, output=""):
+    """One block per HTTP attempt in logs/http_clock.log: the outcome, then what
+    the HTTP client printed (including the session-age line). Cron only mails on
+    failure, so this is the record of attempts and fallbacks that ended well."""
+    try:
+        os.makedirs(os.path.dirname(HTTP_LOG), exist_ok=True)
+        with open(HTTP_LOG, "a") as f:
+            f.write(f"=== {datetime.datetime.now():%Y-%m-%d %H:%M:%S} "
+                    f"{action_type} {location}: {outcome}\n{output}")
+    except OSError as e:  # never let logging hide the real result
+        print(f"Could not write {HTTP_LOG}: {e}")
+
 
 class EPortemAction:
     def __init__(self, action_type, location="office", driver=None):
@@ -205,11 +248,38 @@ class EPortemAction:
         self._save_diagnostics()
 
     def perform(self):
-        """Perform the action"""
+        """Perform the action: over HTTP if EPORTEM_HTTP enables it for this action,
+        falling back to the browser only when HTTP recorded nothing.
+
+        Holidays, location overrides and the schedule are decided before this (in
+        main.py), so they apply whichever way the action is sent."""
         check_env_variable()
 
-        if os.getenv('EPORTEM_HTTP', 'NO') == 'YES' and self.driver is None:
-            self._perform_http()
+        if self.driver is None and http_enabled_for(self.action_type):
+            from utility.http_clock import NotRecorded, OutcomeUnknown
+            tee = _Tee(sys.stdout)
+            try:
+                with contextlib.redirect_stdout(tee):
+                    self._perform_http()
+                _log_http_attempt(self.action_type, self.location, "recorded over HTTP",
+                                  tee.copy.getvalue())
+            except NotRecorded as e:
+                _log_http_attempt(self.action_type, self.location,
+                                  f"not recorded, falling back to the browser: {e}",
+                                  tee.copy.getvalue())
+                print(f"HTTP clock recorded nothing ({e}); falling back to the browser")
+                self._perform_selenium()
+            except OutcomeUnknown as e:
+                # Retrying could clock twice. Fail, so cron mails the output.
+                _log_http_attempt(self.action_type, self.location, f"OUTCOME UNKNOWN: {e}",
+                                  tee.copy.getvalue())
+                raise
+            except Exception as e:
+                # A bug, not a known "nothing sent" case: don't guess, fail loudly.
+                _log_http_attempt(self.action_type, self.location,
+                                  f"ERROR, no fallback: {type(e).__name__}: {e}",
+                                  tee.copy.getvalue())
+                raise
         else:
             self._perform_selenium()
 
@@ -218,10 +288,11 @@ class EPortemAction:
 
     def _perform_http(self):
         """Clock via a direct HTTP request; the browser is only used to log in
-        when the saved session has expired (see utility/http_clock.py)."""
+        when the saved session has expired (see utility/http_clock.py).
+        Raises NotRecorded or OutcomeUnknown if it isn't recorded."""
         from utility.http_clock import HttpClock
-        params, result = HttpClock().clock(self.action_type, self.location, send=True)
-        print(f"HTTP clock action sent: {params['action']} {params['_descactiv']}")
+        params, _ = HttpClock().clock_and_verify(self.action_type, self.location)
+        print(f"HTTP clock action recorded: {params['action']} {params['_descactiv']}")
 
     def _perform_selenium(self):
         try:

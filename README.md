@@ -53,30 +53,36 @@ features and need two different credentials, both read from `config/.env`:
 If one of them is missing, that feature is skipped (a webhook cannot set
 your status, and a token is not a valid webhook URL).
 
-### Experimental: clocking without the browser (`EPORTEM_HTTP`)
+### Clocking without the browser (`EPORTEM_HTTP`)
 
-With `EPORTEM_HTTP=YES` in `config/.env`, actions are sent as a direct HTTP
+`EPORTEM_HTTP` in `config/.env` chooses which actions are sent as a direct HTTP
 request (the same `reghorario.cshtml` call the dashboard's buttons make)
-instead of clicking through Chromium. Chromium is still used to log in, because
-the login page has reCAPTCHA, but only when the saved session in
-`config/.session_cookies.json` (gitignored, `chmod 600`) has expired. Leave it
-unset (or `NO`) to keep the Selenium click flow. Details:
+instead of clicking through Chromium:
+
+- `YES` (or `ALL`): every action.
+- A comma-separated list, e.g. `lunch_break,after_lunch`: only those actions.
+- `NO` or unset: none; the Selenium click flow as before.
+
+Nothing else changes: cron still calls `run.sh`, and `main.py` still applies the
+schedule, holidays and location overrides before any action is sent, whichever
+way it is sent. Chromium is still used to log in, because the login page has
+reCAPTCHA, but only when the saved session in `config/.session_cookies.json`
+(gitignored, `chmod 600`) has expired.
+
+If HTTP recorded nothing (for example the button wasn't on the dashboard, or
+the login failed), the same run falls back to the Selenium click flow. If the
+request went out and it can't be told whether it was recorded, it fails without
+retrying, so nothing is clocked twice, and cron mails the output. Every HTTP
+attempt, including fallbacks, is appended to `logs/http_clock.log`. Details:
 `docs/http-api-investigation.md`.
 
-To see which request an action would send, without sending it:
+To see which request an action would send, without sending it (this skips the
+schedule, holiday and override checks, so use it for testing by hand only):
 
 ```bash
 python3 -m utility.http_clock lunch_break --location office          # dry run
 python3 -m utility.http_clock lunch_break --location office --send   # real clock event
 ```
-
-For cron, `run_http.sh ACTION [LOCATION]` sends the action over HTTP with the
-usual notifications and Slack status. It falls back to `run.sh` (the browser
-flow, with `main.py`'s schedule and holiday checks) only when the HTTP attempt
-recorded nothing. If the outcome is unknown, for example the request went out
-and the dashboard then couldn't be read, it fails without retrying so nothing
-is clocked twice, and cron mails the output. Every attempt is appended to
-`logs/http_clock.log`.
 
 ## Usage
 

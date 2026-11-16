@@ -133,13 +133,16 @@ HTTP (reCAPTCHA v3), so `utility/http_clock.py` logs in with Selenium only when
 the saved cookies (`config/.session_cookies.json`) have expired, then sends
 the clock action as `GET .../registro/reghorario.cshtml`.
 
-On this host the checkout is on branch **`http-clock-actions`** (not `main`),
-and only the **13:25 lunch cron line** uses it, via
-`run_http.sh lunch_break office`. The other lines still call `run.sh`. The
+On this host the checkout is on branch **`http-clock-actions`** (not `main`).
+Which actions go over HTTP is set by `EPORTEM_HTTP` in `config/.env`
+(`YES`, `NO` or a list like `lunch_break,after_lunch`); cron calls `run.sh`
+for every line, and `main.py` applies holidays and overrides before
+`EPortemAction.perform()` tries HTTP and falls back to Selenium only when
+nothing was recorded. Since 2026-11-16 ~14:00 `omv` has `EPORTEM_HTTP=YES`. The
 previous crontab is saved as `/home/pi/crontab.bak-20261116-102837`. Every
-HTTP attempt is logged to `logs/http_clock.log`. Exit codes and fallback rules
-are documented in `run_http.sh`. A dry run (`python3 -m utility.http_clock
-ACTION`) never changes clock status.
+HTTP attempt is logged to `logs/http_clock.log`. A dry run
+(`python3 -m utility.http_clock ACTION`) never changes clock status, but it
+skips the holiday/override checks.
 
 `at` was installed on 2026-11-16 for one-off jobs (e.g. timed
 `utility.capture_dashboard` runs; output in `logs/capture.log`). Use `atq` to

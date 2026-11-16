@@ -18,10 +18,14 @@ current state (e.g. "Pausar" only while working), so the dashboard is fetched
 first and the same button Selenium would click is looked up in it - nothing
 about the button attributes is hard-coded except how to pick one.
 
-CLI (dry run by default - prints the request without sending it):
+Normal runs don't call this module directly: main.py decides the action,
+location and holidays, and EPortemAction.perform() calls
+HttpClock.clock_and_verify(), falling back to Selenium only on NotRecorded.
+
+CLI, for testing by hand (dry run by default - prints the request without sending it).
+It skips main.py's holiday, location-override and schedule checks:
     python3 -m utility.http_clock lunch_break --location office
     python3 -m utility.http_clock lunch_break --location office --send --notify
-Exit codes (EXIT_* below) tell run_http.sh whether falling back to Selenium is safe.
 """
 import argparse
 import datetime
@@ -62,6 +66,15 @@ class SessionExpired(Exception):
 
 class ButtonNotFound(Exception):
     """The dashboard has no button for this action (usually: wrong state)."""
+
+
+class NotRecorded(Exception):
+    """Nothing was recorded over HTTP, so falling back to Selenium is safe."""
+
+
+class OutcomeUnknown(Exception):
+    """A clock request went out and it can't be told whether it was recorded.
+    Falling back could clock twice, so don't."""
 
 
 class _ButtonParser(HTMLParser):
@@ -248,6 +261,38 @@ class HttpClock:
                        and (b.get("name") or "") == params["_codactiv"]
                        for b in buttons)
 
+    def clock_and_verify(self, action_type, location):
+        """Send the clock request. Returns (params, response_json_or_None) when the
+        action is recorded; the response is None if the request errored but the
+        dashboard shows it was recorded anyway. Raises NotRecorded when it is safe
+        to retry another way, OutcomeUnknown when it isn't."""
+        try:
+            params = self.resolve(action_type, location)
+        except Exception as e:
+            raise NotRecorded(f"could not prepare the request, nothing sent: "
+                              f"{type(e).__name__}: {e}") from e
+        print(f"Sending GET {CLOCK_URL}")
+        print(json.dumps(params, ensure_ascii=False, indent=2))
+        try:
+            result = self.send(params)
+            print("Response:", json.dumps(result, ensure_ascii=False)[:500])
+            return params, result
+        except Exception as e:
+            print(f"HTTP clock: request failed: {type(e).__name__}: {e}. Checking the dashboard.")
+            send_error = e
+        try:
+            recorded = self.is_recorded(params)
+        except Exception as e:
+            raise OutcomeUnknown(
+                f"request failed ({type(send_error).__name__}) and the dashboard can't be "
+                f"read ({type(e).__name__}); the action may or may not be recorded. "
+                "Check ePortem by hand.") from e
+        if not recorded:
+            raise NotRecorded(f"request failed ({type(send_error).__name__}: {send_error}) "
+                              "and the dashboard still offers the button")
+        print("HTTP clock: the dashboard shows the action as recorded despite the error.")
+        return params, None
+
     def clock(self, action_type, location, send=False):
         """Resolve and (only if send=True) perform the clock request.
         Returns (params, response_json_or_None)."""
@@ -255,17 +300,19 @@ class HttpClock:
         return params, (self.send(params) if send else None)
 
 
-# Exit codes for the CLI, so a wrapper knows whether a Selenium fallback is safe.
+# Exit codes for the CLI.
 EXIT_RECORDED = 0          # the clock event is recorded (or dry run succeeded)
-EXIT_NOT_RECORDED = 3      # nothing was recorded: safe to fall back to Selenium
-EXIT_UNKNOWN = 4           # a request went out and its outcome is unknown: do NOT retry
+EXIT_NOT_RECORDED = 3      # nothing was recorded
+EXIT_UNKNOWN = 4           # a request went out and its outcome is unknown: check by hand
 EXIT_NOTIFY_FAILED = 5     # recorded, but notifications/Slack status failed
 
 
 def main():
     from utility.env_loader import load_environment
     load_environment()
-    parser = argparse.ArgumentParser(description="Clock action over HTTP (dry run unless --send).")
+    parser = argparse.ArgumentParser(
+        description="Clock action over HTTP (dry run unless --send). For testing by hand: "
+                    "skips main.py's holiday, location-override and schedule checks.")
     parser.add_argument("action", choices=["start_day", "lunch_break", "after_lunch", "stop_day"])
     parser.add_argument("--location", choices=["home", "office"], default="office")
     parser.add_argument("--send", action="store_true",
@@ -275,31 +322,24 @@ def main():
     args = parser.parse_args()
 
     clock = HttpClock()
-    try:
-        params = clock.resolve(args.action, args.location)
-    except Exception as e:
-        print(f"HTTP clock: could not prepare the request, nothing sent: {type(e).__name__}: {e}")
-        return EXIT_NOT_RECORDED
-    print(("Sending " if args.send else "DRY RUN, would send ") + f"GET {CLOCK_URL}")
-    print(json.dumps(params, ensure_ascii=False, indent=2))
     if not args.send:
+        try:
+            params = clock.resolve(args.action, args.location)
+        except Exception as e:
+            print(f"HTTP clock: could not prepare the request: {type(e).__name__}: {e}")
+            return EXIT_NOT_RECORDED
+        print(f"DRY RUN, would send GET {CLOCK_URL}")
+        print(json.dumps(params, ensure_ascii=False, indent=2))
         return EXIT_RECORDED
 
     try:
-        result = clock.send(params)
-        print("Response:", json.dumps(result, ensure_ascii=False)[:500])
-    except Exception as e:
-        print(f"HTTP clock: request failed: {type(e).__name__}: {e}. Checking the dashboard.")
-        try:
-            recorded = clock.is_recorded(params)
-        except Exception as e2:
-            print(f"HTTP clock: can't read the dashboard either ({type(e2).__name__}); "
-                  "the action may or may not be recorded. Check ePortem by hand.")
-            return EXIT_UNKNOWN
-        if not recorded:
-            print("HTTP clock: the dashboard still offers the button, so nothing was recorded.")
-            return EXIT_NOT_RECORDED
-        print("HTTP clock: the dashboard shows the action as recorded despite the error.")
+        clock.clock_and_verify(args.action, args.location)
+    except NotRecorded as e:
+        print(f"HTTP clock: nothing recorded: {e}")
+        return EXIT_NOT_RECORDED
+    except OutcomeUnknown as e:
+        print(f"HTTP clock: {e}")
+        return EXIT_UNKNOWN
 
     if args.notify:
         try:

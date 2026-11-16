@@ -33,7 +33,7 @@ NOT_STARTED_HTML = """
 
 PAUSED_HTML = """
 <div id="buttonsRegBox">
-<a id="_stini" name="1" name2="W" name3="Inicio Trabajo" onclick="_doPostJor(this)">Oficina</a>
+<a id="_stini" name="1" name2="W" name3="Trabajo" onclick="_doPostJor(this)">Oficina</a>
 <a id="_stini" name="1293" name2="W" name3="Trabajo en Casa" onclick="_doPostJor(this)">Casa</a>
 <a id="_ststop" name2="P" name3="Inicio Trabajo" onclick="_doPostJor(this)">Terminar</a>
 </div>
@@ -134,46 +134,146 @@ class TestHttpClock(unittest.TestCase):
             clock.fetch_buttons()
 
 
+class TestHttpEnabledFor(unittest.TestCase):
+
+    def _enabled(self, value, action):
+        from eportem_action import http_enabled_for
+        env = {} if value is None else {"EPORTEM_HTTP": value}
+        with patch.dict(os.environ, env):
+            if value is None:
+                os.environ.pop("EPORTEM_HTTP", None)
+            return http_enabled_for(action)
+
+    def test_values(self):
+        self.assertTrue(self._enabled("YES", "start_day"))
+        self.assertTrue(self._enabled("all", "stop_day"))
+        self.assertFalse(self._enabled("NO", "lunch_break"))
+        self.assertFalse(self._enabled(None, "lunch_break"))
+        self.assertTrue(self._enabled("lunch_break, after_lunch", "after_lunch"))
+        self.assertFalse(self._enabled("lunch_break,after_lunch", "start_day"))
+
+
 class TestEportemActionRouting(unittest.TestCase):
+    """EPortemAction.perform() is the one place that picks HTTP or the browser."""
 
     ENV = {"EPORTEM_ENABLED": "YES", "TELEGRAM_NOTIFY": "NO",
            "SLACK_NOTIFY": "NO", "SLACK_STATUS": "NO"}
+    PARAMS = {"action": "_ststop", "_descactiv": "x"}
 
-    def test_http_flag_uses_http_clock(self):
+    def setUp(self):
+        import tempfile
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.log = os.path.join(tmp.name, "http_clock.log")
+        for p in (patch("eportem_action.HTTP_LOG", self.log), patch("builtins.print")):
+            p.start()
+            self.addCleanup(p.stop)
+
+    def _perform(self, http, verify):
+        from eportem_action import EPortemAction
+        with patch.dict(os.environ, {**self.ENV, "EPORTEM_HTTP": http}), \
+             patch.object(http_clock.HttpClock, "clock_and_verify", side_effect=verify) as cv, \
+             patch.object(EPortemAction, "_perform_selenium") as selenium, \
+             patch.object(EPortemAction, "after_action") as after:
+            EPortemAction("stop_day", "office").perform()
+        return cv, selenium, after
+
+    def _log(self):
+        with open(self.log) as f:
+            return f.read()
+
+    def test_recorded_over_http_skips_browser(self):
+        cv, selenium, after = self._perform("YES", lambda *a: (self.PARAMS, {}))
+        cv.assert_called_once_with("stop_day", "office")
+        selenium.assert_not_called()
+        after.assert_called_once()
+        self.assertIn("stop_day office: recorded over HTTP", self._log())
+
+    def test_not_recorded_falls_back_to_browser(self):
+        cv, selenium, after = self._perform("YES", http_clock.NotRecorded("ButtonNotFound"))
+        selenium.assert_called_once()
+        after.assert_called_once()
+        self.assertIn("falling back to the browser: ButtonNotFound", self._log())
+
+    def test_unknown_outcome_raises_without_fallback(self):
+        with self.assertRaises(http_clock.OutcomeUnknown):
+            self._perform("YES", http_clock.OutcomeUnknown("check by hand"))
+        self.assertIn("OUTCOME UNKNOWN", self._log())
+
+    def test_unexpected_error_raises_without_fallback(self):
+        with self.assertRaises(RuntimeError):
+            self._perform("YES", RuntimeError("boom"))
+        self.assertIn("ERROR", self._log())
+
+    def test_action_not_listed_uses_browser_only(self):
+        cv, selenium, after = self._perform("lunch_break", None)
+        cv.assert_not_called()
+        selenium.assert_called_once()
+        after.assert_called_once()
+
+    def test_given_driver_always_uses_browser(self):
         from eportem_action import EPortemAction
         with patch.dict(os.environ, {**self.ENV, "EPORTEM_HTTP": "YES"}), \
-             patch.object(http_clock.HttpClock, "clock",
-                          return_value=({"action": "_ststop", "_descactiv": "x"}, {})) as clock, \
-             patch("eportem_action.login_and_navigate") as selenium_login:
-            EPortemAction("stop_day", "office").perform()
-        clock.assert_called_once_with("stop_day", "office", send=True)
-        selenium_login.assert_not_called()
-
-    def test_default_still_uses_selenium(self):
-        from eportem_action import EPortemAction
-        env = {k: v for k, v in self.ENV.items()}
-        with patch.dict(os.environ, env), \
-             patch.dict(os.environ, {"EPORTEM_HTTP": "NO"}), \
-             patch.object(http_clock.HttpClock, "clock") as clock:
+             patch.object(http_clock.HttpClock, "clock_and_verify") as cv, \
+             patch.object(EPortemAction, "_perform_selenium") as selenium:
             EPortemAction("stop_day", "office", MagicMock()).perform()
-        clock.assert_not_called()
+        cv.assert_not_called()
+        selenium.assert_called_once()
 
 
-class TestCliExitCodes(unittest.TestCase):
-    """The exit code decides whether run_http.sh falls back to Selenium, so a
-    request that may have been recorded must never come back as 3."""
+class TestClockAndVerify(unittest.TestCase):
+    """Which exception comes out decides whether a Selenium fallback runs, so a
+    request that may have been recorded must never raise NotRecorded."""
 
     PARAMS = {"action": "_stpause", "_codactiv": "2", "_tipoactiv": "P",
               "_descactiv": "Comida", "_geolocation": "", "_localip": ""}
 
-    def _run(self, *argv, resolve=None, send=None, recorded=None):
+    def _verify(self, resolve=None, send=None, recorded=None):
+        clock = HttpClock(MagicMock(headers={}))
+        r = patch.object(clock, "resolve", side_effect=resolve or (lambda *a: self.PARAMS))
+        s = patch.object(clock, "send", side_effect=send or (lambda p: {"isActive": "P"}))
+        i = (patch.object(clock, "is_recorded", side_effect=recorded)
+             if isinstance(recorded, Exception)
+             else patch.object(clock, "is_recorded", return_value=recorded))
+        with r, s as send_mock, i, patch("builtins.print"):
+            return clock.clock_and_verify("lunch_break", "office"), send_mock
+
+    def test_success(self):
+        (params, result), send = self._verify()
+        self.assertEqual(result, {"isActive": "P"})
+        send.assert_called_once()
+
+    def test_failure_before_sending_is_not_recorded(self):
+        with self.assertRaises(http_clock.NotRecorded):
+            self._verify(resolve=ButtonNotFound("x"))
+
+    def test_send_error_but_button_still_there_is_not_recorded(self):
+        with self.assertRaises(http_clock.NotRecorded):
+            self._verify(send=ValueError("bad json"), recorded=False)
+
+    def test_send_error_but_recorded_is_success(self):
+        (params, result), _ = self._verify(send=ValueError("bad json"), recorded=True)
+        self.assertIsNone(result)
+
+    def test_send_error_and_dashboard_unreadable_is_unknown(self):
+        with self.assertRaises(http_clock.OutcomeUnknown):
+            self._verify(send=ValueError("x"), recorded=SessionExpired("x"))
+
+    def test_is_recorded_checks_button_presence(self):
+        session = MagicMock()
+        session.headers = {}
+        session.get.return_value = _response(DASHBOARD_URL, WORKING_HTML)
+        clock = HttpClock(session)
+        self.assertFalse(clock.is_recorded(self.PARAMS))  # pause still offered
+        self.assertTrue(clock.is_recorded({**self.PARAMS, "action": "_ststart", "_codactiv": "1"}))
+
+
+class TestCliExitCodes(unittest.TestCase):
+
+    def _run(self, *argv, verify=None):
         clock = MagicMock()
-        clock.resolve.side_effect = resolve or (lambda *a: self.PARAMS)
-        clock.send.side_effect = send or (lambda p: {"isActive": "P"})
-        if isinstance(recorded, Exception):
-            clock.is_recorded.side_effect = recorded
-        else:
-            clock.is_recorded.return_value = recorded
+        clock.resolve.return_value = TestClockAndVerify.PARAMS
+        clock.clock_and_verify.side_effect = verify or (lambda *a: (TestClockAndVerify.PARAMS, {}))
         with patch.object(http_clock, "HttpClock", return_value=clock), \
              patch("utility.env_loader.load_environment"), \
              patch.object(sys, "argv", ["http_clock", "lunch_break", *argv]), \
@@ -183,42 +283,19 @@ class TestCliExitCodes(unittest.TestCase):
     def test_dry_run_does_not_send(self):
         rc, clock = self._run()
         self.assertEqual(rc, http_clock.EXIT_RECORDED)
-        clock.send.assert_not_called()
+        clock.clock_and_verify.assert_not_called()
 
-    def test_success(self):
-        rc, clock = self._run("--send")
-        self.assertEqual(rc, http_clock.EXIT_RECORDED)
-        clock.send.assert_called_once()
+    def test_send_outcomes(self):
+        self.assertEqual(self._run("--send")[0], http_clock.EXIT_RECORDED)
+        self.assertEqual(self._run("--send", verify=http_clock.NotRecorded("x"))[0],
+                         http_clock.EXIT_NOT_RECORDED)
+        self.assertEqual(self._run("--send", verify=http_clock.OutcomeUnknown("x"))[0],
+                         http_clock.EXIT_UNKNOWN)
 
-    def test_failure_before_sending_allows_fallback(self):
-        rc, clock = self._run("--send", resolve=ButtonNotFound("x"))
-        self.assertEqual(rc, http_clock.EXIT_NOT_RECORDED)
-        clock.send.assert_not_called()
-
-    def test_send_error_but_button_still_there_allows_fallback(self):
-        rc, _ = self._run("--send", send=ValueError("bad json"), recorded=False)
-        self.assertEqual(rc, http_clock.EXIT_NOT_RECORDED)
-
-    def test_send_error_but_recorded_is_success(self):
-        rc, _ = self._run("--send", send=ValueError("bad json"), recorded=True)
-        self.assertEqual(rc, http_clock.EXIT_RECORDED)
-
-    def test_send_error_and_dashboard_unreadable_blocks_fallback(self):
-        rc, _ = self._run("--send", send=ValueError("x"), recorded=SessionExpired("x"))
-        self.assertEqual(rc, http_clock.EXIT_UNKNOWN)
-
-    def test_notify_failure_is_reported_without_fallback(self):
+    def test_notify_failure_is_reported(self):
         with patch("eportem_action.EPortemAction.after_action", side_effect=RuntimeError("slack")):
             rc, _ = self._run("--send", "--notify")
         self.assertEqual(rc, http_clock.EXIT_NOTIFY_FAILED)
-
-    def test_is_recorded_checks_button_presence(self):
-        session = MagicMock()
-        session.headers = {}
-        session.get.return_value = _response(DASHBOARD_URL, WORKING_HTML)
-        clock = HttpClock(session)
-        self.assertFalse(clock.is_recorded(self.PARAMS))  # pause still offered
-        self.assertTrue(clock.is_recorded({**self.PARAMS, "action": "_ststart", "_codactiv": "1"}))
 
 
 class TestCookieFile(unittest.TestCase):
