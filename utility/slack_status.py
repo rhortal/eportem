@@ -1,5 +1,6 @@
 import os
 import requests
+from utility.notification_send import REQUEST_TIMEOUT, _describe_error, _scrub
 
 class SlackStatusUpdater:
     def __init__(self, token=None):
@@ -15,6 +16,8 @@ class SlackStatusUpdater:
             text (str): The status text to display.
             emoji (str): The emoji to use for the status.
             expiration (int): Unix timestamp when the status should expire (0 = no expiration).
+
+        Returns True if Slack accepted it, False otherwise (never raises for a network problem).
         """
         url = "https://slack.com/api/users.profile.set"
         headers = {
@@ -27,15 +30,20 @@ class SlackStatusUpdater:
             "status_expiration": expiration
         }
         data = {"profile": profile}
-        response = requests.post(url, json=data, headers=headers)
+        try:
+            response = requests.post(url, json=data, headers=headers, timeout=REQUEST_TIMEOUT)
+        except requests.RequestException as e:
+            print(f"Failed to update Slack status: {_describe_error(e, self.token)}")
+            return False
         try:
             resp_json = response.json()
         except Exception:
             resp_json = {}
         if response.ok and resp_json.get("ok"):
             print("Slack status updated successfully.")
-        else:
-            print(f"Failed to update Slack status: {response.text}")
+            return True
+        print(f"Failed to update Slack status: {_scrub(response.text, self.token)}")
+        return False
 
 if __name__ == "__main__":
     # When run directly, load environment and set a test status

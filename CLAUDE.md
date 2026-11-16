@@ -24,7 +24,7 @@ commits, whichever comes first — read through README.md against the
 current state of the scripts/CLI and fix what's gone stale, even if the
 user didn't ask.
 
-## Host: this runs on `omv` (Raspberry Pi / OMV NAS, Debian 13 trixie, Intel N95)
+## Host: this runs on `omv` (OMV NAS, Debian 13 trixie, Intel N95, user `pi`)
 
 ## Chromium hold history — was pinned at 149.x, unheld 2026-07-27
 
@@ -38,8 +38,8 @@ platform, not a flag/config issue.
 
 On 2026-07-27 the hold was removed and the packages upgraded to
 `150.0.7871.181` after verifying: 20 consecutive headless launches via
-Selenium+chromedriver using ePortem's actual production flags (`--headless`
-only, per `eportem_action.py`) all passed. Note: `--single-process` (not
+Selenium+chromedriver using the flags ePortem used then (`--headless` only)
+all passed. The flags have changed since: see "Browser flags" below. Note: `--single-process` (not
 used by ePortem) still SIGTRAPs on `150.0.7871.181`, so the upstream bug
 isn't fully fixed — it just doesn't trigger under the flags ePortem uses.
 No hold is currently in place; the package is on the normal apt-managed
@@ -53,7 +53,24 @@ the login page now rejects the headless browser via reCAPTCHA v3 (error
 "No se ha podido verificar que no es un robot" in the page after submit) —
 see `docs/http-api-investigation.md` — and don't rule
 out a fresh regression in whatever version unattended-upgrades has since
-pushed, since `--single-process` still crashes on this host as of 150.x.
+pushed, since `--single-process` still crashed on this host as of 150.x.
+
+### Browser flags and version (checked 2026-11-16)
+
+`omv` now runs Chromium `156.0.8078.79`. The flags come from `_start_browser()`
+in `utility/login_and_navigate.py`, not `eportem_action.py`: `--disable-gpu`,
+`--headless=new` (only when `HEADLESS_BROWSING=YES`), `--window-size=1366,900`,
+`--lang=es-ES`, `--disable-blink-features=AutomationControlled`, a desktop
+`user-agent=`, and the automation switches turned off. They were added on
+2026-10-29 for reCAPTCHA, after the 20-launch test above, so that test doesn't
+cover them. The `chromium --headless ...` command above only shows whether
+Chromium starts at all.
+
+The `USER_AGENT` constant says Chrome/156, matching the host. When Chromium's
+major version changes, `create_driver()` notices, restarts the browser once
+with the right version in the UA and prints a line saying so; update the
+constant to avoid that extra start. The UA is set with the launch flag on
+purpose: a per-page DevTools override would not reach the reCAPTCHA frames.
 
 ## Cron schedule lives outside the repo
 
@@ -64,8 +81,24 @@ staff-tracking timestamps look less robotic. Each cron line must land its
 `base time + max random sleep` inside the ±15 min window of the
 corresponding `config.json` entry, e.g. for a 18:00 target, base time should
 be ~17:55 with a small random sleep — not 18:10, which can drift outside the
-window and silently no-op. When adding/editing schedule entries, keep base
-time = target − 5min and `sleep $[RANDOM%10]m`, matching the existing lines.
+window. When adding/editing schedule entries, keep base time = target − 5min
+and a 0-9 minute random sleep, copying an existing line exactly. The live
+lines (checked 2026-11-16) have this shape, and need both `bash -c` (cron's
+`sh` is dash, which has no `$RANDOM`) and `\%` (cron turns a bare `%` into a
+newline):
+
+```
+55 17 * * 1-5 bash -c 'sleep $((RANDOM \% 10))m; out=$(/home/pi/Apps/eportem/run.sh 2>&1) || { echo "$out"; exit 1; }'
+```
+
+The wrapper prints, and so mails, only when `run.sh` exits non-zero. Since the
+2026-11-16 review changes that includes: exit 3 from `main.py` when a run
+lands outside every window (no longer a silent no-op), exit 2 for an invalid
+`config/config.json` or an unreadable `holiday_override.txt` (it refuses to
+clock), and exit 75 from `run.sh` when another run holds the `flock` lock
+(`.run.lock`). `./run.sh --check` shows what would run now without clocking.
+The comment above the first ePortem line in the crontab ("Lunch over HTTP ...
+falling back to run.sh") is stale: every line calls `run.sh`.
 
 ## Web UI, Docker, and mock server were removed (2026-08-10)
 
@@ -103,13 +136,36 @@ to `hooks.slack.com` instead of delivering a notification. This host's real
 `config/.env` was migrated: the existing token value now lives under
 `SLACK_TOKEN`, and `SLACK_WEBHOOK_URL` was added empty (there was never a
 real Incoming Webhook configured, so Slack *notifications* — as opposed to
-status updates — have never actually worked here; `SlackChannel.send` now
-skips cleanly with a log line instead of making a malformed request). If
-Slack notifications should actually start working, `SLACK_WEBHOOK_URL`
-needs a real Incoming Webhook URL from Slack, not just a truthy value.
+status updates — have never actually worked here; at the time,
+`SlackChannel.send` skipped with a log line instead of making a malformed
+request when the webhook was empty — see the 2026-11-16 update below for
+what it does now).
 `config/.env` and `config/.env.bak` are `chmod 600` (the `.bak` file is
 owned by `root`, left over from the web UI writing it — needed `sudo` to
 fix).
+
+**Update 2026-11-16:** with no webhook set, `SlackChannel` now sends
+notifications through `SLACK_TOKEN` using `chat.postMessage`, to the owner's
+own DM (user ID from `auth.test`; `SLACK_NOTIFY_CHANNEL` overrides it). When
+checked on 2026-11-16 the token on this host had only
+`identify,users:write,users.profile:write`, so Slack notifications fail with
+`missing_scope` until `chat:write` is added under User Token Scopes and the app
+is reinstalled. Reinstalling may issue a new token, which then has to replace
+`SLACK_TOKEN` in `config/.env` on `omv` (the status update uses the same
+token). `SLACK_WEBHOOK_URL` stays empty there; if it were set it would win.
+
+**Update 2026-11-16 (bot route):** the owner chose to send notifications as the
+app's bot, because a message posted to your own DM as yourself arrives silently
+while one from the app in your DM with the app alerts you. The app got the
+`chat:write` bot scope, and `SLACK_BOT_TOKEN` (Bot User OAuth Token, `xoxb-`)
+must be added to `config/.env` on `omv`. Order in `SlackChannel`: webhook, else
+bot token, else `SLACK_TOKEN` (the fallback described above), else skip. On the
+bot path the destination is `SLACK_NOTIFY_CHANNEL`, or else the owner's user ID
+from `auth.test` called with the user token (a bot token's `auth.test` returns
+the bot's own ID). The user token (ends `a598`) still has only
+`identify,users:write,users.profile:write`; it stays for the status and for
+finding the owner's user ID, so the earlier note about adding `chat:write` to it
+no longer applies.
 
 ## Mail (cron failure notifications)
 

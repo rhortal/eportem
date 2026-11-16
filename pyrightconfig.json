@@ -1,6 +1,5 @@
 {
   "include": ["."],
-  "pythonVersion": "3.8",
-  "typeCheckingMode": "basic",
-  "extraPaths": ["eportem"]
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic"
 }

@@ -1,4 +1,3 @@
 #!/usr/bin/env sh
-
-venv/bin/pip3 install -U -r requirements.txt
-# pipx install -U -r requirements.txt
+# Set up (or repair) the virtual environment without running main.py
+exec "$(dirname "$0")/run.sh" --install

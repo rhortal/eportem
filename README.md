@@ -9,32 +9,41 @@ ePortem is a SaaS solution used in Spain for HR-related tasks. These scripts aut
 ## Features
 
 - Automated time tracking for office and remote work, triggered by cron
-- Clocks with a direct HTTP request (the browser only logs in when the saved session has expired), falling back to the browser click flow when that fails
+- Can clock with a direct HTTP request (the browser then only logs in when the saved session has expired), falling back to the browser click flow when that fails; off by default, see `EPORTEM_HTTP`
 - Start of day, lunch break, return from lunch, and end of day actions
 - Telegram and Slack notifications, plus live Slack status updates
 - Per-day location override (home/office)
 - Business trip mode: check-ins run as normal, but Slack status stays "On a business trip" for the whole trip
 - Holiday mode: skips check-ins and notifications entirely for a date range, with a matching Slack status
+- Fails loudly: an invalid `config/config.json`, an unreadable holiday file, or a run that matches no scheduled action exits non-zero, so cron mails it
 
 ## Deployment
 
 To deploy this project, clone this repo and make sure you have the python3 binary in your PATH.
 
-Make sure you have chromium-driver installed:
+Make sure Chrome or Chromium itself is installed, plus its driver (the driver alone is not enough):
 ### On Ubuntu:
 ```shell
-sudo apt install chromium-chromedriver
+sudo apt install chromium-browser chromium-chromedriver
 ```
 ### On Debian:
 ```shell
-sudo apt install chromium-driver
+sudo apt install chromium chromium-driver
 ```
 ### On macOS
 install Homebrew then do
 ```shell
-brew install --cask chromedriver
+brew install --cask google-chrome chromedriver
 ```
-Install requirements by running `./run.sh` in the root - it creates a `venv` and installs `requirements.txt` on first run, and rebuilds the `venv` if its packages no longer import (e.g. after a system Python upgrade).
+Then create the `.env` file (below) and set up the Python environment with:
+
+```bash
+./run.sh --install
+```
+
+It creates a `venv` and installs `requirements.txt`, and exits without running `main.py` (a plain `./run.sh` also runs `main.py`, which records a real clock event if it's within 15 minutes of a scheduled time). `run.sh` also rebuilds the `venv` if its packages no longer import (e.g. after a system Python upgrade): the new `venv` is built beside the old one and only swapped in if the install works, and if it fails `run.sh` stops with a non-zero exit instead of running `main.py`. `install-reqs.sh` is a shortcut for `./run.sh --install`.
+
+`run.sh` takes an exclusive lock (`.run.lock`, via `flock`) so two overlapping runs can't both clock; the second one prints a message and exits 75 without doing anything. On macOS, which has no `flock`, it runs without the lock.
 
 The software takes configuration including ePortem, Telegram and Slack credentials from a `.env` file. To set this up:
 - Copy `config/.env.template` to `config/.env`
@@ -42,21 +51,61 @@ The software takes configuration including ePortem, Telegram and Slack credentia
 - Enter values for all variables as per comments in the file
 - Set permissions so only you can read it: `chmod 600 config/.env`
 
+The `YES`/`NO` flags are exact matches: only the exact text `YES` turns a feature on. `TELEGRAM_NOTIFY`, `SLACK_NOTIFY` and `SLACK_STATUS` ship as `NO`; set each to `YES` only after filling in its credentials. Two general flags matter for cron:
+- `EPORTEM_ENABLED` is a kill switch: anything other than exactly `YES` makes every run stop before clocking, with a non-zero exit (so cron mails it).
+- `HEADLESS_BROWSING` must be `YES` under cron; anything else opens a visible browser window.
+
 ### Slack notification credentials
 
-Slack notifications and Slack status updates use two different Slack
-features and need two different credentials, both read from `config/.env`:
-- `SLACK_WEBHOOK_URL` — a full Incoming Webhook URL
-  (`https://hooks.slack.com/services/...`), used when `SLACK_NOTIFY=YES`.
-- `SLACK_TOKEN` — an OAuth user token (`xoxp-...`) with the
-  `users.profile:write` scope, used when `SLACK_STATUS=YES`.
+Slack notifications are sent by the Slack app's bot, so they arrive in your DM
+with the app and Slack alerts you (a message you post to your own DM as
+yourself arrives silently). The status update uses your user token. Both are
+read from `config/.env`:
+- `SLACK_BOT_TOKEN`: the Bot User OAuth Token (`xoxb-...`) with the `chat:write`
+  bot scope. Used for `SLACK_NOTIFY=YES`.
+- `SLACK_TOKEN`: an OAuth user token (`xoxp-...`). `SLACK_STATUS=YES` needs its
+  `users.profile:write` scope; it is also used to find your user ID, which is
+  where the bot sends the message.
+- `SLACK_NOTIFY_CHANNEL` (optional): a channel or user ID (`C...` / `U...`) to
+  send to instead. Without it and without `SLACK_TOKEN`, the bot has nobody
+  to send to and the notification fails.
+- `SLACK_WEBHOOK_URL` (optional): a full Incoming Webhook URL
+  (`https://hooks.slack.com/services/...`). If it is set, notifications go
+  through it instead of the tokens.
 
-If one of them is missing, that feature is skipped (a webhook cannot set
-your status, and a token is not a valid webhook URL).
+Without `SLACK_BOT_TOKEN`, `SLACK_TOKEN` is used instead if it has the
+`chat:write` user scope: it posts as you to your own DM, silently. If none of
+the three is set, the notification is skipped.
+
+To set up the bot: in the Slack app go to OAuth & Permissions, Bot Token Scopes,
+add `chat:write`, install (or reinstall) the app, and copy the Bot User OAuth
+Token into `SLACK_BOT_TOKEN`. Optionally, under App Home, Show Tabs, enable the
+Messages tab so you can see the DM with the app.
+
+If a notification fails with "the bot token lacks the chat:write scope", the
+scope is missing or the app was not reinstalled after adding it; if the app
+is not in the channel you set, invite it or use your user ID instead.
+
+### When a notification fails
+
+Notifications and the Slack status are sent after the clock action is
+recorded, so a problem with them never fails the run. Each one is tried on its
+own with a 15-second timeout: a Telegram error doesn't stop Slack or the
+status. If any of them fails, the run prints
+
+```
+WARNING: the clock action WAS recorded, but these follow-ups failed: telegram, slack status
+```
+
+and still exits 0, so cron doesn't mail it as a failed clock-in. The warning is
+in `logs/http_clock.log` for actions sent over HTTP. A notifier that is
+switched on without its credentials is skipped with a one-line message and
+isn't counted as a failure. Tokens and webhook URLs are removed from any error
+text before it is printed.
 
 ### Clocking without the browser (`EPORTEM_HTTP`)
 
-`EPORTEM_HTTP` in `config/.env` chooses which actions are sent as a direct HTTP
+`EPORTEM_HTTP` in `config/.env` (default `NO`) chooses which actions are sent as a direct HTTP
 request (the same `reghorario.cshtml` call the dashboard's buttons make)
 instead of clicking through Chromium:
 
@@ -78,13 +127,38 @@ retrying, so nothing is clocked twice, and cron mails the output. Every HTTP
 attempt, including fallbacks, is appended to `logs/http_clock.log`. Details:
 `docs/http-api-investigation.md`.
 
+How a run decides whether the action was recorded:
+
+- **Recorded**: the server answered with a clock result. An answer that isn't
+  one (an error page, an empty or unexpected JSON body) is not trusted.
+- **Checked on the dashboard**: if the request failed or the answer wasn't a
+  clock result, the dashboard is read up to 3 times, 5 seconds apart. If it no
+  longer offers the button, the action is recorded.
+- **Not recorded, fall back to the browser**: the dashboard still offers the
+  button and the request can't have reached the server (it never connected, or
+  the server answered with an error).
+- **Unknown, fail without retrying**: the request timed out or the connection
+  dropped after it was sent, or the dashboard can't be read (a maintenance
+  page, no buttons at all, a lost session). Check ePortem by hand.
+
+`lunch_break` only ever sends the "Comida" pause: if the dashboard doesn't
+offer it, nothing is sent over HTTP. `EPORTEM_HTTP` is not case-sensitive
+(`yes`, `true` and `1` also mean every action), and a name in the list that
+isn't an action is reported with a warning and ignored.
+
+The log file and its folder are readable only by you (`chmod 600` / `700`).
+At about 1 MB the log is renamed to `http_clock.log.1`, replacing the previous
+one.
+
 To see which request an action would send, without sending it (this skips the
 schedule, holiday and override checks, so use it for testing by hand only):
 
 ```bash
-python3 -m utility.http_clock lunch_break --location office          # dry run
-python3 -m utility.http_clock lunch_break --location office --send   # real clock event
+venv/bin/python3 -m utility.http_clock lunch_break --location office          # dry run
+venv/bin/python3 -m utility.http_clock lunch_break --location office --send   # real clock event
 ```
+
+`--send` refuses to run unless `EPORTEM_ENABLED=YES`; the dry run always works.
 
 ## Usage
 
@@ -97,11 +171,38 @@ To run the script, use the `run.sh` script in the root directory:
 `main.py` checks `config/config.json` for today's schedule and, if the
 current time is within 15 minutes of a scheduled action, performs it. This
 is what cron calls (see [Automation](#automation)) - it's not meant to be
-run continuously.
+run continuously. Don't run it by hand near a scheduled time unless you
+want that action recorded.
+
+To see what it would do without clocking anything, use `--check`:
+
+```bash
+./run.sh --check
+```
+
+It validates `config/config.json` and the override files, then prints which
+action would run now and with which location. It never clocks, and exits 0
+unless something is invalid.
+
+Exit codes of `main.py` (and so of `run.sh`, which passes them through):
+
+| Code | Meaning |
+|------|---------|
+| 0 | An action ran, or there was nothing to do (holiday, no schedule for today's weekday) |
+| 2 | `config/config.json` or `holiday_override.txt` is invalid; nothing was clocked |
+| 3 | Today has a schedule, but the current time is outside every action's window |
+| 75 | `run.sh` only: another run holds the lock |
+
+Cron mails the output of any non-zero run. Exit 3 almost always means a
+crontab line fires outside its window (see [Automation](#automation)).
+
+`main.py` and the action scripts need the `venv` created by `run.sh --install`.
+Run them with `venv/bin/python3`. Only `override_location.py` and
+`holiday_override.py` work with a plain `python3`.
 
 ### Overriding Location
 
-Override the location for a single day using `override_location.py`:
+Override the location for a single day using `override_location.py` (works from any directory, and with plain `python3`; it prints the full path of the file it wrote):
 
 ```bash
 python3 override_location.py home
@@ -110,14 +211,22 @@ python3 override_location.py office
 
 This sets the location to `home`/`office` for the current day only - it's
 read by `main.py` and used for both which ePortem buttons to click and the
-Slack status text. To cancel, delete the `location_override.txt` file. Once the
+Slack status text. The override files live in the repository root, wherever
+you run the script from. To cancel, delete the `location_override.txt` file. Once the
 day has passed, the next run that reads it deletes it automatically.
+
+The file is `home,YYYY-MM-DD` (or `office,...`); the location is matched
+case-insensitively and must be `home` or `office`. If the file is malformed
+or has any other location, `main.py` prints the file's path and the reason
+to stderr, ignores it and uses the location from `config/config.json`; it
+never deletes a malformed file.
 
 ### Marking Holidays
 
 If you're on holiday (not working at all), use `holiday_override.py` so
 `main.py` skips ePortem check-ins and the normal start/lunch/stop Telegram
-and Slack notifications entirely for those days:
+and Slack notifications entirely for those days (again, from any directory,
+with plain `python3`):
 
 ```bash
 # Single day
@@ -134,6 +243,15 @@ automatically once you're back. Setting it repeatedly (once per cron run for
 the whole range) is harmless - it's just overwriting the same status each
 time. To cancel early, delete the `holiday_override.txt` file. Once every date in the file has passed, the next run that reads it deletes it
 automatically.
+
+A holiday file that can't be read must not turn into a day of clock-ins, so
+`main.py` fails closed. It tolerates harmless variations: whitespace around
+the dates, a trailing newline, a UTF-8 BOM, and a single date meaning a
+one-day holiday; an empty file means no holiday. Anything else (garbage, a
+bad date, more than two dates, an end date before the start date) makes
+`main.py` print the file's path and how to fix it (delete the file, or re-run
+`holiday_override.py`) and exit 2 without clocking, so cron mails it. It never
+deletes an unparseable file itself.
 
 ### Marking Business Trips
 
@@ -160,10 +278,10 @@ automatically.
 
 ### Running Actions Directly
 
-You can invoke any action directly using `eportem_action.py` without relying on the config file or the main runner script. This is useful for manual runs, debugging, or scripting. It records a real clock event, over HTTP or the browser as `EPORTEM_HTTP` says, but it skips `main.py`'s schedule, holiday and location-override checks.
+You can invoke any action directly using `eportem_action.py` without relying on the config file or the main runner script. This is useful for manual runs, debugging, or scripting. It records a real clock event, over HTTP or the browser as `EPORTEM_HTTP` says, but it skips `main.py`'s schedule, holiday and location-override checks. Run these with `venv/bin/python3`.
 
 ```bash
-python3 eportem_action.py ACTION --location LOCATION
+venv/bin/python3 eportem_action.py ACTION --location LOCATION
 ```
 
 Where `ACTION` is one of:
@@ -176,38 +294,54 @@ And `LOCATION` is either `office` or `home` (default is `office`).
 
 **Examples:**
 ```bash
-python3 eportem_action.py start_day --location office
-python3 eportem_action.py lunch_break --location home
-python3 eportem_action.py stop_day
+venv/bin/python3 eportem_action.py start_day --location office
+venv/bin/python3 eportem_action.py lunch_break --location home
+venv/bin/python3 eportem_action.py stop_day
 ```
 
 There's also a thin CLI wrapper per action - `start_day.py`, `lunch_break_unified.py`, `after_lunch.py`, `stop_day.py` - each accepting just `--location`:
 
 ```bash
-python3 start_day.py --location home
+venv/bin/python3 start_day.py --location home
 ```
+
+### macOS launchers
+
+`command/*.command` are double-click launchers for macOS, one per action
+(`00-start_the_day`, `01-lunch_break`, `02-after_lunch_break`, `03-stop_the_day`,
+plus `04-start_the_day_home` and `05-after_lunch_break_home`). Each changes to
+the repository root and runs the matching wrapper script with `venv/bin/python3`
+(or `.venv/bin/python3`), or says so if neither exists. Like the scripts above
+they record a real clock event and skip `main.py`'s checks.
 
 ## Automation
 
-You can set these scripts to run automatically using Unix `cron`. You can also add a `sleep $[RANDOM%nn]m` command preceding the call so the command is called at a random time between 0 and nn minutes.
+Run `run.sh` from cron. Each line fires a few minutes early and sleeps a random time, so the recorded timestamps don't look robotic. Copy-pasteable example for the schedule in `config/config.json` (all four actions, Monday to Friday):
+
 ```
-55 08 * * 1-4 sleep $[RANDOM%10]m ; /full_path/run.sh
-25 13 * * 1-5 sleep $[RANDOM%10]m ; /full_path/run.sh
-25 14 * * 1-4 sleep $[RANDOM%10]m ; /full_path/run.sh
-10 18 * * 1-5 sleep $[RANDOM%25]m ; /full_path/run.sh
+SHELL=/bin/bash
+55 08 * * 1-5 sleep $[RANDOM\%10]m ; /full_path/run.sh
+25 13 * * 1-5 sleep $[RANDOM\%10]m ; /full_path/run.sh
+25 14 * * 1-5 sleep $[RANDOM\%10]m ; /full_path/run.sh
+55 17 * * 1-5 sleep $[RANDOM\%10]m ; /full_path/run.sh
 ```
 
-The above example checks in Monday to Thursday between 08:55 and 09:05, notifies of lunch starting 13:25-13:35 and returns 14:25-14:35, and finally calls the script to end the day daily between 18:10 and 18:35.
+Things that have to be right:
+- `SHELL=/bin/bash` at the top. `$RANDOM` and `$[ ]` are bash features, and cron runs lines with `/bin/sh` (dash on Debian), where the `sleep` fails and the script runs immediately with no random delay.
+- `%` must be written `\%` in a crontab line; an unescaped one is turned into a newline.
+- `RANDOM%10` gives 0 to 9 minutes of sleep, so the first line starts between 08:55 and 09:04, the lunch lines at 13:25-13:34 and 14:25-14:34, and the last at 17:55-18:04.
+- Each line's `base time + max random sleep` must land inside the ±15 minute window of its `config/config.json` entry. The rule used here: base time = target - 5 minutes, sleep `RANDOM%10`.
+- The weekdays on each line must match the days in `config/config.json`.
 
-Each cron line's `base time + max random sleep` needs to land inside the
-±15 minute window of the corresponding `config/config.json` entry, or that
-action silently won't fire.
+A run that matches no scheduled action is not silent: if today has a schedule but the current time is outside every window, `main.py` prints the current time and today's targets with their windows, says the crontab entry's time is probably outside the window, and exits 3, so cron mails it. Run `./run.sh --check` at any time to see what would run now.
 
 ### When a button is missing
 
-An action waits up to 30 seconds for its first button. If it doesn't appear, for example during an ePortem 500 outage, the run reopens the registro page every minute for up to 10 minutes, logging in again if the session was lost; a failed login is tried 3 times. Nothing has been clicked at that point, so this can't record anything twice, but the recorded time can be up to about 10 minutes late. If the button is still missing, the run prints the URL and page title, saves the HTML and a screenshot to `diagnostics/` (git-ignored), and fails, which sends the cron mail.
+This describes the browser (Selenium) path; the HTTP path has its own handling, see [Clocking without the browser](#clocking-without-the-browser-eportem_http). An action waits up to 30 seconds for its first button. If it doesn't appear, for example during an ePortem 500 outage, the run reopens the registro page every minute for up to 10 minutes, logging in again if the session was lost; a failed login is tried 3 times, and one run never submits the login form more than 4 times in total, so a rejected login can't hammer the account. A login that ePortem rejects is reported as such (`Login rejected by reCAPTCHA`, or `Login did not leave the login page ... check the credentials`). Nothing has been clicked at that point, so this can't record anything twice, but the recorded time can be up to about 10 minutes late. If the button is still missing, the run prints the URL and page title, saves the HTML and a screenshot to `diagnostics/` (git-ignored), and fails, which sends the cron mail. The saved files are readable only by you, anti-forgery tokens are removed from the HTML, and only the newest 20 files are kept.
 
 If the page doesn't offer the action, the run doesn't retry. For example, `after_lunch` finds nothing to resume when `lunch_break` failed. Opening the dropdown records nothing, so the run prints what ePortem shows, saves diagnostics and fails with the cron mail; correct the day in Detalle registro.
+
+`start_day` at the office is a single click on the main button. If that button shows the day is already running (`Pausar` or `Reanudar`), the run doesn't click it: it says the day is already started, records nothing, sends no notification and fails with the cron mail.
 
 ## Testing
 
@@ -217,18 +351,45 @@ To run the tests, use the `run_tests.sh` script in the root directory:
 ./run_tests.sh
 ```
 
+It runs from any directory, uses `venv/bin/python3` (or `.venv/bin/python3`), runs every test found by `unittest discover` in `tests/`, and passes extra arguments to unittest (`./run_tests.sh -v`, or a module such as `tests.test_main`).
+
 Tests cover `main.py`'s scheduling/holiday logic, `eportem_action.py`'s
 click flow, HTTP/browser choice and fallback, and Slack status handling,
 `utility/http_clock.py`'s button selection, session cookies and outcome
 checks, and the `override_location.py` / `holiday_override.py` CLIs - all
 against a mocked Selenium driver and HTTP session
-(`unittest.mock.MagicMock`), with no real ePortem, Telegram, or Slack calls
-made during a test run. The full run takes about 2½ minutes, because the
-click-flow tests really wait between clicks.
+(`unittest.mock.MagicMock`; the override-file tests use a temporary state directory, selected with the `EPORTEM_STATE_DIR` environment variable), with no real ePortem, Telegram, or Slack calls
+made during a test run. The full run takes under a second: the waits between
+clicks are patched out. The tests also switch `EPORTEM_HTTP` off and empty the
+notification credentials, so they can't send anything even on a host whose
+`config/.env` has them set.
 
 ## Configuration
 
-The schedule for each day is configured in the `config/config.json` file, located in the `config` directory. The location (home or office) can also be configured in this file, as a default for days without an override.
+The schedule is in `config/config.json`:
+
+```json
+{
+  "schedule": {
+    "0": {
+      "day": "Monday",
+      "location": "office",
+      "start_the_day": "9:00",
+      "lunch_break": "13:30",
+      "after_lunch_break": "14:30",
+      "stop_the_day": "18:00"
+    }
+  }
+}
+```
+
+- The keys under `schedule` are weekdays, `"0"` = Monday to `"6"` = Sunday.
+- `day` is an optional label (any string); `location` is optional, `home` or `office`, the default for days without an override (office if left out).
+- The only task keys are `start_the_day`, `lunch_break`, `after_lunch_break` and `stop_the_day`, each a time like `9:00` or `13:30`. Leave one out to skip that action.
+- An action runs when the current time is within 15 minutes of its time (`WINDOW_MINUTES` in `main.py`); if two windows overlap, the first one in the file wins.
+- A weekday with no entry (e.g. the weekend) is a normal quiet run: "No schedule for today.", exit 0.
+
+The whole file is validated on every run, not just today's entry. Every problem found is printed with its location in the file (e.g. `schedule["2"]["lunch_break"]: must be a time like "9:00"...`) and the run exits 2 without clocking, so a typo shows up in the next cron mail instead of waiting for that task's time. A missing file or missing `schedule` key is treated the same way. Check by hand with `./run.sh --check`.
 
 ## Development
 
@@ -237,10 +398,10 @@ The codebase follows DRY (Don't Repeat Yourself) principles with unified compone
 - `eportem_action.py` - Core action handler for all operations: chooses HTTP or the Selenium click flow (with the fallback), then notifications and Slack status
 - `main.py` - Scheduler entrypoint called by cron; decides which action (if any) to run based on the current time and `config/config.json`
 - `start_day.py`, `lunch_break_unified.py`, `after_lunch.py`, `stop_day.py` - thin CLI wrappers, each pinning one action and delegating to `eportem_action.run_fixed_action()`
-- `override_location.py` / `holiday_override.py` - write the override files that `main.py`/`eportem_action.py` read
-- `utility/` - shared helpers: env loading/checking, Selenium login, Telegram/Slack notifications, Slack status
+- `override_location.py` / `holiday_override.py` - write (atomically) the override files that `main.py`/`eportem_action.py` read, in the repository root (or `EPORTEM_STATE_DIR`); stdlib-only, so they run with plain `python3`
+- `utility/` - shared helpers: state file locations (`paths.py`), env loading/checking, Selenium login, Telegram/Slack notifications, Slack status
 - `utility/http_clock.py` - HTTP clock client for the actions `EPORTEM_HTTP` enables (browser only for login); `clock_and_verify()` tells "nothing recorded" (safe to fall back) from "outcome unknown"
-- `utility/capture_dashboard.py` - read-only diagnostic for the direct-HTTP work (see `docs/http-api-investigation.md`): logs in, saves the dashboard HTML/scripts/network log to `capture/` (gitignored) without clicking anything. Run with `python3 -m utility.capture_dashboard`
+- `utility/capture_dashboard.py` - read-only diagnostic for the direct-HTTP work (see `docs/http-api-investigation.md`): logs in, saves the dashboard HTML, button markup, scripts, script hits, cookie names and a session check to `capture/` (gitignored) without clicking anything. Run with `venv/bin/python3 -m utility.capture_dashboard`
 
 ## Acknowledgements
 

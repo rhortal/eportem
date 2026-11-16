@@ -1,17 +1,16 @@
 import os
 import sys
-# NOTE: environment variables are loaded by the utility package import
+
+# Environment variables are loaded by the utility package import.
+
 
 def check_env_variable():
-    # Environment variables loaded by utility package import
-
-    # Retrieve the value of EPORTEM_ENABLED environment variable
-    epportem_enabled = os.getenv('EPORTEM_ENABLED')
-    
-    if epportem_enabled != 'YES':
+    """Exit non-zero unless EPORTEM_ENABLED is "YES" (the switch that lets
+    this host clock at all)."""
+    if os.getenv('EPORTEM_ENABLED') != 'YES':
         sys.exit("EPORTEM_ENABLED environment variable is not set to 'YES'. Terminating the program.")
 
-# Test the function
+
 if __name__ == "__main__":
     try:
         check_env_variable()

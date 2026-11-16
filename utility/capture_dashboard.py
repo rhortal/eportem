@@ -30,10 +30,10 @@ import requests
 from selenium.webdriver.common.by import By
 
 from utility.env_loader import load_environment
-from utility.login_and_navigate import LOGIN_URL, create_driver, login_and_navigate
+from utility.login_and_navigate import (LOGIN_URL, LoginRejected, create_driver,
+                                        login_and_navigate)
 
 BASE_URL = "https://eportem.es"
-CAPTCHA_ERROR = "no es un robot"
 
 # Lines in the dashboard scripts worth reading.
 HIT_PATTERN = re.compile(
@@ -59,15 +59,13 @@ def main():
     driver = create_driver()  # the same disguised browser the cron login uses
     try:
         driver.get(LOGIN_URL)
-        login_and_navigate(driver)  # fills the form and submits; no clicks after this
+        try:
+            login_and_navigate(driver)  # fills the form and submits; no clicks after this
+        except LoginRejected as e:
+            print(f"{e}. Nothing captured.")
+            return 2
 
         page = driver.page_source
-        if CAPTCHA_ERROR in page:
-            print("Login rejected by reCAPTCHA ('no es un robot'). Nothing captured.")
-            return 2
-        if "/Usuario/Login" in driver.current_url:
-            print(f"Still on the login page ({driver.current_url}); check credentials.")
-            return 2
         print(f"Logged in, now at {driver.current_url}")
 
         (out / "dashboard.html").write_text(_redact_html(page))

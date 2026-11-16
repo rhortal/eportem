@@ -2,78 +2,143 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import contextlib
 import datetime
+import io
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
+import holiday_override
 import main
 
 
-class _ChdirTempDirMixin:
+NOW = datetime.datetime(2026, 8, 10, 9, 0)
+
+
+class _StateDirMixin:
 
     def setUp(self):
-        self._orig_cwd = os.getcwd()
         self._tmpdir = tempfile.TemporaryDirectory()
-        os.chdir(self._tmpdir.name)
-
-    def tearDown(self):
-        os.chdir(self._orig_cwd)
-        self._tmpdir.cleanup()
+        self.state = Path(self._tmpdir.name)
+        env = patch.dict(os.environ, {"EPORTEM_STATE_DIR": self._tmpdir.name})
+        env.start()
+        self.addCleanup(env.stop)
+        self.addCleanup(self._tmpdir.cleanup)
+        now = patch('main._now', return_value=NOW)
+        now.start()
+        self.addCleanup(now.stop)
+        self.today = NOW.date()
 
     def _write_override(self, start, end):
-        with open("holiday_override.txt", "w") as f:
-            f.write(f"{start},{end}")
+        (self.state / "holiday_override.txt").write_text(f"{start},{end}")
 
 
-class TestIsHoliday(_ChdirTempDirMixin, unittest.TestCase):
+class TestIsHoliday(_StateDirMixin, unittest.TestCase):
 
     def test_no_override_file(self):
         self.assertFalse(main.is_holiday())
 
     def test_today_within_range(self):
-        today = datetime.date.today()
-        self._write_override(today - datetime.timedelta(days=1), today + datetime.timedelta(days=1))
+        self._write_override(self.today - datetime.timedelta(days=1), self.today + datetime.timedelta(days=1))
         self.assertTrue(main.is_holiday())
 
     def test_today_is_single_day_holiday(self):
-        today = datetime.date.today()
-        self._write_override(today, today)
+        self._write_override(self.today, self.today)
         self.assertTrue(main.is_holiday())
 
     def test_range_in_the_past(self):
-        today = datetime.date.today()
-        past = today - datetime.timedelta(days=10)
+        past = self.today - datetime.timedelta(days=10)
         self._write_override(past, past)
         self.assertFalse(main.is_holiday())
 
     def test_range_in_the_future(self):
-        today = datetime.date.today()
-        future = today + datetime.timedelta(days=10)
+        future = self.today + datetime.timedelta(days=10)
         self._write_override(future, future)
         self.assertFalse(main.is_holiday())
 
-    def test_malformed_file_treated_as_not_holiday(self):
-        with open("holiday_override.txt", "w") as f:
-            f.write("not-a-valid-line")
-        self.assertFalse(main.is_holiday())
+    def test_malformed_file_is_an_error_not_a_working_day(self):
+        (self.state / "holiday_override.txt").write_text("not-a-valid-line")
+        with self.assertRaises(main.HolidayFileError):
+            main.is_holiday()
 
 
-class TestGetTodayHoliday(_ChdirTempDirMixin, unittest.TestCase):
+class TestGetTodayHoliday(_StateDirMixin, unittest.TestCase):
 
     def test_no_override_returns_none(self):
         self.assertIsNone(main.get_today_holiday())
 
     def test_today_in_range_returns_start_and_end(self):
-        today = datetime.date.today()
-        self._write_override(today, today)
-        self.assertEqual(main.get_today_holiday(), {"start": today, "end": today})
+        self._write_override(self.today, self.today)
+        self.assertEqual(main.get_today_holiday(), {"start": self.today, "end": self.today})
 
     def test_out_of_range_returns_none(self):
-        today = datetime.date.today()
-        past = today - datetime.timedelta(days=10)
+        past = self.today - datetime.timedelta(days=10)
         self._write_override(past, past)
         self.assertIsNone(main.get_today_holiday())
+
+
+class TestHolidayOverrideCli(_StateDirMixin, unittest.TestCase):
+
+    def run_cli(self, *args):
+        out = io.StringIO()
+        with patch('sys.argv', ['holiday_override.py', *args]), contextlib.redirect_stdout(out):
+            holiday_override.main()
+        return out.getvalue()
+
+    def test_single_day_format_and_printed_path(self):
+        out = self.run_cli("2026-12-24")
+        self.assertEqual((self.state / "holiday_override.txt").read_text(), "2026-12-24,2026-12-24")
+        self.assertIn(str(self.state / "holiday_override.txt"), out)
+
+    def test_range_format(self):
+        self.run_cli("2026-12-24", "2026-12-26")
+        self.assertEqual((self.state / "holiday_override.txt").read_text(), "2026-12-24,2026-12-26")
+
+    def test_writes_to_state_dir_even_when_cwd_is_elsewhere(self):
+        with tempfile.TemporaryDirectory() as elsewhere:
+            orig = os.getcwd()
+            os.chdir(elsewhere)
+            try:
+                self.run_cli("2026-12-24")
+                self.assertEqual(os.listdir(elsewhere), [])
+            finally:
+                os.chdir(orig)
+        self.assertTrue((self.state / "holiday_override.txt").exists())
+
+    def test_default_location_is_the_repo_not_the_cwd(self):
+        with patch.dict(os.environ, {"EPORTEM_STATE_DIR": ""}):
+            self.assertEqual(holiday_override.state_path("x").parent,
+                             Path(holiday_override.__file__).resolve().parent)
+
+    def test_the_file_main_reads_is_the_file_the_cli_wrote(self):
+        self.run_cli(str(self.today))
+        self.assertIsNotNone(main.get_today_holiday())
+
+    def test_write_is_atomic_and_leaves_no_temp_files(self):
+        with patch('holiday_override.os.replace', wraps=os.replace) as spy:
+            self.run_cli("2026-12-24")
+        spy.assert_called_once()
+        self.assertEqual([p.name for p in self.state.iterdir()], ["holiday_override.txt"])
+
+    def test_failed_write_keeps_the_old_file_and_cleans_up(self):
+        (self.state / "holiday_override.txt").write_text("2026-01-01,2026-01-02")
+        with patch('holiday_override.os.replace', side_effect=OSError("boom")):
+            with self.assertRaises(OSError):
+                self.run_cli("2026-12-24")
+        self.assertEqual((self.state / "holiday_override.txt").read_text(), "2026-01-01,2026-01-02")
+        self.assertEqual([p.name for p in self.state.iterdir()], ["holiday_override.txt"])
+
+    def test_end_before_start_is_rejected(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.run_cli("2026-12-26", "2026-12-24")
+        self.assertFalse((self.state / "holiday_override.txt").exists())
+
+    def test_bad_date_is_rejected_cleanly(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.run_cli("24/12/2026")
+        self.assertFalse((self.state / "holiday_override.txt").exists())
 
 
 class TestUpdateHolidaySlackStatus(unittest.TestCase):

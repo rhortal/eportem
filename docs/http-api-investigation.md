@@ -24,6 +24,61 @@ needed to pick the work up in a new session, without the earlier conversation.
 - `at` (installed 2026-11-16) has one job left: the 18:30
   `utility.capture_dashboard` run. `atq` lists it.
 
+### Review changes of 2026-11-16: in the working tree, not committed or deployed
+
+A full review on the afternoon of 2026-11-16 changed most files. Until these
+are committed and deployed, `omv` still runs `fd05812`, and everything else
+in this handoff describes that version. What changes once they are deployed:
+
+- **Outcome checks** (`utility/http_clock.py`). A 200 answer only counts as
+  recorded if it is a clock result (it has `isActive`, `LastDescAct` or
+  `listActiv`). After a failed or odd answer the dashboard is read up to 3
+  times, 5 s apart. A page without `buttonsRegBox`, or with no buttons, is
+  "can't tell" (`OutcomeUnknown`), no longer "recorded". A read timeout or a
+  dropped connection with the button still offered is also `OutcomeUnknown`;
+  only "never connected" or an HTTP error status is `NotRecorded`.
+- **Session file.** Written atomically; a corrupt one is replaced after a
+  browser login instead of forcing Selenium for ever. It also stores the
+  login browser's `user_agent`, which the HTTP requests now really send
+  (before, they went out as `python-requests`).
+- **Login.** A rejected login raises `LoginRejected` with the reason
+  (reCAPTCHA, or still on the login page). The browser is always closed when
+  a login fails. One run submits the login form at most 4 times on the
+  Selenium path, plus 1 on the HTTP path.
+- **`lunch_break`** sends only `_stpause` name `2` (Comida); the fallback to
+  the first pause on offer is gone.
+- **Notifications** can't fail a run any more (see README, "When a
+  notification fails"), have a 15 s timeout, and never print a token.
+- **`main.py`** exits 3 outside every window and 2 for an invalid config or
+  holiday file; `./run.sh --check` shows what would run. Override files and
+  the config are found relative to the repository, whatever the current
+  directory.
+- **`run.sh`** takes a `flock` lock (exit 75 if held) and has `--install`.
+- **`requirements.txt`** is pinned to what `omv`'s venv already has, so
+  deploying doesn't trigger a reinstall.
+
+Things to know when deploying:
+
+- Don't deploy between a cron line firing and its run finishing. The safest
+  moment is mid-morning or mid-afternoon.
+- The live crontab was checked: every line lands inside its window, so exit 3
+  should never fire. If a cron mail with "No action matches the current time"
+  arrives, a crontab line is wrong.
+- After deploying, run `./run.sh --check` on `omv`. It validates the config
+  and override files and clocks nothing.
+- The first run after the deploy rewrites `config/.session_cookies.json` in
+  the new format. The old format still loads.
+- `logs/` on `omv` is `755` with `644` files; the first HTTP attempt after
+  the deploy tightens it to `700`/`600`.
+- Not done, needs a decision: deleting `feature/user-auth-and-multiuser` on
+  Gitea (and so on the GitHub mirror). Its history holds a sample `.jwt` file
+  with an email claim (commits `9c104b8`, `414b842`), default signing
+  secrets, and a debug server bound to `0.0.0.0`. It is the only place the
+  `.jwt` file is reachable from.
+- Small leftovers on `omv`: `USE_MOCK_SERVER` is still in `config/.env`
+  (nothing reads it), and the comment above the first ePortem crontab line is
+  out of date.
+
 ### Open checks
 
 | When | What runs | What to check |

@@ -32,17 +32,34 @@ import datetime
 import json
 import os
 import sys
+import tempfile
+import time
 from html.parser import HTMLParser
 from pathlib import Path
 
 import requests
+from urllib3.exceptions import NewConnectionError
+
+# Same browser identity the Selenium login uses, so the session looks consistent.
+from utility.login_and_navigate import (  # noqa: F401  (re-exported)
+    LOGIN_URL, USER_AGENT, create_driver, login_and_navigate)
 
 BASE_URL = "https://eportem.es"
 DASHBOARD_URL = f"{BASE_URL}/aplicaciones/e-portem/registro/"
 CLOCK_URL = f"{DASHBOARD_URL}reghorario.cshtml"
 COOKIE_FILE = Path(__file__).parent.parent / "config" / ".session_cookies.json"
-# Same browser identity the Selenium login uses, so the session looks consistent.
-from utility.login_and_navigate import USER_AGENT  # noqa: E402
+# Present on every real dashboard; a maintenance or error page served with a 200
+# lacks it, and must never be read as "no buttons, so the action was recorded".
+DASHBOARD_MARKER = "buttonsRegBox"
+
+# After a failed send the server may still be committing the event, so the dashboard
+# is re-read a few times before the action is declared not recorded.
+VERIFY_ATTEMPTS = 3
+VERIFY_PAUSE_SECONDS = 5
+
+# Keys of the clock response JSON (docs/http-api-investigation.md). A body with none
+# of them is not a clock result, whatever its HTTP status.
+RESULT_KEYS = ("isActive", "LastDescAct", "listActiv")
 
 SESSION_ID_HOME = "1293"
 SESSION_ID_OFFICE_DEFAULT = "1"
@@ -77,6 +94,15 @@ class OutcomeUnknown(Exception):
     Falling back could clock twice, so don't."""
 
 
+class DashboardUnreadable(Exception):
+    """The page that came back is not the clock dashboard (maintenance or error
+    page, or a dashboard with no clock buttons), so it says nothing about the state."""
+
+
+class UnexpectedResponse(Exception):
+    """The clock request got a 200 whose body isn't a clock result."""
+
+
 class _ButtonParser(HTMLParser):
     """Collect the attributes of every clock button on the page."""
 
@@ -105,6 +131,8 @@ def _first(buttons, id_, name=None):
 
 def select_button(buttons, action_type, location):
     """Pick the button Selenium's XPaths in eportem_action.py would click."""
+    if location not in ("home", "office"):
+        raise ValueError(f"Unknown location {location!r}, expected 'home' or 'office'")
     home = location == "home"
     if action_type == "start_day":
         button = (_first(buttons, "_ststart", SESSION_ID_HOME) if home
@@ -112,7 +140,8 @@ def select_button(buttons, action_type, location):
                   or next((b for b in buttons if b.get("id") == "_ststart"
                            and b.get("name") != SESSION_ID_HOME), None))
     elif action_type == "lunch_break":
-        button = _first(buttons, "_stpause", LUNCH_PAUSE_ID) or _first(buttons, "_stpause")
+        # No fallback to another _stpause: those are Ausencia, Vacaciones, Baja...
+        button = _first(buttons, "_stpause", LUNCH_PAUSE_ID)
     elif action_type == "after_lunch":
         button = _first(buttons, "_stini", SESSION_ID_HOME if home else SESSION_ID_OFFICE_DEFAULT)
     elif action_type == "stop_day":
@@ -143,34 +172,70 @@ def build_params(button):
     }
 
 
+def _send_never_reached_server(error):
+    """True when a failed request can't have reached the server (it never
+    connected), so nothing can have been recorded."""
+    if isinstance(error, requests.exceptions.ConnectTimeout):
+        return True
+    if isinstance(error, requests.exceptions.ConnectionError) \
+            and not isinstance(error, requests.exceptions.ReadTimeout):
+        reason = getattr(error.args[0] if error.args else None, "reason", None)
+        return isinstance(reason, NewConnectionError)  # includes DNS failures
+    return False
+
+
 class HttpClock:
     def __init__(self, session=None):
         self.logged_in_at = None
         self.last_used_at = None
+        self.user_agent = None  # the one the login browser used, from the cookie file
         self.session = session or requests.Session()
-        self.session.headers.setdefault("User-Agent", USER_AGENT)
+        # A fresh requests.Session already carries "python-requests/x", so setdefault
+        # would never apply; replace that, but keep a UA a caller chose on purpose.
+        current = self.session.headers.get("User-Agent")
+        if not isinstance(current, str) or current.startswith("python-requests"):
+            self.session.headers["User-Agent"] = USER_AGENT
 
     # --- cookies -------------------------------------------------------
-    def load_cookies(self, path=COOKIE_FILE):
+    def load_cookies(self, path=None):
         """Load saved cookies. The file is {"logged_in_at", "last_used_at",
-        "cookies"}; an older plain list is accepted, its mtime taken as the
-        login time."""
+        "user_agent", "cookies"}; an older plain list is accepted, its mtime taken
+        as the login time. A corrupt file returns False (nothing loaded) so the
+        caller logs in again and rewrites it."""
+        path = path or COOKIE_FILE
         if not path.exists():
             return False
-        data = json.loads(path.read_text())
-        if isinstance(data, list):
-            data = {"cookies": data, "last_used_at": None,
-                    "logged_in_at": datetime.datetime.fromtimestamp(path.stat().st_mtime).isoformat()}
-        self.logged_in_at = _parse_time(data.get("logged_in_at"))
-        self.last_used_at = _parse_time(data.get("last_used_at"))
-        for c in data["cookies"]:
-            self.session.cookies.set(c["name"], c["value"],
-                                     domain=c.get("domain"), path=c.get("path", "/"))
+        try:
+            data = json.loads(path.read_text())
+            if isinstance(data, list):
+                data = {"cookies": data, "last_used_at": None,
+                        "logged_in_at": datetime.datetime.fromtimestamp(path.stat().st_mtime).isoformat()}
+            logged_in_at = _parse_time(data.get("logged_in_at"))
+            last_used_at = _parse_time(data.get("last_used_at"))
+            user_agent = data.get("user_agent")
+            cookies = [(c["name"], c["value"], c.get("domain"), c.get("path", "/"))
+                       for c in data["cookies"]]
+            if not all(isinstance(x[0], str) and isinstance(x[1], str) for x in cookies):
+                raise TypeError("cookie name/value is not a string")
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as e:
+            print(f"Session: the saved session file {path.name} is unreadable "
+                  f"({type(e).__name__}); it will be replaced after a browser login")
+            self.session.cookies.clear()
+            self.logged_in_at = self.last_used_at = None
+            return False
+        self.logged_in_at, self.last_used_at = logged_in_at, last_used_at
+        for name, value, domain, cpath in cookies:
+            self.session.cookies.set(name, value, domain=domain, path=cpath)
+        if isinstance(user_agent, str) and user_agent:
+            self.user_agent = user_agent
+            self.session.headers["User-Agent"] = user_agent
         return True
 
-    def save_cookies(self, path=COOKIE_FILE):
+    def save_cookies(self, path=None):
         """Save the cookies (including any auth ticket the server renewed)
-        and record when the session was last used."""
+        and record when the session was last used. Written to a temp file with
+        mode 600 and renamed over the old one, so a crash can't leave it truncated."""
+        path = path or COOKIE_FILE
         self.last_used_at = datetime.datetime.now()
         data = {
             "logged_in_at": self.logged_in_at.isoformat() if self.logged_in_at else None,
@@ -178,9 +243,19 @@ class HttpClock:
             "cookies": [{"name": c.name, "value": c.value, "domain": c.domain, "path": c.path}
                         for c in self.session.cookies],
         }
-        path.touch(mode=0o600, exist_ok=True)
-        os.chmod(path, 0o600)
-        path.write_text(json.dumps(data))
+        if self.user_agent:
+            data["user_agent"] = self.user_agent
+        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")  # mode 600
+        try:
+            with os.fdopen(fd, "w") as f:
+                f.write(json.dumps(data))
+            os.replace(tmp, path)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
 
     def _session_age(self):
         """'login 10:27, 3h05m ago; last used 10:56, 2h34m ago' - for the log, so
@@ -197,16 +272,19 @@ class HttpClock:
                                      domain=c.get("domain"), path=c.get("path", "/"))
 
     def browser_login(self):
-        """Log in with Selenium (the only way past reCAPTCHA), keep the cookies."""
-        from utility.login_and_navigate import login_and_navigate
-        driver = login_and_navigate()
+        """Log in with Selenium (the only way past reCAPTCHA), keep the cookies and
+        the browser's User-Agent. login_and_navigate raises LoginRejected if the
+        login didn't go through."""
+        driver = create_driver()
         try:
-            if "no es un robot" in driver.page_source:
-                raise RuntimeError("Login rejected by reCAPTCHA ('no es un robot')")
-            if "/Usuario/Login" in driver.current_url:
-                raise RuntimeError(f"Login failed, still on {driver.current_url}")
+            driver.get(LOGIN_URL)
+            login_and_navigate(driver)
+            user_agent = driver.execute_script("return navigator.userAgent")
             self.import_selenium_cookies(driver)
             self.logged_in_at = datetime.datetime.now()
+            if isinstance(user_agent, str) and user_agent:
+                self.user_agent = user_agent
+                self.session.headers["User-Agent"] = user_agent
         finally:
             driver.quit()
         self.save_cookies()
@@ -217,6 +295,9 @@ class HttpClock:
         if "/Usuario/Login" in resp.url or 'id="login-form"' in resp.text:
             raise SessionExpired("Session cookies are no longer valid")
         resp.raise_for_status()
+        if DASHBOARD_MARKER not in resp.text:
+            raise DashboardUnreadable(
+                f"the page at {DASHBOARD_URL} has no {DASHBOARD_MARKER} (maintenance or error page?)")
         return parse_buttons(resp.text)
 
     def ensure_session(self):
@@ -242,24 +323,49 @@ class HttpClock:
         return build_params(select_button(self.ensure_session(), action_type, location))
 
     def send(self, params):
-        """Send the clock request. This records a real clock event."""
+        """Send the clock request. This records a real clock event. Raises
+        UnexpectedResponse if the 200 body doesn't look like a clock result."""
         resp = self.session.get(CLOCK_URL, params=params, timeout=30, headers={
             "X-Requested-With": "XMLHttpRequest",
             "Referer": DASHBOARD_URL,
         })
         resp.raise_for_status()
-        result = json.loads(resp.text)
-        self.save_cookies()  # keep any refreshed auth ticket
+        try:
+            result = json.loads(resp.text)
+        except ValueError:
+            result = None
+        if not isinstance(result, dict) or not any(k in result for k in RESULT_KEYS):
+            print("HTTP clock: unexpected response body:", resp.text[:300].replace("\n", " "))
+            raise UnexpectedResponse("the response is not a clock result")
+        try:
+            self.save_cookies()  # keep any refreshed auth ticket
+        except OSError as e:
+            # The event is recorded; failing to save cookies must not look like a failed send.
+            print(f"HTTP clock: warning: could not save the session cookies: {e}")
         return result
 
     def is_recorded(self, params):
         """After a send that may have failed: True if the dashboard no longer
         offers the button that was sent (so the server recorded it), False if
-        it still does. Raises if the dashboard can't be read."""
+        it still does. Raises if the dashboard can't be read, including when it
+        has no clock buttons at all (can't tell "recorded" from "no buttons")."""
         buttons = self.fetch_buttons()
+        if not buttons:
+            raise DashboardUnreadable("the dashboard shows no clock buttons")
         return not any(b.get("id") == params["action"]
                        and (b.get("name") or "") == params["_codactiv"]
                        for b in buttons)
+
+    def _recorded_after_settling(self, params):
+        """True as soon as the dashboard stops offering the button; False if every
+        check still does. Re-checks with a pause since the server may still be
+        committing a request that timed out or failed with a 5xx."""
+        for attempt in range(VERIFY_ATTEMPTS):
+            if attempt:
+                time.sleep(VERIFY_PAUSE_SECONDS)
+            if self.is_recorded(params):
+                return True
+        return False
 
     def clock_and_verify(self, action_type, location):
         """Send the clock request. Returns (params, response_json_or_None) when the
@@ -281,13 +387,23 @@ class HttpClock:
             print(f"HTTP clock: request failed: {type(e).__name__}: {e}. Checking the dashboard.")
             send_error = e
         try:
-            recorded = self.is_recorded(params)
+            recorded = self._recorded_after_settling(params)
         except Exception as e:
             raise OutcomeUnknown(
                 f"request failed ({type(send_error).__name__}) and the dashboard can't be "
                 f"read ({type(e).__name__}); the action may or may not be recorded. "
                 "Check ePortem by hand.") from e
         if not recorded:
+            # The button is still offered. That is only safe to retry if the request
+            # can't have reached the server: a read timeout (or a dropped connection)
+            # means it did, and the event may still be committed.
+            if (isinstance(send_error, (requests.exceptions.ReadTimeout,
+                                        requests.exceptions.ConnectionError))
+                    and not _send_never_reached_server(send_error)):
+                raise OutcomeUnknown(
+                    f"request failed ({type(send_error).__name__}) after reaching the server "
+                    "and the dashboard still offers the button; it may still be recorded. "
+                    "Check ePortem by hand.") from send_error
             raise NotRecorded(f"request failed ({type(send_error).__name__}: {send_error}) "
                               "and the dashboard still offers the button")
         print("HTTP clock: the dashboard shows the action as recorded despite the error.")
@@ -320,6 +436,10 @@ def main():
     parser.add_argument("--notify", action="store_true",
                         help="After a recorded --send, send the usual notifications and Slack status")
     args = parser.parse_args()
+
+    if args.send and os.getenv("EPORTEM_ENABLED") != "YES":
+        print("HTTP clock: EPORTEM_ENABLED is not YES; refusing to --send. Nothing recorded.")
+        return EXIT_NOT_RECORDED
 
     clock = HttpClock()
     if not args.send:

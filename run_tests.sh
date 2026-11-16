@@ -1,7 +1,14 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Run the whole test suite; extra arguments go to unittest (e.g. -v, or a test module)
+cd "$(dirname "$0")" || exit 1
 
-# Activate the virtual environment
-source venv/bin/activate
+if [ -x venv/bin/python3 ]; then
+  PYTHON=venv/bin/python3
+elif [ -x .venv/bin/python3 ]; then
+  PYTHON=.venv/bin/python3
+else
+  echo "No venv found: run ./run.sh --install first." >&2
+  exit 1
+fi
 
-# Run the tests
-python3 -m unittest tests/test_eportem.py tests/test_holiday_override.py tests/test_main.py tests/test_override_location.py tests/test_business_trip_override.py tests/test_http_clock.py
+exec "$PYTHON" -m unittest discover -s tests -t . "$@"
