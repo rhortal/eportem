@@ -176,3 +176,6 @@ diagnostics/
 capture/
 # Saved ePortem session cookies (utility/http_clock.py)
 config/.session_cookies.json
+
+# run_http.sh attempt log
+logs/

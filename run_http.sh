@@ -33,6 +33,11 @@ out=$(venv/bin/python3 -m utility.http_clock "$ACTION" --location "$LOCATION" --
 rc=$?
 echo "$out"
 
+# Cron only mails on failure, so keep a record of every HTTP attempt, including
+# ones that fell back to the browser successfully.
+mkdir -p logs
+{ echo "=== $(date '+%F %T') $ACTION $LOCATION exit=$rc"; echo "$out"; } >> logs/http_clock.log
+
 case $rc in
   0) exit 0 ;;
   3) ;;
