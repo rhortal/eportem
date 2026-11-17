@@ -108,8 +108,6 @@ lands outside every window (no longer a silent no-op), exit 2 for an invalid
 `config/config.json` or an unreadable `holiday_override.txt` (it refuses to
 clock), and exit 75 from `run.sh` when another run holds the `flock` lock
 (`.run.lock`). `./run.sh --check` shows what would run now without clocking.
-The comment above the first ePortem line in the crontab ("Lunch over HTTP ...
-falling back to run.sh") is stale: every line calls `run.sh`.
 
 ## Web UI, Docker, and mock server were removed (2026-08-10)
 
@@ -208,16 +206,17 @@ On this host the checkout is on **`main`** (the work was merged from
 (`YES`, `NO` or a list like `lunch_break,after_lunch`); cron calls `run.sh`
 for every line, and `main.py` applies holidays and overrides before
 `EPortemAction.perform()` tries HTTP and falls back to Selenium only when
-nothing was recorded. Since 2026-11-16 14:57 `omv` has `EPORTEM_HTTP=YES`. Earlier
-crontabs are saved as `/home/pi/crontab.bak-20261116-*`. Every
+nothing was recorded. Since 2026-11-16 14:57 `omv` has `EPORTEM_HTTP=YES`. The earlier
+crontab backups were deleted on 2026-11-17. Every
 HTTP attempt is logged to `logs/http_clock.log`. A dry run
 (`python3 -m utility.http_clock ACTION`) never changes clock status, but it
 skips the holiday/override checks.
 
 `at` was installed on 2026-11-16 for one-off jobs (e.g. timed
 `utility.capture_dashboard` runs; output in `logs/capture.log`). Use `atq` to
-list pending jobs. The first `start_day` over HTTP (2026-11-17 08:55) is still
-an open check, listed in the handoff.
+list pending jobs. The first full all-HTTP day (2026-11-17) ran cleanly and
+passed `--verify-day`; the rollout leftovers on the host were cleared that
+evening.
 
 ## Alerts and the daily check (added 2026-11-16)
 

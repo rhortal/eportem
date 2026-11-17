@@ -16,13 +16,13 @@ needed to pick the work up in a new session, without the earlier conversation.
   same run only when nothing was recorded (`NotRecorded`). If the outcome is
   unknown (`OutcomeUnknown`) or there's an unexpected error, the run fails
   without a fallback, so nothing is clocked twice, and cron mails the output.
-- Crontab backups: `/home/pi/crontab.bak-20261116-102837` (before any HTTP)
-  and `/home/pi/crontab.bak-20261116-run_http` (lunch line on the old
-  `run_http.sh`, removed in `fc420dc`).
+- Crontab backups (`/home/pi/crontab.bak-20261116-*`) were deleted on
+  2026-11-17 after a clean all-HTTP day; to go back to the browser, set
+  `EPORTEM_HTTP=NO` in `config/.env`.
 - Saved session: `config/.session_cookies.json`, browser login at 10:27, last
   used at 15:02 (a read-only dashboard check).
-- `at` (installed 2026-11-16) has one job left: the 18:30
-  `utility.capture_dashboard` run. `atq` lists it.
+- `at` (installed 2026-11-16) has no jobs left; the dashboard captures were
+  read and then deleted on 2026-11-17 (they held account data).
 
 ### Review changes of 2026-11-16: deployed to `omv` that afternoon
 
@@ -78,9 +78,10 @@ Deployment notes (still true for later deploys):
   default signing secrets). Backup bundle, `chmod 600`:
   `/home/pi/backups/eportem-feature-user-auth-and-multiuser-20261116.bundle`
   on `omv`.
-- Small leftovers on `omv`: `USE_MOCK_SERVER` is still in `config/.env`
-  (nothing reads it), and the comment above the first ePortem crontab line is
-  out of date.
+- The rollout leftovers on `omv` were cleared on 2026-11-17: `USE_MOCK_SERVER`
+  removed from `config/.env`, the first ePortem crontab comment rewritten,
+  and a fake 2026-11-16 19:32 `start_day` block (a test run) removed from
+  `logs/http_clock.log`.
 
 ### Open checks
 
@@ -89,7 +90,7 @@ Deployment notes (still true for later deploys):
 | 2026-11-16 17:55–18:05 | `stop_day` | **Done**: recorded over HTTP at 17:58, on the code deployed at 16:37. Session still valid (7h30m after login, idle 2h55m). |
 | 2026-11-16 18:30 | `at` capture | **Done**: `capture/20261116-183000/`. Office start button confirmed (see below). |
 | 2026-11-17 08:55–09:05 | `start_day` | **Done**: session expired (22h29m after login, idle 14h58m), browser login, then recorded over HTTP at 08:57:17 (`_ststart` `1` Trabajo). All follow-ups sent, including the Slack notification over the bot token. |
-| 2026-11-17 13:25, 14:25 | lunch, after lunch | First `after_lunch` over HTTP. |
+| 2026-11-17 13:25, 14:25 | lunch, after lunch | **Done**: lunch at 13:25:07 and the first `after_lunch` at 14:27:03, both over HTTP; `stop_day` at 17:57:03 too. The 18:40 `--verify-day` reported "Day check OK". |
 
 **The office start button is confirmed** by the 18:30 capture: the
 not-started dashboard offers `_ststart` for every activity, `1` Trabajo,
@@ -107,10 +108,10 @@ From the Mac, `omv` is reachable as **`omve`** (external address). Use
 `omv` only on the home LAN.
 
 ```bash
-ssh omve 'cd /home/pi/Apps/eportem && tail -60 logs/http_clock.log; tail -20 logs/capture.log; ls capture/'
-# each capture folder: buttons.html (read this first), hits.txt, cookies.json (names only),
-# session_check.txt, dashboard.html, scripts/
-ssh omve 'cd /home/pi/Apps/eportem/capture && for d in */; do echo "== $d"; grep -o "id=\"_st[a-z]*\"[^>]*" $d/buttons.html; done'
+ssh omve 'cd /home/pi/Apps/eportem && tail -60 logs/http_clock.log; tail -5 logs/actions.log'
+# a new capture (python3 -m utility.capture_dashboard) lands in capture/<timestamp>/:
+# buttons.html (read this first), hits.txt, cookies.json (names only),
+# session_check.txt, dashboard.html, scripts/. Delete it once read.
 ```
 
 Also check that cron didn't send a failure mail (it mails `pi` and the
@@ -148,13 +149,11 @@ Blocks before 14:57 on 2026-11-16 are in the older `run_http.sh` format
 - `stop_day`: `_ststop` (no `name`). Seen on the working and paused
   dashboards.
 
-### Next steps, after the open checks
+### Next steps
 
 1. Done: the 18:30 capture confirmed the office start button.
-2. Delete the captures in `capture/` on `omv` once read: they hold account
-   data.
-3. Delete the two crontab backups once a few days have run cleanly.
-4. Optional: try ticking `recordar` ("remember me") at login for a longer
+2. Done 2026-11-17: captures and crontab backups deleted on `omv`.
+3. Optional: try ticking `recordar` ("remember me") at login for a longer
    session, which would cut the morning browser logins.
 
 ### Rollout history (2026-11-16)
