@@ -12,7 +12,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from utility.login_and_navigate import LOGIN_URL, create_driver, login_and_navigate
 from utility.notification_send import NotificationManager, TelegramChannel, SlackChannel, _describe_error
-from utility.paths import business_trip_file
+from utility.paths import business_trip_file, state_dir
 from utility.env_check import check_env_variable
 from utility.action_log import record_action
 from utility import logfiles
@@ -67,7 +67,11 @@ def _active_business_trip_end_date():
         return end_date
     return None
 
-HTTP_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs", "http_clock.log")
+
+def http_log_path():
+    """logs/http_clock.log under the state dir (the repo, or EPORTEM_STATE_DIR),
+    resolved per write like logs/actions.log, so tests never touch the real one."""
+    return str(state_dir() / "logs" / "http_clock.log")
 
 
 def http_enabled_for(action_type):
@@ -111,11 +115,12 @@ def _log_http_attempt(action_type, location, outcome, output=""):
     the browser fallback, the follow-ups). Cron only mails on failure, so this
     is the record of runs that ended well. The file holds server response
     excerpts, so it is private and rotated (utility/logfiles.py)."""
+    path = http_log_path()
     try:
-        logfiles.append(HTTP_LOG, f"=== {datetime.datetime.now():%Y-%m-%d %H:%M:%S} "
+        logfiles.append(path, f"=== {datetime.datetime.now():%Y-%m-%d %H:%M:%S} "
                                   f"{action_type} {location}: {outcome}\n{output}")
     except OSError as e:  # never let logging hide the real result
-        print(f"Could not write {HTTP_LOG}: {e}")
+        print(f"Could not write {path}: {e}")
 
 
 # Anti-forgery token values in saved pages (same pattern as utility/capture_dashboard.py).

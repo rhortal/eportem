@@ -134,6 +134,14 @@ class TestRunLog(IsolatedCase):
             self.run_action(raises=ValueError)
         self.assertIn("ERROR, browser run failed: ValueError: no button", self.log())
 
+    def test_log_follows_the_state_dir(self):
+        # Tests that set only EPORTEM_STATE_DIR (not IsolatedCase) once wrote
+        # fake runs into the real logs/http_clock.log
+        self.assertEqual(eportem_action.http_log_path(), self.http_log)
+        with patch.dict(os.environ, {"EPORTEM_STATE_DIR": ""}):
+            self.assertEqual(eportem_action.http_log_path(), os.path.join(
+                os.path.dirname(os.path.abspath(eportem_action.__file__)), "logs", "http_clock.log"))
+
     def test_log_write_failure_does_not_change_the_outcome(self):
         with patch.object(EPortemAction, "_perform_http", _http), \
                 patch("utility.logfiles.os.open", side_effect=OSError("denied")):

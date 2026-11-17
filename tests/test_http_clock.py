@@ -269,9 +269,9 @@ class TestEportemActionRouting(unittest.TestCase):
         import tempfile
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        self.log = os.path.join(tmp.name, "http_clock.log")
-        # logs/actions.log goes under the state dir: keep it out of the real repo
-        for p in (patch("eportem_action.HTTP_LOG", self.log), patch("builtins.print"),
+        self.log = os.path.join(tmp.name, "logs", "http_clock.log")
+        # Both logs go under the state dir: keep them out of the real repo
+        for p in (patch("builtins.print"),
                   patch.dict(os.environ, {"EPORTEM_STATE_DIR": tmp.name})):
             p.start()
             self.addCleanup(p.stop)

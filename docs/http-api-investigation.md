@@ -88,7 +88,7 @@ Deployment notes (still true for later deploys):
 |---|---|---|
 | 2026-11-16 17:55–18:05 | `stop_day` | **Done**: recorded over HTTP at 17:58, on the code deployed at 16:37. Session still valid (7h30m after login, idle 2h55m). |
 | 2026-11-16 18:30 | `at` capture | **Done**: `capture/20261116-183000/`. Office start button confirmed (see below). |
-| 2026-11-17 08:55–09:05 | `start_day` | **First `start_day` over HTTP**, and almost certainly the first overnight session expiry, so it should log in with the browser first. Expect `Session: saved session expired ...` then `recorded over HTTP`. A fallback would now mean the dashboard changed. |
+| 2026-11-17 08:55–09:05 | `start_day` | **Done**: session expired (22h29m after login, idle 14h58m), browser login, then recorded over HTTP at 08:57:17 (`_ststart` `1` Trabajo). All follow-ups sent, including the Slack notification over the bot token. |
 | 2026-11-17 13:25, 14:25 | lunch, after lunch | First `after_lunch` over HTTP. |
 
 **The office start button is confirmed** by the 18:30 capture: the

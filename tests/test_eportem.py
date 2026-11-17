@@ -39,13 +39,12 @@ class IsolatedCase(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.tmp = tmp.name
         self.diag_dir = os.path.join(self.tmp, "diagnostics")
-        self.http_log = os.path.join(self.tmp, "logs", "http_clock.log")
+        self.http_log = os.path.join(self.tmp, "logs", "http_clock.log")  # via EPORTEM_STATE_DIR
         env = dict(NO_NOTIFY_ENV, EPORTEM_STATE_DIR=self.tmp)
         for p in (patch.dict(os.environ, env, clear=False),
                   patch("eportem_action.login_and_navigate", side_effect=lambda d: d),
                   patch("time.sleep"),  # one patch covers eportem_action and login_and_navigate
-                  patch("eportem_action.DIAGNOSTICS_DIR", self.diag_dir),
-                  patch("eportem_action.HTTP_LOG", self.http_log)):
+                  patch("eportem_action.DIAGNOSTICS_DIR", self.diag_dir)):
             p.start()
             self.addCleanup(p.stop)
 
