@@ -475,6 +475,12 @@ The codebase follows DRY (Don't Repeat Yourself) principles with unified compone
 - `utility/http_clock.py` - HTTP clock client for the actions `EPORTEM_HTTP` enables (browser only for login); `clock_and_verify()` tells "nothing recorded" (safe to fall back) from "outcome unknown"
 - `utility/capture_dashboard.py` - read-only diagnostic for the direct-HTTP work (see `docs/http-api-investigation.md`): logs in, saves the dashboard HTML, button markup, scripts, script hits, cookie names and a session check to `capture/` (gitignored) without clicking anything. Run with `venv/bin/python3 -m utility.capture_dashboard`
 
+### Where to push
+
+Push to Gitea only (`https://gitea.tiorob-home.mywire.org/roberto/eportem.git`,
+the `origin` remote). Gitea mirrors every push to GitHub; pushing to GitHub
+directly bypasses that and leaves Gitea, which `omv` pulls from, behind.
+
 ## Acknowledgements
 
 - ChatGPT, Claude, Qwen, Gemma and Gemini

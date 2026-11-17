@@ -24,6 +24,17 @@ commits, whichever comes first — read through README.md against the
 current state of the scripts/CLI and fix what's gone stale, even if the
 user didn't ask.
 
+## Git remotes: commit and push to Gitea only
+
+`origin` is Gitea, over HTTPS:
+`https://gitea.tiorob-home.mywire.org/roberto/eportem.git` (SSH on port 22
+isn't reachable from outside the LAN). Gitea pushes on to GitHub
+(`github.com/rhortal/eportem`) by itself, so never push to GitHub directly or
+add it as a remote. Until 2026-11-17 the Mac checkout's `origin` pointed at
+GitHub, so `dfb9101` went to GitHub first and Gitea, which `omv` pulls from,
+lagged behind; `omv` was deployed by fetching from GitHub that once. Deploy
+`omv` with `git pull --ff-only` from its own `origin` (Gitea).
+
 ## Host: this runs on `omv` (OMV NAS, Debian 13 trixie, Intel N95, user `pi`)
 
 ## Chromium hold history — was pinned at 149.x, unheld 2026-07-27
