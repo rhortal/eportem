@@ -1,6 +1,6 @@
 # Development and CI tools, on top of the pinned runtime requirements.
 # Installed by `make venv`. Versions pinned 2026-11-18.
--r requirements.txt
+-r requirements-service.txt
 
 pytest==9.2.0
 pytest-cov==7.1.0

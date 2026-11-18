@@ -5,7 +5,7 @@ BIN     = $(VENV)/bin
 
 .PHONY: venv lint test test-fast check clean-venv
 
-$(BIN)/python: requirements.txt requirements-dev.txt
+$(BIN)/python: requirements.txt requirements-service.txt requirements-dev.txt
 	$(PYTHON) -m venv $(VENV)
 	$(BIN)/python -m pip install --quiet --upgrade pip
 	$(BIN)/python -m pip install --quiet -r requirements-dev.txt

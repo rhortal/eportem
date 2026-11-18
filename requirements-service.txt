@@ -1,0 +1,22 @@
+# The multi-user service (docs/refactor/PLAN.md), on top of the clock engine's
+# runtime requirements. Kept apart from requirements.txt, which run.sh installs
+# for the legacy cron scripts on the live host. Versions pinned 2026-11-18.
+-r requirements.txt
+
+alembic==1.20.1
+cryptography==50.0.2
+holidays==0.109
+pydantic==2.14.3
+pydantic-settings==2.16.3
+sqlalchemy==2.1.9
+
+# Dependencies of the above
+annotated-types==0.8.0
+cffi==2.1.1
+mako==1.4.3
+markupsafe==3.0.4
+pycparser==3.12
+pydantic-core==2.50.4
+python-dateutil==2.9.0.post0
+six==1.17.0
+typing-inspection==0.4.5
