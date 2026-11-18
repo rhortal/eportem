@@ -4,6 +4,8 @@
     config show       the settings in effect and where each came from (secrets hidden)
     config docs       regenerate .env.example and the settings table in README.md
     config new-key    print a new secret key for EPORTEM_SECRET_KEY
+    migrate           create or upgrade the database
+    import-legacy     bring a person's cron set-up into the database (see eportem/legacy_import.py)
     check-contract    read-only check of the real site (see eportem/contract.py)
 """
 import argparse
@@ -51,17 +53,77 @@ def _config(args):
     return 0
 
 
+def _load_settings_or_exit():
+    from eportem import settings as s
+    try:
+        return s.load_settings()
+    except s.SettingsError as e:
+        print("Invalid settings:", file=sys.stderr)
+        for p in e.problems:
+            print(f"  - {p}", file=sys.stderr)
+        return None
+
+
+def _migrate(args):
+    from eportem.db.engine import migrate
+    settings = _load_settings_or_exit()
+    if settings is None:
+        return 2
+    migrate(settings.effective_database_url)
+    print("Database is up to date.")
+    return 0
+
+
+def _import_legacy(args):
+    from eportem.db.crypto import SecretBox
+    from eportem.db.engine import make_engine, make_sessionmaker
+    from eportem.legacy_import import ImportError_, import_legacy
+    settings = _load_settings_or_exit()
+    if settings is None:
+        return 2
+    engine = make_engine(settings.effective_database_url)
+    with make_sessionmaker(engine)() as db:
+        try:
+            report = import_legacy(db, settings, SecretBox.from_settings(settings), args.source,
+                                   args.user, args.email)
+        except ImportError_ as e:
+            db.rollback()
+            print("Nothing imported:", file=sys.stderr)
+            for p in e.problems:
+                print(f"  - {p}", file=sys.stderr)
+            return 2
+        for line in report.lines:
+            print(f"  {line}")
+        if args.dry_run:
+            db.rollback()
+            print("Dry run: nothing was saved.")
+        else:
+            db.commit()
+            print("Imported.")
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="eportem", description="ePortem service commands.")
     sub = parser.add_subparsers(dest="command", required=True)
     config = sub.add_parser("config", help="settings")
     config.add_argument("action", choices=["check", "show", "docs", "new-key"])
+    sub.add_parser("migrate", help="create or upgrade the database")
+    imp = sub.add_parser("import-legacy", help="import a person's cron set-up")
+    imp.add_argument("--user", required=True, help="the person's username in the service")
+    imp.add_argument("--email")
+    imp.add_argument("--from", dest="source", default=str(REPO), help="the cron checkout (default: this one)")
+    imp.add_argument("--dry-run", action="store_true")
     sub.add_parser("check-contract", help="read-only check of the real site", add_help=False)
     args, rest = parser.parse_known_args(argv)
+    if args.command != "check-contract" and rest:
+        parser.error(f"unrecognized arguments: {' '.join(rest)}")
     if args.command == "config":
-        if rest:
-            parser.error(f"unrecognized arguments: {' '.join(rest)}")
         return _config(args)
+    if args.command == "migrate":
+        return _migrate(args)
+    if args.command == "import-legacy":
+        return _import_legacy(args)
     from eportem import contract
     return contract.main(rest)
 

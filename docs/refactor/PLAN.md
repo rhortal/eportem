@@ -109,16 +109,16 @@ working from the same code until cutover.
 | `users` | id, email, username, password_hash (argon2id), role (`admin`/`user`), status (`pending`/`active`/`suspended`), email_verified_at, plan, timezone, locale, jitter_before_minutes, jitter_after_minutes, paused, created_at | Status and plan are the hooks for monetising later. Timezone, locale and the random offset are the person's own, starting from the instance defaults (D-016) |
 | `api_tokens` | id, user_id, name, prefix, token_hash (sha256), scopes, last_used_at, expires_at, revoked_at | Shown once. Format `ept_<prefix>_<secret>` |
 | `web_sessions` | id, user_id, created_at, expires_at, ip, user_agent | Server-side sessions; cookie holds only the id |
-| `eportem_accounts` | user_id, username, password_enc, office_activity_id, home_activity_id, lunch_pause_id, verified_at, last_login_at | Activity IDs are found from the dashboard when the account is verified; no hard-coded defaults |
-| `eportem_sessions` | user_id, cookies_enc, user_agent, logged_in_at, last_used_at | Replaces `config/.session_cookies.json` |
-| `schedule_templates` | id, owner_user_id (null = built-in), key, name, description, days (JSON: weekday → start/lunch/back/stop or `off`), jitter_before, jitter_after | Built-ins are read-only; users copy and edit (section 5) |
-| `user_schedule` | user_id, default_template_id, location_pattern (JSON: weekday → `home`/`office`, or an A/B fortnight), holiday_region | One per user |
-| `schedule_periods` | id, user_id, template_id, start_date, end_date, recurring_yearly, label | e.g. summer hours every 1 Jul–31 Aug |
+| `eportem_accounts` | user_id, username, password_enc, office_activity_id, home_activity_id, lunch_pause_id, use_http, verified_at, last_login_at | Activity IDs are found from the dashboard when the account is verified; no hard-coded defaults |
+| `eportem_sessions` | user_id, data_enc (the whole session record, encrypted), updated_at | Replaces `config/.session_cookies.json` |
+| `schedule_templates` | id, user_id, key, name, description, days (JSON: weekday → start/stop/lunch_out/lunch_back) | A person's own templates. The built-ins live in code (`eportem/core/templates.py`), read-only; people copy and edit (section 5) |
+| `user_schedules` | user_id, template_key, location_weeks (JSON: one week, or two for an A/B fortnight), pattern_anchor, holiday_country, holiday_region | One per user |
+| `schedule_periods` | id, user_id, template_key, start_date, end_date, yearly, label | e.g. summer hours every 1 Jul–31 Aug |
 | `day_overrides` | id, user_id, start_date, end_date, kind (`time_off`/`location`/`business_trip`/`times`/`work_on_holiday`), location, times (JSON), note | Replaces the three `*_override.txt` files; one row can cover a range |
 | `local_holidays` | id, user_id, date, name | Local public holidays not in the regional calendar |
-| `notification_channels` | id, user_id, kind (`telegram`/`slack_webhook`/`slack_bot`/`slack_user`/`email`), config_enc, notify, alerts, slack_status, status_texts (JSON) | Per user; Slack status texts and emoji can be changed |
-| `planned_runs` | id, user_id, date, action, target_time, planned_at (with jitter), location, status (`planned`/`running`/`recorded`/`not_recorded`/`unknown`/`skipped`/`failed`), via (`http`/`browser`), attempt, started_at, finished_at, error | **Unique (user_id, date, action)**: the guard against double clocking. Replaces `logs/actions.log` |
-| `run_logs` | run_id, text | The per-run output block that `logs/http_clock.log` holds today, scrubbed |
+| `notification_channels` | id, user_id, kind (`telegram`, `slack`; `email` later), config_enc, notify, alerts, slack_status, status_texts (JSON) | Per user. One Slack channel holds its webhook, bot token, user token and destination, as the scripts do; status texts and emoji can be changed |
+| `planned_runs` | id, user_id, date, action, target_minute, planned_at (UTC, with jitter), location, status (`planned`/`running`/`recorded`/`not_recorded`/`unknown`/`skipped`/`failed`/`cancelled`), via (`http`/`browser`/`legacy-*`), attempt, started_at, finished_at, error | **Unique (user_id, date, action)**: the guard against double clocking. Replaces `logs/actions.log` |
+| `run_logs` | run_id, outcome, text | The per-run output block that `logs/http_clock.log` holds today, scrubbed |
 | `audit_events` | id, user_id, actor, kind, detail, at | Logins, token changes, config changes, admin actions |
 | `scheduler_lock` | name, holder, heartbeat_at | Only one scheduler runs (matters with Postgres and more than one replica) |
 
@@ -427,18 +427,28 @@ Done 2026-11-18.
   use, so the old test files stay as they are.
 
 ### Phase 3: settings, persistence and the calendar
-- `eportem/settings.py` with every setting in section 6, `*_FILE` support, the
-  start-up check, `eportem config show`, `.env.example`, and the
-  README table test.
-- SQLAlchemy 2 models, Alembic migrations, SQLite by default (WAL mode in the
-  data dir), Postgres through the database URL. Encryption helpers. The
-  `CookieStore` comes from the DB.
-- Templates (built-ins as data), `core.calendar.resolve()` with the order in
-  section 5, regional holidays through the `holidays` package, and table tests
-  that cover every rule and the order between them.
-- `eportem import-legacy --user <name>`: reads `config/.env`, `config.json`,
-  the override files, `.session_cookies.json` and `logs/actions.log` into the
-  database for one user. It is idempotent and has a dry run.
+Done 2026-11-18.
+- [x] `eportem/settings.py`: every setting in section 6, environment over a
+      TOML file over defaults, `*_FILE` for secrets, every problem named by
+      its variable. `python -m eportem config check|show|docs|new-key`.
+      `.env.example` and README's table are generated and tested.
+- [x] The random offset is per person (D-016); the instance gives the
+      starting values and the window.
+- [x] Templates (`eportem/core/templates.py`, six built-ins) and
+      `eportem/core/calendar.py` `resolve()`, with table tests for every rule
+      and the order between them (holidays from the `holidays` package,
+      loaded only when used).
+- [x] `eportem/db/`: SQLAlchemy models, Alembic migration `0001` (tested up
+      and down), SQLite in WAL mode with foreign keys, `SecretBox`
+      (Fernet/MultiFernet, rotation), `DbCookieStore` (the HTTP clock keeps its
+      session encrypted in the database; tested against the fake),
+      `load_calendar()` from rows.
+- [x] `python -m eportem migrate` and `import-legacy --user NAME [--dry-run]`
+      (D-017): idempotent, nothing saved on any problem, secrets never
+      printed. `logs/actions.log` becomes run history so the cutover day's
+      earlier actions aren't clocked again.
+- [x] Service packages pinned in `requirements-service.txt`, apart from the
+      cron path's `requirements.txt` (D-017).
 
 ### Phase 4: scheduler and workers
 - **Planner.** At local midnight for each user (and on start-up, and whenever

@@ -182,3 +182,21 @@ safety rule that an action never runs outside it, and above all never late.
 Every person's offset is checked against it by one function,
 `eportem.core.schedule.jitter_problems()`, which the settings, the profile form
 and the API all use.
+
+**D-017: The service's packages are pinned apart from the cron path's; the legacy import also brings history** (Accepted, 2026-11-18)
+`run.sh` installs `requirements.txt` into the live host's venv. Adding
+SQLAlchemy, Alembic, pydantic and cryptography there would change the cron
+path's environment for nothing it uses.
+→ `requirements-service.txt` (includes `requirements.txt`) holds the
+service's pins. The Docker image and `make venv` install it. The engine in
+`eportem/core` still needs only the cron path's packages. `holidays` is
+imported only when a calendar asks for public holidays.
+→ `import-legacy` maps the cron set-up onto the new tables. The schedule
+becomes a built-in template when the times match exactly, and an `imported`
+template otherwise. Current and future overrides become day changes. The
+cookie file becomes the stored session. `logs/actions.log` becomes
+`planned_runs` rows with status `recorded` and `via = legacy-http`/`legacy-browser`.
+That last part matters at cutover: the scheduler sees today's earlier actions
+as done and doesn't clock them again. The activity IDs come from the legacy
+adapter's constants, not from new code. Notification channels are replaced on
+every import. Changes and history are only added.
