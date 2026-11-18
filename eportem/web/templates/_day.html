@@ -1,0 +1,16 @@
+{% set cls = (day.location if day.works else "off") ~ (" today" if day.date == today else "") %}
+{% macro body() %}
+  <div class="d">{{ t(WEEKDAYS[day.date.weekday()])[:3] }} {{ day.date.day }}</div>
+  {% if day.works %}
+    <div>{{ format_minutes(day.times.start) }}–{{ format_minutes(day.times.stop) }}</div>
+    <div>{{ "🏠" if day.location == "home" else "🏢" }} {{ t(day.location) }}{% if day.business_trip_end %} ✈️{% endif %}</div>
+  {% else %}
+    {% include "_off.html" %}
+  {% endif %}
+{% endmacro %}
+{% if day.works and day.date >= today %}
+<button class="day {{ cls }}" hx-post="/days/{{ day.date.isoformat() }}/location" hx-swap="outerHTML"
+  aria-label="{{ day.date.isoformat() }}: {{ t(day.location) }}">{{ body() }}</button>
+{% else %}
+<div class="day {{ cls }}">{{ body() }}</div>
+{% endif %}

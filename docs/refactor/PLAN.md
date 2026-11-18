@@ -512,17 +512,34 @@ Done 2026-11-18, except the parts that come with the web UI (below).
       switch the dev dependency when the replacement is stable.
 
 ### Phase 6: web UI
-- Server-rendered Jinja2 with htmx, no JS build step. English and Spanish.
-- Pages: first-run wizard, home (this week / next week strip and today's
-  runs), schedule (template picker, editor, home/office pattern, periods),
-  calendar (time off, business trips, public holidays), ePortem account (with
-  "verify"), notifications (with "send test"), history and run logs, API
-  tokens, profile/password.
-- Admin: users, runs that failed or are `unknown` across users, scheduler
-  health, browser queue, effective settings (secrets hidden), version, and the
-  audit log.
-- Accessibility basics (keyboard, labels, contrast) and phone-width layout:
-  switching tomorrow to home from a phone should take seconds.
+Done 2026-11-18 (D-020), with the items below left open.
+- [x] Server-rendered Jinja2 with htmx 2.0.4 bundled in `eportem/web/static/`
+      (no CDN). English and Spanish, per person, falling back to the
+      browser's language and then the instance default.
+- [x] Sign-in with server-side sessions (only a hash of the cookie id is
+      stored; HttpOnly, SameSite=Lax, Secure on https), CSRF on every form and
+      on cookie-authenticated API calls, a sign-in rate limit per user and per
+      address, no open redirect, sessions ended on suspension.
+- [x] Pages: today (setup checklist, this week and next week, one tap
+      switches a day home/office and a second tap undoes it, today's runs,
+      clock now), schedule (template cards, customise the week, home days,
+      region for public holidays, periods), calendar (month view, time off,
+      business trips, location, other times, work on a holiday, local
+      holidays), ePortem account (verify), notifications (add, edit
+      without retyping secrets, test, delete), history and run logs, profile
+      (timezone, language, own random offset, pause, password), API tokens,
+      admin (runs that need a look, users, suspend).
+- [x] Days with nothing to clock carry a code (`DayPlan.off`) so the UI
+      shows short translated labels.
+- [x] Tests (15) and screenshots checked at desktop and phone width; the
+      one-tap switch checked in real Chrome.
+- [ ] A step-by-step wizard. For now, home shows a setup checklist that
+      links to each page; enough for the first users, revisit with feedback.
+- [ ] Alternating weeks in the UI (the API and the engine support them).
+- [ ] Registration (`invite`/`open`), email verification and password
+      reset: they need SMTP and email templates. Accounts are created by an
+      admin for now (`EPORTEM_REGISTRATION=closed`, the default).
+- [ ] The iCal feed.
 
 ### Phase 7: packaging and operations
 - `Dockerfile`: `python:3.13-slim-trixie` plus Debian's `chromium` and

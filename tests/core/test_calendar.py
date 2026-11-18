@@ -86,6 +86,7 @@ class TestResolve(unittest.TestCase):
         self.assertEqual([p.location for p in plans[:5]], ["office", "office", "home", "office", "office"])
         self.assertEqual(plans[5].reason, "Saturday is not a working day in European day, 9–18")
         self.assertEqual(plans[0].template_key, "european-9-18")
+        self.assertEqual((plans[5].off, plans[0].off), ("day_off", None))
 
     def test_paused_and_inactive_beat_everything(self):
         work = DayChange("times", MON, MON, times=DayTimes(600, 700))
@@ -100,6 +101,7 @@ class TestResolve(unittest.TestCase):
         self.assertFalse(plan.works)
         self.assertTrue(plan.on_time_off)
         self.assertEqual(plan.reason, "time off: Lanzarote")
+        self.assertEqual((plan.off, plan.detail), ("time_off", "Lanzarote"))
 
     def test_public_holidays_regional_and_local(self):
         c = cal(holiday_country="ES", holiday_region="MD",

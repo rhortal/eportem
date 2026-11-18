@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block main %}
+<h1>{{ t("Schedule") }}</h1>
+<h2>{{ t("Working-day template") }}</h2>
+<div class="templates">
+{% for tpl in templates %}
+  <div class="card {{ 'on' if current and current.key == tpl.key else '' }}">
+    <strong>{{ t(tpl.name) }}</strong>
+    <div class="muted">{{ t(tpl.description) if tpl.description else "" }}</div>
+    <ul class="muted">{% for wd, d in tpl.days|dictsort %}<li>{{ t(WEEKDAYS[wd])[:3] }}: {% include "_times.html" %}</li>{% endfor %}</ul>
+    {% if current and current.key == tpl.key %}<em>{{ t("In use") }}</em>{% else %}
+    <form method="post" action="/schedule/template"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="template_key" value="{{ tpl.key }}"><button class="quiet">{{ t("Use this template") }}</button></form>{% endif %}
+  </div>
+{% endfor %}
+</div>
+
+<details class="card"><summary>Customise the week</summary>
+<form method="post" action="/schedule/custom"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <label>{{ t("Name") }}</label><input name="name" value="{{ 'My week' }}">
+  <table><tr><th></th><th>{{ t("Start") }}</th><th>{{ t("Lunch out") }}</th><th>{{ t("Lunch back") }}</th><th>{{ t("Stop") }}</th></tr>
+  {% for wd in range(7) %}{% set d = current.day(wd) if current else none %}
+  <tr><td><label><input type="checkbox" name="works_{{ wd }}" {{ 'checked' if d }}> {{ t(WEEKDAYS[wd]) }}</label></td>
+    <td><input type="time" name="start_{{ wd }}" value="{{ format_minutes(d.start) if d else '' }}"></td>
+    <td><input type="time" name="lunch_out_{{ wd }}" value="{{ format_minutes(d.lunch_out) if d and d.has_lunch else '' }}"></td>
+    <td><input type="time" name="lunch_back_{{ wd }}" value="{{ format_minutes(d.lunch_back) if d and d.has_lunch else '' }}"></td>
+    <td><input type="time" name="stop_{{ wd }}" value="{{ format_minutes(d.stop) if d else '' }}"></td></tr>
+  {% endfor %}</table>
+  <p><button>{{ t("Save") }}</button></p>
+</form></details>
+
+<h2 id="home-days">{{ t("Home days") }}</h2>
+<form class="card" method="post" action="/schedule/home-days"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="row">{% for wd in range(7) %}
+    <label><input type="checkbox" name="home_{{ wd }}" {{ 'checked' if week.get(wd|string) == 'home' }}> {{ t(WEEKDAYS[wd]) }}</label>
+  {% endfor %}</div>
+  <p class="muted">Unticked days are office days.</p>
+  <button>{{ t("Save") }}</button>
+</form>
+
+<h2>{{ t("Public holidays") }}</h2>
+<form class="card row" method="post" action="/schedule/holidays"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <div><label>Country</label><select name="holiday_country"><option value="ES" {{ 'selected' if sched and sched.holiday_country == 'ES' }}>España</option>
+    <option value="" {{ 'selected' if sched and not sched.holiday_country }}>—</option></select></div>
+  <div><label>{{ t("Region") }}</label><select name="holiday_region">{% for code, name in regions %}
+    <option value="{{ code }}" {{ 'selected' if sched and (sched.holiday_region or '') == code }}>{{ name }}</option>{% endfor %}</select></div>
+  <button>{{ t("Save") }}</button>
+</form>
+
+<h2>{{ t("Periods") }}</h2>
+<div class="card">
+  <p class="muted">{{ t("Use another template for a date range, e.g. summer hours.") }}</p>
+  {% if periods %}<table>{% for p in periods %}
+    <tr><td>{{ p.label or p.template_key }}</td><td>{{ p.start_date.strftime('%d/%m') if p.yearly else p.start_date }} – {{ p.end_date.strftime('%d/%m') if p.yearly else p.end_date }}{% if p.yearly %} ({{ t("Every year") }}){% endif %}</td>
+    <td><form class="inline" method="post" action="/schedule/periods/{{ p.id }}/delete"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="danger">{{ t("Delete") }}</button></form></td></tr>
+  {% endfor %}</table>{% endif %}
+  <form method="post" action="/schedule/periods" class="row"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <div><label>{{ t("Working-day template") }}</label><select name="template_key">{% for tpl in templates %}<option value="{{ tpl.key }}">{{ t(tpl.name) }}</option>{% endfor %}</select></div>
+    <div><label>{{ t("From") }}</label><input type="date" name="start_date" required></div>
+    <div><label>{{ t("To") }}</label><input type="date" name="end_date" required></div>
+    <div><label><input type="checkbox" name="yearly" value="1"> {{ t("Every year") }}</label></div>
+    <div><label>{{ t("Label") }}</label><input name="label"></div>
+    <button>{{ t("Add") }}</button>
+  </form>
+</div>
+{% endblock %}

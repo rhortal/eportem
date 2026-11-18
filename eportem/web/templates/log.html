@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block main %}
+<h1>{{ log.run.date }} · {{ t(log.run.action) }} · <span class="status-{{ log.run.status }}">{{ t(log.run.status) }}</span></h1>
+<div class="card"><p>{{ log.outcome or "" }}</p>{% if log.run.error %}<p class="muted">{{ log.run.error }}</p>{% endif %}
+<pre>{{ log.text }}</pre></div>
+<p><a href="/history">‹ {{ t("History") }}</a></p>
+{% endblock %}

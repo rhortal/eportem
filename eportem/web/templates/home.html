@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block main %}
+{% if not setup_done %}
+<div class="card"><h2 style="margin-top:0">{{ t("Get started") }}</h2>
+  <ol class="steps">{% for label, href, done in steps %}
+    <li class="{{ 'done' if done else '' }}"><a href="{{ href }}">{{ t(label) }}</a></li>{% endfor %}</ol></div>
+{% endif %}
+{% for title, days in weeks %}
+<h2>{{ t(title) }}</h2>
+<div class="week">{% for day in days %}{% include "_day.html" %}{% endfor %}</div>
+{% endfor %}
+<p class="muted">{{ t("Tap a day to switch home/office for that day only.") }}</p>
+
+<h2>{{ t("Today's runs") }}</h2>
+<div class="card">
+{% if runs %}
+<table><tr><th></th><th></th><th></th><th></th></tr>
+{% for r in runs %}
+<tr><td>{{ format_minutes(r.target_minute) }}</td><td>{{ t(r.action) }}</td><td>{{ t(r.location) }}</td>
+<td class="status-{{ r.status }}">{{ t(r.status) }}{% if r.status != "planned" %} · <a href="/history/{{ r.id }}">{{ t("Log") }}</a>{% endif %}</td></tr>
+{% endfor %}</table>
+{% else %}<p class="muted">{{ t("Nothing planned today") }}</p>{% endif %}
+<details><summary>{{ t("Clock now") }}</summary>
+  <form method="post" action="/actions/start_day" id="clock" class="row"
+        onsubmit="this.action='/actions/'+this.elements.action.value">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <select name="action">{% for a in actions %}<option value="{{ a }}">{{ t(a) }}</option>{% endfor %}</select>
+    <select name="location"><option value="">—</option><option value="office">{{ t("office") }}</option><option value="home">{{ t("home") }}</option></select>
+    <label><input type="checkbox" name="confirm" value="yes" required> records a real clock event</label>
+    <button>{{ t("Clock now") }}</button>
+  </form></details>
+</div>
+{% endblock %}

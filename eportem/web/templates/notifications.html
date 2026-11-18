@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block main %}
+<h1>{{ t("Notifications") }}</h1>
+{% for ch in channels %}
+<form class="card" method="post" action="/notifications"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="id" value="{{ ch.id }}"><strong>{{ ch.kind|capitalize }}</strong>
+  <div class="row">{% for k, v in ch.config.items() %}
+    <div><label>{{ k }}</label><input name="{{ k }}" placeholder="{{ v or '' }}" {% if v != '(set)' %}value="{{ v or '' }}"{% endif %}></div>{% endfor %}</div>
+  <div class="row">
+    <label><input type="checkbox" name="notify" value="1" {{ 'checked' if ch.notify }}> {{ t("Clock notifications") }}</label>
+    <label><input type="checkbox" name="alerts" value="1" {{ 'checked' if ch.alerts }}> {{ t("Failure alerts") }}</label>
+    {% if ch.kind == "slack" %}<label><input type="checkbox" name="slack_status" value="1" {{ 'checked' if ch.slack_status }}> {{ t("Slack status") }}</label>{% endif %}
+  </div>
+  <p class="row"><button>{{ t("Save") }}</button>
+    <button class="quiet" formaction="/notifications/{{ ch.id }}/test">{{ t("Send a test") }}</button>
+    <button class="danger" formaction="/notifications/{{ ch.id }}/delete">{{ t("Delete") }}</button></p>
+  {% if test and test.id == ch.id %}<pre>{{ test.log|join("\n") }}</pre>{% endif %}
+</form>
+{% endfor %}
+<h2>{{ t("Add") }}</h2>
+<form class="card" method="post" action="/notifications"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="kind" value="telegram"><strong>Telegram</strong>
+  <div class="row"><div><label>token</label><input name="token" required></div><div><label>chat_id</label><input name="chat_id" required></div></div>
+  <input type="hidden" name="notify" value="1"><input type="hidden" name="alerts" value="1"><p><button>{{ t("Add") }}</button></p>
+</form>
+<form class="card" method="post" action="/notifications"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="kind" value="slack"><strong>Slack</strong>
+  <p class="muted">A bot token (xoxb-) sends from the app so Slack alerts you; a user token (xoxp-, scope users.profile:write) sets your status.</p>
+  <div class="row"><div><label>bot_token</label><input name="bot_token"></div><div><label>user_token</label><input name="user_token"></div>
+    <div><label>channel</label><input name="channel" placeholder="optional"></div><div><label>webhook_url</label><input name="webhook_url" placeholder="optional"></div></div>
+  <div class="row"><label><input type="checkbox" name="notify" value="1" checked> {{ t("Clock notifications") }}</label>
+    <label><input type="checkbox" name="alerts" value="1" checked> {{ t("Failure alerts") }}</label>
+    <label><input type="checkbox" name="slack_status" value="1"> {{ t("Slack status") }}</label></div>
+  <p><button>{{ t("Add") }}</button></p>
+</form>
+{% endblock %}

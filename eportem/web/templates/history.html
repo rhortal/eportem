@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block main %}
+<h1>{{ t("History") }}</h1>
+<div class="card"><table>
+{% for r in runs %}<tr><td>{{ r.date }}</td><td>{{ format_minutes(r.target_minute) }}</td><td>{{ t(r.action) }}</td>
+<td>{{ t(r.location) }}</td><td class="status-{{ r.status }}">{{ t(r.status) }}{% if r.via %} ({{ r.via }}){% endif %}</td>
+<td>{% if r.status != "planned" %}<a href="/history/{{ r.id }}">{{ t("Log") }}</a>{% endif %}</td></tr>
+{% else %}<tr><td class="muted">—</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

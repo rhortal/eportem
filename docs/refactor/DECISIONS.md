@@ -232,3 +232,19 @@ or Telegram commits first. Each run's engine uses its own short sessions
 (D-018).
 → This also applies on Postgres, where long transactions are just as
 unwelcome.
+
+**D-020: Web UI details** (Accepted, 2026-11-18)
+- htmx is bundled in the app, not loaded from a CDN, so a self-hosted instance
+  makes no third-party requests and works offline on a LAN. Version and sha256
+  are in the plan. Update it deliberately.
+- Sessions live server-side with only a hash of the id, so a copied database
+  can't be replayed as cookies. CSRF tokens are an HMAC of the session id
+  with the instance key, so they need no storage. htmx sends the token as a
+  header set on `<body>`. Plain forms send it as a hidden field.
+- The API accepts the session cookie too, which lets the UI call it, but only
+  with the CSRF header for anything that changes data.
+- The calendar engine says why a day has nothing to clock with a code
+  (`off`: inactive, paused, time_off, holiday, day_off) plus a detail, instead
+  of only an English sentence, so every language gets short labels.
+- A setup checklist on the home page instead of a wizard for now. It is
+  simpler, works with the normal pages, and doesn't trap anyone mid-flow.

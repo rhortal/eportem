@@ -6,7 +6,7 @@ import datetime
 import threading
 
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select, text
 
 from eportem import auth
@@ -14,6 +14,7 @@ from eportem.db.crypto import SecretBox
 from eportem.db.engine import make_engine, make_sessionmaker
 from eportem.db.models import SchedulerLock, User
 from eportem.service import ServiceError
+from eportem.web import sessions
 
 BAD_TOKEN_LIMIT = (30, 60)  # bad tokens per client address per minute
 
@@ -73,6 +74,10 @@ def caller(request: Request, db=Depends(get_db)):
         return Caller(user, token.scopes.split(","), f"token {token.prefix}")
     web = getattr(request.state, "web_user", None)
     if web is not None:
+        if request.method not in sessions.SAFE_METHODS and not sessions.csrf_ok(
+                state.settings.secret_key.get_secret_value(), request.state.session_value,
+                request.headers.get("x-csrf-token", "")):
+            raise HTTPException(403, "missing or wrong X-CSRF-Token")
         return Caller(db.merge(web), ["admin"] if web.role == "admin" else ["write"], "web")
     raise HTTPException(401, "authentication required", headers={"WWW-Authenticate": "Bearer"})
 
@@ -128,6 +133,26 @@ def create_app(settings, sessionmaker=None, engine=None, scheduler=None, start_s
                   docs_url="/api/docs", openapi_url="/api/openapi.json", redoc_url=None)
     app.state.eportem = AppState(settings, sessionmaker, box, engine, scheduler)
 
+    @app.middleware("http")
+    async def load_web_session(request, call_next):
+        """Who is signed in with the session cookie (None otherwise)."""
+        value = request.cookies.get(sessions.COOKIE)
+        request.state.session_value, request.state.web_user = value, None
+        if value:
+            with sessionmaker.begin() as db:
+                user = sessions.load(db, value)
+                if user is not None:
+                    db.expunge(user)
+                    request.state.web_user = user
+        return await call_next(request)
+
+    from eportem.web.ui import LoginRequired
+
+    @app.exception_handler(LoginRequired)
+    async def login_required(request, exc):
+        from urllib.parse import quote
+        return RedirectResponse(f"/login?next={quote(request.url.path)}", status_code=303)
+
     @app.exception_handler(ServiceError)
     async def service_error(request, exc):
         return JSONResponse({"detail": exc.problems}, status_code=exc.status)
@@ -154,6 +179,12 @@ def create_app(settings, sessionmaker=None, engine=None, scheduler=None, start_s
             return JSONResponse({"status": "unavailable", "problems": problems}, status_code=503)
         return {"status": "ready"}
 
+    from fastapi.staticfiles import StaticFiles
+
     from eportem.web.api import router
+    from eportem.web.ui import HERE
+    from eportem.web.ui import router as ui_router
     app.include_router(router, prefix="/api/v1")
+    app.mount("/static", StaticFiles(directory=str(HERE / "static")), name="static")
+    app.include_router(ui_router)
     return app

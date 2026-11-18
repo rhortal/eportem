@@ -1,0 +1,2 @@
+{#- One day of a template: d is a DayTimes -#}
+{{ format_minutes(d.start) }}–{{ format_minutes(d.stop) }}{% if d.has_lunch %}, {{ t("lunch") }} {{ format_minutes(d.lunch_out) }}–{{ format_minutes(d.lunch_back) }}{% else %}, {{ t("no lunch break") }}{% endif %}

@@ -1,0 +1,51 @@
+:root { --bg:#f7f7f5; --fg:#1c1c1a; --muted:#6b6b66; --card:#fff; --line:#e3e2dc; --accent:#2f6f5e;
+  --accent-fg:#fff; --home:#e8f1ec; --office:#eaeef7; --off:#f0efea; --bad:#a33a2a; --warn:#8a6100; --ok:#2f6f5e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#161615; --fg:#ecebe6; --muted:#a3a29b; --card:#20201e;
+  --line:#34342f; --accent:#6fb9a2; --accent-fg:#10201b; --home:#1f2e27; --office:#1f2533; --off:#262624;
+  --bad:#e07a68; --warn:#e0b44f; --ok:#6fb9a2; } }
+* { box-sizing:border-box; }
+body { margin:0; font:16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--fg); }
+a { color:var(--accent); }
+header { display:flex; flex-wrap:wrap; gap:.25rem 1rem; align-items:center; padding:.75rem 1rem;
+  border-bottom:1px solid var(--line); background:var(--card); }
+header .brand { font-weight:700; margin-right:auto; text-decoration:none; color:var(--fg); }
+header nav { display:flex; flex-wrap:wrap; gap:.25rem .75rem; }
+header nav a { text-decoration:none; color:var(--muted); }
+header nav a.on { color:var(--fg); font-weight:600; }
+main { max-width:60rem; margin:0 auto; padding:1rem; }
+h1 { font-size:1.4rem; margin:.5rem 0 1rem; } h2 { font-size:1.1rem; margin:1.5rem 0 .5rem; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:1rem; margin-bottom:1rem; }
+.muted { color:var(--muted); font-size:.9rem; }
+.notice { padding:.6rem .9rem; border-radius:8px; margin-bottom:1rem; background:var(--home); }
+.problems { padding:.6rem .9rem; border-radius:8px; margin-bottom:1rem; border:1px solid var(--bad); color:var(--bad); }
+.problems ul { margin:.25rem 0 0; padding-left:1.2rem; }
+form.inline { display:inline; }
+label { display:block; margin:.5rem 0 .2rem; font-size:.9rem; }
+input, select { font:inherit; padding:.45rem .55rem; border:1px solid var(--line); border-radius:6px;
+  background:var(--bg); color:var(--fg); max-width:100%; }
+input[type=checkbox] { width:auto; }
+button { font:inherit; padding:.45rem .9rem; border-radius:6px; border:1px solid var(--accent);
+  background:var(--accent); color:var(--accent-fg); cursor:pointer; }
+button.quiet { background:transparent; color:var(--accent); }
+button.danger { border-color:var(--bad); background:transparent; color:var(--bad); }
+.row { display:flex; flex-wrap:wrap; gap:.5rem 1rem; align-items:end; }
+.week { display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:.4rem; }
+.day { border:1px solid var(--line); border-radius:8px; padding:.45rem; min-height:5.2rem; text-align:left;
+  background:var(--off); color:var(--fg); font-size:.85rem; width:100%; cursor:default; }
+.day.home { background:var(--home); } .day.office { background:var(--office); }
+button.day { border-color:var(--line); }
+button.day:hover { outline:2px solid var(--accent); }
+.day .d { font-weight:600; } .day.today { box-shadow:inset 0 0 0 2px var(--accent); }
+.day .why { color:var(--muted); font-size:.78rem; }
+table { width:100%; border-collapse:collapse; font-size:.92rem; }
+th, td { text-align:left; padding:.4rem .3rem; border-bottom:1px solid var(--line); vertical-align:top; }
+.status-recorded, .status-dry_run { color:var(--ok); } .status-planned, .status-running { color:var(--muted); }
+.status-unknown, .status-skipped { color:var(--warn); } .status-not_recorded, .status-failed { color:var(--bad); }
+.templates { display:grid; grid-template-columns:repeat(auto-fill, minmax(15rem,1fr)); gap:.6rem; }
+.templates .card { margin:0; } .templates .card.on { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.month { display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:.25rem; }
+.month .day { min-height:4.2rem; } .month .other { opacity:.45; }
+.steps li.done { color:var(--muted); text-decoration:line-through; }
+pre { white-space:pre-wrap; word-break:break-word; background:var(--off); padding:.75rem; border-radius:8px; font-size:.82rem; }
+code.token { display:block; padding:.6rem; background:var(--off); border-radius:6px; word-break:break-all; }
+@media (max-width: 40rem) { .week { grid-template-columns:repeat(4, minmax(0,1fr)); } main { padding:.75rem; } }

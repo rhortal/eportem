@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block main %}
+<h1>{{ t("API tokens") }}</h1>
+{% if new_token %}<div class="card"><strong>{{ t("Copy it now: it is not shown again.") }}</strong><code class="token">{{ new_token }}</code></div>{% endif %}
+<div class="card"><table>{% for tk in tokens %}
+  <tr><td>{{ tk.name }}</td><td><code>ept_{{ tk.prefix }}_…</code></td><td>{{ tk.scopes|join(", ") }}</td>
+  <td class="muted">{{ "revoked" if tk.revoked else ("used " ~ tk.last_used_at[:16].replace("T", " ") if tk.last_used_at else "never used") }}</td>
+  <td>{% if not tk.revoked %}<form class="inline" method="post" action="/tokens/{{ tk.id }}/revoke"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="danger">{{ t("Revoke") }}</button></form>{% endif %}</td></tr>
+{% else %}<tr><td class="muted">—</td></tr>{% endfor %}</table></div>
+<form class="card row" method="post" action="/tokens"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <div><label>{{ t("Name") }}</label><input name="name" required></div>
+  <div><label>{{ t("Scopes") }}</label><label><input type="checkbox" name="scope_read" value="1" checked> read</label>
+    <label><input type="checkbox" name="scope_write" value="1"> write</label>
+    {% if user.role == "admin" %}<label><input type="checkbox" name="scope_admin" value="1"> admin</label>{% endif %}</div>
+  <div><label>{{ t("Expires in days") }}</label><input type="number" name="expires_in_days" min="1" max="3650" size="5"></div>
+  <button>{{ t("Create token") }}</button>
+</form>
+<p class="muted">API documentation: <a href="/api/docs">/api/docs</a></p>
+{% endblock %}

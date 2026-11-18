@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block main %}
+<h1>{{ t("ePortem account") }}</h1>
+<form class="card" method="post" action="/account"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <label>{{ t("Username") }}</label><input name="username" value="{{ account.username or '' }}" required>
+  <label>{{ t("Password") }}</label><input type="password" name="password" autocomplete="new-password"
+    placeholder="{{ '(set — leave empty to keep it)' if account.configured else '' }}">
+  <label><input type="checkbox" name="use_http" value="1" {{ 'checked' if account.use_http or not account.configured }}> {{ t("Use direct HTTP (faster; the browser only logs in)") }}</label>
+  <h2>{{ t("Activity IDs") }}</h2>
+  <p class="muted">Filled in by “verify” when they can be read from your dashboard.</p>
+  <div class="row">
+    <div><label>{{ t("Office") }}</label><input name="office_activity_id" value="{{ account.office_activity_id or '' }}" size="6"></div>
+    <div><label>{{ t("Home") }}</label><input name="home_activity_id" value="{{ account.home_activity_id or '' }}" size="6"></div>
+    <div><label>{{ t("lunch_break") }}</label><input name="lunch_pause_id" value="{{ account.lunch_pause_id or '' }}" size="6"></div>
+  </div>
+  <p><button>{{ t("Save") }}</button></p>
+</form>
+{% if account.configured %}
+<form class="card" method="post" action="/account/verify"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <p>{% if account.verified_at %}Verified {{ account.verified_at[:16].replace("T", " ") }} UTC.{% else %}Not verified yet.{% endif %}</p>
+  <button>{{ t("Verify (logs in, never clocks)") }}</button>
+</form>
+{% endif %}
+{% if verify %}<div class="card"><h2 style="margin-top:0">Found</h2>
+  <p>{{ verify.found or "nothing new" }}</p>
+  <table><tr><th>button</th><th>id</th><th>kind</th><th>label</th></tr>
+  {% for a in verify.activities %}<tr><td>{{ a.button }}</td><td>{{ a.id }}</td><td>{{ a.kind }}</td><td>{{ a.label }}</td></tr>{% endfor %}</table></div>{% endif %}
+{% endblock %}

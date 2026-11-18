@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block main %}
+<h1>{{ t("Calendar") }}</h1>
+<div class="row" style="justify-content:space-between">
+  <a href="/calendar?month={{ prev.strftime('%Y-%m') }}">‹</a><strong>{{ t(["January", "February", "March", "April", "May", "June", "July", "August", "September",
+    "October", "November", "December"][first.month - 1])|capitalize }} {{ first.year }}</strong>
+  <a href="/calendar?month={{ next.strftime('%Y-%m') }}">›</a></div>
+<div class="month">
+{% for wd in range(7) %}<div class="muted">{{ t(WEEKDAYS[wd])[:3] }}</div>{% endfor %}
+{% for week in weeks %}{% for day in week %}
+  <div class="day {{ day.location if day.works else 'off' }} {{ 'other' if day.date.month != first.month }} {{ 'today' if day.date == today }}">
+    <div class="d">{{ day.date.day }}</div>
+    {% if day.works %}{{ "🏠" if day.location == "home" else "🏢" }}{% if day.business_trip_end %} ✈️{% endif %}
+    {% else %}{% include "_off.html" %}{% endif %}
+  </div>
+{% endfor %}{% endfor %}
+</div>
+
+<h2>{{ t("Add a change") }}</h2>
+<form class="card" method="post" action="/calendar/changes"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="row">
+    <div><label>{{ t("Changes") }}</label><select name="kind">
+      <option value="time_off">{{ t("Time off") }}</option><option value="location">{{ t("Location") }}</option>
+      <option value="business_trip">{{ t("Business trip") }}</option><option value="times">{{ t("Other times") }}</option>
+      <option value="work_on_holiday">{{ t("Work on a public holiday") }}</option></select></div>
+    <div><label>{{ t("From") }}</label><input type="date" name="start_date" required></div>
+    <div><label>{{ t("To") }}</label><input type="date" name="end_date"></div>
+    <div><label>{{ t("Location") }}</label><select name="location"><option value="">—</option>
+      <option value="home">{{ t("home") }}</option><option value="office">{{ t("office") }}</option></select></div>
+    <div><label>{{ t("Note") }}</label><input name="note"></div>
+  </div>
+  <div class="row"><span class="muted">{{ t("Other times") }}:</span>
+    <div><label>{{ t("Start") }}</label><input type="time" name="start"></div>
+    <div><label>{{ t("Lunch out") }}</label><input type="time" name="lunch_out"></div>
+    <div><label>{{ t("Lunch back") }}</label><input type="time" name="lunch_back"></div>
+    <div><label>{{ t("Stop") }}</label><input type="time" name="stop"></div></div>
+  <p><button>{{ t("Add") }}</button></p>
+</form>
+
+{% if changes %}<div class="card"><table>{% for c in changes %}
+  <tr><td>{{ t({"time_off": "Time off", "location": "Location", "business_trip": "Business trip", "times": "Other times",
+      "work_on_holiday": "Work on a public holiday"}[c.kind]) }}</td>
+  <td>{{ c.start_date }}{% if c.end_date != c.start_date %} – {{ c.end_date }}{% endif %}</td>
+  <td>{{ t(c.location) if c.location else "" }} {{ c.note }}</td>
+  <td><form class="inline" method="post" action="/calendar/changes/{{ c.id }}/delete"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="danger">{{ t("Delete") }}</button></form></td></tr>
+{% endfor %}</table></div>{% endif %}
+
+<h2>{{ t("Public holidays") }} (local)</h2>
+<div class="card">
+{% for h in local %}<div>{{ h.date }} {{ h.name }}
+  <form class="inline" method="post" action="/calendar/holidays/{{ h.id }}/delete"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="danger">{{ t("Delete") }}</button></form></div>{% endfor %}
+<form class="row" method="post" action="/calendar/holidays"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <div><label>Date</label><input type="date" name="date" required></div><div><label>{{ t("Name") }}</label><input name="name"></div>
+  <button>{{ t("Add") }}</button></form>
+</div>
+{% endblock %}

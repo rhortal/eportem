@@ -1,0 +1,4 @@
+{#- A short, translated label for a day with nothing to clock -#}
+{%- set labels = {"day_off": "Day off", "time_off": "Time off", "holiday": "Holiday", "paused": "Paused",
+                  "inactive": "Inactive"} -%}
+<div class="why">{{ t(labels.get(day.off, "Day off")) }}{% if day.detail %}: {{ day.detail }}{% endif %}</div>

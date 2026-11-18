@@ -114,6 +114,10 @@ class DayPlan:
     business_trip_end: datetime.date | None = None
     on_time_off: bool = False        # for the "On holiday" Slack status
     template_key: str | None = None
+    # Why nothing is clocked, for translated labels: inactive, paused, time_off,
+    # holiday, day_off. `detail` is the time-off note or the holiday's name.
+    off: str | None = None
+    detail: str = ""
 
     def actions(self):
         return self.times.actions() if self.works else []
@@ -131,15 +135,16 @@ def _last(changes, kind, date):
 def resolve(cal, date):
     """The plan for one date (see the module docstring for the order)."""
     if not cal.active:
-        return DayPlan(date, False, "account not active")
+        return DayPlan(date, False, "account not active", off="inactive")
     if cal.paused:
-        return DayPlan(date, False, "paused")
+        return DayPlan(date, False, "paused", off="paused")
     off = _last(cal.changes, "time_off", date)
     if off:
-        return DayPlan(date, False, "time off" + (f": {off.note}" if off.note else ""), on_time_off=True)
+        return DayPlan(date, False, "time off" + (f": {off.note}" if off.note else ""), on_time_off=True,
+                       off="time_off", detail=off.note)
     holiday = cal.public_holiday(date)
     if holiday and not (_last(cal.changes, "work_on_holiday", date) or _last(cal.changes, "times", date)):
-        return DayPlan(date, False, f"public holiday: {holiday}")
+        return DayPlan(date, False, f"public holiday: {holiday}", off="holiday", detail=holiday)
 
     times_change = _last(cal.changes, "times", date)
     period = next((p for p in reversed(cal.periods) if p.covers(date)), None)
@@ -151,7 +156,7 @@ def resolve(cal, date):
         reason = f"{template.name}" + (f" ({period.label or 'period'})" if period else "")
         if times is None:
             return DayPlan(date, False, f"{WEEKDAYS[date.weekday()]} is not a working day in {template.name}",
-                           template_key=template.key)
+                           template_key=template.key, off="day_off")
 
     trip = _last(cal.changes, "business_trip", date)
     place = _last(cal.changes, "location", date)

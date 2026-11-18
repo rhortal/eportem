@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block main %}
+<h1>{{ t("Profile") }}</h1>
+<form class="card" method="post" action="/profile"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="row">
+    <div><label>Email</label><input type="email" name="email" value="{{ user.email or '' }}"></div>
+    <div><label>{{ t("Time zone") }}</label><input name="timezone" value="{{ user.timezone }}" required></div>
+    <div><label>{{ t("Language") }}</label><select name="locale"><option value="es" {{ 'selected' if user.locale == 'es' }}>Español</option>
+      <option value="en" {{ 'selected' if user.locale == 'en' }}>English</option></select></div>
+  </div>
+  <h2>{{ t("Random offset") }}</h2>
+  <p class="muted">Each action starts at a random moment between these limits around its time, inside the {{ window }}-minute window.</p>
+  <div class="row">
+    <div><label>{{ t("minutes before") }}</label><input type="number" name="jitter_before_minutes" min="0" max="{{ window }}" value="{{ user.jitter_before_minutes }}"></div>
+    <div><label>{{ t("minutes after") }}</label><input type="number" name="jitter_after_minutes" min="0" max="{{ window }}" value="{{ user.jitter_after_minutes }}"></div>
+  </div>
+  <p><label><input type="checkbox" name="paused" value="1" {{ 'checked' if user.paused }}> {{ t("Paused (nothing is clocked)") }}</label></p>
+  <button>{{ t("Save") }}</button>
+</form>
+<form class="card" method="post" action="/profile/password"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <h2 style="margin-top:0">{{ t("Change password") }}</h2>
+  <div class="row"><div><label>{{ t("Current password") }}</label><input type="password" name="current" autocomplete="current-password"></div>
+    <div><label>{{ t("New password") }}</label><input type="password" name="new" autocomplete="new-password" minlength="10" required></div></div>
+  <p><button>{{ t("Save") }}</button></p>
+</form>
+{% endblock %}
