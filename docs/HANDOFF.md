@@ -23,7 +23,10 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   (4) after about 3 matching working days, the switch (PLAN.md phase 8).
 - Open questions for the owner: the region for public holidays (only Spain's
   national ones now); where GlitchTip alerts should go (it has no email);
-  whether to use `ddclient`'s Cloudflare token (below).
+  whether to use `ddclient`'s Cloudflare token (below); where CI should run
+  (D-024: the workflow sits in `.gitea/workflows/` and runs nowhere yet; either
+  give the Gitea→GitHub mirror token the `workflow` scope and move it back, or
+  enable Gitea Actions with a runner on `omv`).
 
 ## Continuing on another machine
 
