@@ -1,5 +1,5 @@
-# Lint and tests on every push and pull request. Gitea Actions reads
-# .github/workflows too, so this one file serves both forges.
+# Lint, tests and an image smoke test on every push and pull request, for Gitea
+# Actions. Kept out of .github/workflows for now (see docs/refactor/DECISIONS.md D-024).
 name: check
 
 on:

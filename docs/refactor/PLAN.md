@@ -363,8 +363,8 @@ earlier in pieces if phase 1 turns out cleanly separable.
       today's unittest suite unchanged, `ruff` (rules in D-013, existing code
       fixed to pass) and coverage (88% overall at the start).
 - [x] `make check` (lint + tests + coverage) from a Python 3.13 `.venv`.
-- [x] CI workflow `.github/workflows/check.yml`, read by GitHub Actions and by
-      Gitea Actions. The Docker build is added to it in phase 7.
+- [x] CI workflow, now `.gitea/workflows/check.yml` (D-024; it was
+      `.github/workflows/check.yml`). The Docker build is added to it in phase 7.
 - [x] Portability test (`tests/test_portability.py`), plus the gitignored
       `.portability-denylist` for personal names.
 - [x] README's "Where to push" section, which named the maintainer's Git

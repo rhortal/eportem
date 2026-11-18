@@ -628,8 +628,9 @@ maintainer's own Git server. Open issues and pull requests there.
 
 `make check` runs the linter (`ruff`), the test suite (`pytest`, with
 coverage, and a floor of 85% for `eportem/`) and the portability test, from a `.venv` that `make venv` builds
-with Python 3.13 and `requirements-dev.txt`. `make test-fast` skips the real-browser tests. The same checks run in CI
-(`.github/workflows/check.yml`, which Gitea Actions also reads).
+with Python 3.13 and `requirements-dev.txt`. `make test-fast` skips the real-browser tests. The same checks, plus a build and smoke test of the
+Docker image, are defined for Gitea Actions in `.gitea/workflows/check.yml` (they run once Actions are
+enabled for the repository and a runner is registered).
 
 The portability test (`tests/test_portability.py`) fails when a tracked file
 has an email address outside the example domains, a private IP address, or a

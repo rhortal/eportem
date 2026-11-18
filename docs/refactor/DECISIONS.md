@@ -304,3 +304,14 @@ keeps it free of personal values. `docs/OPERATIONS.md`: the live host (cron,
 Chromium, mail, Slack credentials, deploying). `docs/HANDOFF.md`: where ongoing
 work stands. Both are skipped by the portability test, with `TODO.md` and
 `docs/http-api-investigation.md`.
+
+**D-024: The CI workflow lives in `.gitea/workflows/` for now** (Accepted, 2026-11-18, owner's choice)
+Gitea's push mirror to GitHub had been failing since phase 0. GitHub refuses
+changes to `.github/workflows/` from a token without the `workflow` scope,
+and the mirror's token doesn't have it. So GitHub's copy of the refactor
+branch stopped at `ff12faa`. D-013 assumed one file serving both forges.
+→ The workflow moved to `.gitea/workflows/check.yml`, which GitHub ignores.
+Gitea Actions are still off, so it doesn't run anywhere yet. `make check`
+before each commit remains the check. To revisit: give the mirror's token the
+`workflow` scope and move the file back (GitHub would then run it), or enable
+Gitea Actions with a runner.
