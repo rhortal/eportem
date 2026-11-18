@@ -235,3 +235,13 @@ day's check is only meaningful once that day's actions were all run by the
 new code.
 
 Open items for the host live in `TODO.md` (tracked).
+
+## Refactor to a multi-user service (branch `refactor/multiuser-service`, from 2026-11-18)
+
+Work to replace cron with a built-in scheduler, add multiple users, a web UI
+and API, and Docker packaging. Plan: `docs/refactor/PLAN.md`; decisions:
+`docs/refactor/DECISIONS.md`. Update both in the same commit as the code
+they describe. Until the phase 8 cutover, `main` and the cron path on `omv`
+stay live and must keep working. Nothing on the branch may call the real
+clock endpoint: development and tests use the fake ePortem server
+(`fake_eportem/`, PLAN.md section 5).
