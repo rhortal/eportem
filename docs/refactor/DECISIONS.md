@@ -88,3 +88,36 @@ Monetisation is a "maybe later", and it carries legal questions (PLAN.md R3).
 → `users.status`, `users.plan`, and one `can_clock()` check used by both the
 scheduler and the API. Email verification and invites come in phase 5. Stripe
 and licence keys wait until there's a buyer.
+
+**D-011: Schedules are templates + a location pattern + dated changes, resolved by one function** (Proposed, 2026-11-18)
+People think in patterns, like "European 9–18, home on Wednesdays", "summer
+hours in July and August" or "home tomorrow". They don't think in
+per-weekday JSON. Calendly, Google Calendar's working location and Spanish
+HR tools (named schedules, *jornada intensiva*, regional holidays) all
+handle this well.
+→ Built-in read-only templates (`european-9-18`, `spanish-9-18`,
+`spanish-friday-short`, `summer-8-15`, ...) that users copy to customise.
+Plus a home/office pattern per weekday (with an optional A/B fortnight),
+yearly or one-off periods, one-day changes (location, times, time off,
+business trip, work on a holiday), and regional public holidays through the
+`holidays` package. `core.calendar.resolve(user, date)` is a pure function
+with a fixed order. The UI preview, the API, the planner and verify-day all
+use it.
+→ "What will happen on day X" has a single answer, and that answer can be
+tested.
+
+**D-012: No install-specific values in code or image; everything is a setting** (Proposed, 2026-11-18)
+This is open source, so other people must be able to run it without editing
+code. Today the code hard-codes the target URL, activity IDs, the
+User-Agent, the timezone and the Slack status texts, and the docs mention
+the owner's host.
+→ One pydantic-settings module, the only reader of the environment.
+`EPORTEM_*` env vars > a TOML config file > neutral defaults, with `*_FILE`
+for secrets. It is checked on start-up, and `eportem config show` prints it.
+`.env.example` and the README settings table are checked against the
+module by a test. A portability test fails CI on personal emails, private IPs
+or unknown hostnames in tracked files. Per-user values (credentials, activity
+IDs, status texts, timezone) live in the database.
+→ The owner's production values (hostname, port, proxy, SMTP, Sentry,
+heartbeat) are chosen at cutover in an untracked `.env`. Host-specific
+operations notes stay in `CLAUDE.md`. README and `docs/` stay generic.

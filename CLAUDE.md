@@ -244,4 +244,4 @@ and API, and Docker packaging. Plan: `docs/refactor/PLAN.md`; decisions:
 they describe. Until the phase 8 cutover, `main` and the cron path on `omv`
 stay live and must keep working. Nothing on the branch may call the real
 clock endpoint: development and tests use the fake ePortem server
-(`fake_eportem/`, PLAN.md section 5).
+(`fake_eportem/`, PLAN.md section 7).
