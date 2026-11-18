@@ -26,7 +26,7 @@ ALLOWED_HOSTS = {
     "www.google.com",                          # reCAPTCHA script, in docs
     "github.com",                              # the public repository
     "python-poetry.org", "pdm.fming.dev",      # comments in the stock Python .gitignore
-    "fake-eportem",                            # the dev profile's service name in docker-compose.yml
+    "fake-eportem", "glitchtip",               # service names in docker-compose.yml
     "localhost", "127.0.0.1", "0.0.0.0",  # noqa: S104 (a string, not a bind)
 }
 ALLOWED_HOST_SUFFIXES = (".example.com", ".example.org", ".example.net", ".test", ".invalid", ".localhost")

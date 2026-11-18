@@ -353,7 +353,11 @@ def env_example():
     lines += ["# --- Docker Compose only (not read by the service)",
               "# Where the published port listens on the host. The default keeps it local;",
               "# put a reverse proxy in front for HTTPS, or use 0.0.0.0:8080 on a trusted LAN.",
-              "EPORTEM_PUBLISH=127.0.0.1:8080", ""]
+              "EPORTEM_PUBLISH=127.0.0.1:8080", "",
+              "# --- GlitchTip (docker compose --profile errors; not read by the service)",
+              "# GLITCHTIP_SECRET_KEY: `openssl rand -hex 32`. GLITCHTIP_DOMAIN: its public address.",
+              "GLITCHTIP_SECRET_KEY=", "GLITCHTIP_DOMAIN=http://127.0.0.1:8000", "GLITCHTIP_PUBLISH=127.0.0.1:8000",
+              "GLITCHTIP_FROM_EMAIL=glitchtip@example.com", "GLITCHTIP_EMAIL_URL=consolemail://", ""]
     return "\n".join(lines)
 
 

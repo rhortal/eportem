@@ -222,6 +222,35 @@ class TestChanges(SchedulerCase):
 class TestDryRun(SchedulerCase):
     dry_run = True
 
+    def test_never_alerts_either(self):
+        from eportem.scheduler import scheduler as module
+        uid = self.person(0)
+        with patch.object(module, "send_alert") as real_alert:
+            self.scheduler().tick(utc(DAY, "10:00"))          # start_day missed: would alert
+        self.assertEqual(self.runs(uid)["start_day"].status, "skipped")
+        real_alert.assert_not_called()
+
+    def test_shadow_report_matches_cron(self):
+        import tempfile
+        from pathlib import Path
+
+        from eportem.shadow import compare
+        self.person(0, homes=(2,))
+        self.run_day(self.scheduler())
+        with tempfile.TemporaryDirectory() as tmp:
+            log = Path(tmp) / "actions.log"
+            log.write_text("".join(f"2026-11-18T{t}:00 2026-11-18 {a} home http\n" for a, t in (
+                ("start_day", "08:58"), ("lunch_break", "13:27"), ("after_lunch", "14:31"), ("stop_day", "18:02"))))
+            with self.Session() as db:
+                (date, ok, lines), = compare(db, "user0", str(log), 1, 15, today=DAY)
+            self.assertTrue(ok, lines)
+            log.write_text("2026-11-18T08:58:00 2026-11-18 start_day office http\n")
+            with self.Session() as db:
+                (date, ok, lines), = compare(db, "user0", str(log), 1, 15, today=DAY)
+        self.assertFalse(ok)
+        self.assertIn("different location", lines[0])
+        self.assertIn("cron did not record it", lines[1])
+
     def test_plans_and_logs_but_never_sends(self):
         uid = self.person(0)
         self.run_day(self.scheduler())

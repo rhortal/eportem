@@ -11,6 +11,7 @@
     create-admin      create an admin (password from EPORTEM_NEW_PASSWORD or a prompt)
     create-token      create a personal access token for a person and print it once
     backup            copy the SQLite database to <data dir>/backups (keeps the newest 7)
+    shadow-report     compare a dry-run service with the cron scripts' logs/actions.log
     check-contract    read-only check of the real site (see eportem/contract.py)
 """
 import argparse
@@ -213,6 +214,25 @@ def _backup(args):
     return 0
 
 
+def _shadow_report(args):
+    from eportem.shadow import compare
+    settings = _load_settings_or_exit()
+    if settings is None:
+        return 2
+    with _db(settings)() as db:
+        try:
+            report = compare(db, args.user, args.actions_log, args.days, settings.window_minutes)
+        except ValueError as e:
+            print(str(e), file=sys.stderr)
+            return 2
+    for date, ok, lines in report:
+        print(f"{date} {'OK' if ok else 'DIFFERENT'}")
+        print("\n".join(lines))
+    if not report:
+        print("Nothing to compare yet.")
+    return 0 if all(ok for _, ok, _ in report) else 1
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="eportem", description="ePortem service commands.")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -236,6 +256,10 @@ def main(argv=None):
     tok.add_argument("--expires-in-days", type=int)
     bk = sub.add_parser("backup", help="back up the SQLite database")
     bk.add_argument("--keep", type=int, default=7)
+    sh = sub.add_parser("shadow-report", help="compare a dry-run service with cron")
+    sh.add_argument("--user", required=True)
+    sh.add_argument("--actions-log", required=True)
+    sh.add_argument("--days", type=int, default=7)
     sub.add_parser("check-contract", help="read-only check of the real site", add_help=False)
     args, rest = parser.parse_known_args(argv)
     if args.command != "check-contract" and rest:
@@ -256,6 +280,8 @@ def main(argv=None):
         return _create_token(args)
     if args.command == "backup":
         return _backup(args)
+    if args.command == "shadow-report":
+        return _shadow_report(args)
     from eportem import contract
     return contract.main(rest)
 

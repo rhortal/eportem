@@ -10,7 +10,9 @@ services:
     build: .
     image: eportem:latest
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false   # so `docker compose config` works before .env exists
     ports:
       - "${EPORTEM_PUBLISH:-127.0.0.1:8080}:8080"
     volumes:
@@ -27,5 +29,47 @@ services:
     expose:
       - "8081"
 
+  # --- Error reports (optional): GlitchTip, free and open source, Sentry-compatible.
+  #   docker compose --profile errors up -d
+  #   docker compose exec glitchtip ./manage.py createsuperuser
+  # Open it (GLITCHTIP_PUBLISH, default http://127.0.0.1:8000), create an
+  # organisation and a project, and set EPORTEM_SENTRY_DSN in .env to the
+  # project's DSN with its host changed to glitchtip:8000, e.g.
+  #   EPORTEM_SENTRY_DSN=http://<key>@glitchtip:8000/1
+  # so reports stay on the Docker network. GlitchTip also has heartbeat
+  # monitors: create one and put its URL in EPORTEM_HEARTBEAT_URL (it notices a
+  # stopped eportem container; use an outside service to notice a dead host).
+  glitchtip-db:
+    profiles: ["errors"]
+    image: postgres:18
+    restart: unless-stopped
+    command: -c max_locks_per_transaction=512
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust   # only reachable on this compose network
+    volumes:
+      - glitchtip-db:/var/lib/postgresql
+
+  glitchtip:
+    profiles: ["errors"]
+    image: glitchtip/glitchtip:7
+    restart: unless-stopped
+    depends_on: [glitchtip-db]
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@glitchtip-db:5432/postgres
+      VALKEY_URL: ""                     # no Valkey: Postgres holds the queue and cache
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:?set GLITCHTIP_SECRET_KEY in .env (openssl rand -hex 32)}
+      GLITCHTIP_DOMAIN: ${GLITCHTIP_DOMAIN:-http://127.0.0.1:8000}
+      DEFAULT_FROM_EMAIL: ${GLITCHTIP_FROM_EMAIL:-glitchtip@example.com}
+      EMAIL_URL: ${GLITCHTIP_EMAIL_URL:-consolemail://}
+      ENABLE_USER_REGISTRATION: "False"  # only the superuser you create, and people they invite
+      GLITCHTIP_ENABLE_LOGS: "False"
+    ports:
+      - "${GLITCHTIP_PUBLISH:-127.0.0.1:8000}:8000"
+    volumes:
+      - glitchtip-uploads:/code/uploads
+    mem_limit: "768m"
+
 volumes:
   eportem-data:
+  glitchtip-db:
+  glitchtip-uploads:

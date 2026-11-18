@@ -103,6 +103,13 @@ class Scheduler:
             self._execute(run_id)
         return True
 
+    def _alert(self, db, user_id, text):
+        """Alert the person, except in dry run: a dry run sends nothing at all."""
+        if self.settings.dry_run:
+            log.info("dry run, alert not sent to user %s: %s", user_id, text)
+            return []
+        return send_alert(db, self.box, user_id, text)
+
     def _local_date(self, user, now):
         return now.replace(tzinfo=datetime.UTC).astimezone(zoneinfo.ZoneInfo(user.timezone)).date()
 
@@ -112,7 +119,7 @@ class Scheduler:
             for run in stuck:
                 run.status, run.finished_at = "unknown", now
                 run.error = "the service stopped while this run was in progress; it may or may not be recorded"
-                send_alert(db, self.box, run.user_id,
+                self._alert(db, run.user_id,
                            f"ePortem: {run.action} on {run.date} may or may not have been recorded (the service "
                            "stopped during it). Check Registro Jornada by hand.")
                 log.warning("run %s was running at start-up: marked unknown", run.id)
@@ -130,7 +137,7 @@ class Scheduler:
                 missed = [r for r in missed if window_end_utc(r, tz, self.settings.window_minutes) > user.created_at]
                 if alert_missed and missed:
                     names = ", ".join(r.action for r in missed)
-                    send_alert(db, self.box, user.id, f"ePortem: {names} on {today} were not clocked: the "
+                    self._alert(db, user.id, f"ePortem: {names} on {today} were not clocked: the "
                                "service was not running during their window. Check Registro Jornada.")
 
     def _dispatch(self, now):
@@ -159,7 +166,7 @@ class Scheduler:
                                   .values(status="skipped", finished_at=now,
                                           error="its window closed before it could start"))
                 if done.rowcount:
-                    send_alert(db, self.box, user_id, f"ePortem: {run.action} on {run.date} was not clocked: its "
+                    self._alert(db, user_id, f"ePortem: {run.action} on {run.date} was not clocked: its "
                                "window closed before it could start. Check Registro Jornada.")
                 return False
             done = db.execute(update(PlannedRun).where(PlannedRun.id == run_id, PlannedRun.status == "planned")
@@ -218,7 +225,7 @@ class Scheduler:
             if status in ("unknown", "not_recorded", "failed"):
                 what = {"unknown": "may or may not have been recorded", "not_recorded": "was NOT recorded",
                         "failed": "FAILED"}[status]
-                send_alert(db, self.box, run.user_id, f"ePortem: {run.action} on {run.date} {what}. "
+                self._alert(db, run.user_id, f"ePortem: {run.action} on {run.date} {what}. "
                            f"{(error or '')[:200]} Check Registro Jornada.")
 
     def _verify_days(self, now):
@@ -241,7 +248,7 @@ class Scheduler:
                 detail = ", ".join(f"{r.action} {r.status}" for r in bad)
                 db.add(DayCheck(user_id=user.id, date=today, ok=not bad, detail=detail))
                 if bad:
-                    send_alert(db, self.box, user.id, f"ePortem day check {today}: {detail}. "
+                    self._alert(db, user.id, f"ePortem day check {today}: {detail}. "
                                "Check Registro Jornada.")
 
     # --- running in the background --------------------------------------------
