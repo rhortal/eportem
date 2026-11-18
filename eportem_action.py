@@ -1,49 +1,49 @@
 #!/usr/bin/env python3
+"""Legacy adapter: one clock action for the account in config/.env.
+
+The action itself (HTTP first, browser fallback, follow-ups) lives in
+eportem.core.actions.ClockAction. EPortemAction fills it in from the
+environment and the repository's files: EPORTEM_HTTP, the notification and
+Slack settings, business_trip_override.txt, logs/actions.log,
+logs/http_clock.log and diagnostics/. Settings are looked up when used, so
+tests can patch them here.
+"""
 import argparse
 import contextlib
 import datetime
 import io
 import os
-import re
 import sys
-import time
 
-from selenium.common.exceptions import NoSuchElementException, WebDriverException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-
+from eportem.core import actions as _core
+from eportem.core.actions import (  # noqa: F401  (re-exported for the legacy scripts and tests)
+    _DIAGNOSTICS_NAME,
+    _TOKEN_VALUE,
+    BUSINESS_TRIP_STATUS_EMOJI,
+    BUSINESS_TRIP_STATUS_TEXT,
+    ActionNotApplicable,
+    LoginBudgetExceeded,
+)
+from eportem.core.overrides import parse_strict_date_range, range_state
+from eportem.core.schedule import ACTIONS, LOCATIONS  # noqa: F401  (re-exported)
 from utility import logfiles
 from utility.action_log import record_action
 from utility.env_check import check_env_variable
-from utility.login_and_navigate import LOGIN_URL, create_driver, login_and_navigate
-from utility.notification_send import NotificationManager, SlackChannel, TelegramChannel, _describe_error
+from utility.http_clock import ACTIVITY_IDS, SESSION_ID_HOME, SESSION_ID_OFFICE_DEFAULT  # noqa: F401
+from utility.login_and_navigate import LOGIN_URL, TARGET, create_driver, login_and_navigate  # noqa: F401
+from utility.notification_send import NotificationManager, SlackChannel, TelegramChannel, _describe_error  # noqa: F401
 from utility.paths import business_trip_file, state_dir
 
-# ePortem session-type IDs used in the "start"/"resume" button selectors below.
-# These are specific to this account's ePortem configuration, not a fixed
-# platform constant - if ePortem ever renumbers session types, update here.
-SESSION_ID_HOME = "1293"
-SESSION_ID_OFFICE_DEFAULT = "1"
-
-REGISTRO_URL = "https://eportem.es/aplicaciones/e-portem/registro/"
-BUTTON_WAIT_SECONDS = 30
-# ePortem has short server outages (500 pages from database timeouts, 2026-11-05).
-# Keep reopening the page for this long before giving up; nothing has been clicked yet.
-RETRY_BUDGET_SECONDS = 600
-RETRY_PAUSE_SECONDS = 60
-LOGIN_ATTEMPTS = 3  # kept low so a rejected login can't hammer the account
-# Login form submissions over the whole run, across every _login() call: without
-# it a persistent rejection is retried LOGIN_ATTEMPTS times per page reopen.
-MAX_LOGINS_PER_RUN = 4
-MAX_DIAGNOSTICS_PER_RUN = 3
-MAX_DIAGNOSTICS_FILES = 20  # newest files kept in diagnostics/ (a set is .html + .png)
-
-ACTIONS = ("start_day", "lunch_break", "after_lunch", "stop_day")
-LOCATIONS = ("home", "office")
+REGISTRO_URL = TARGET.dashboard_url
+BUTTON_WAIT_SECONDS = _core.BUTTON_WAIT_SECONDS
+RETRY_BUDGET_SECONDS = _core.RETRY_BUDGET_SECONDS
+RETRY_PAUSE_SECONDS = _core.RETRY_PAUSE_SECONDS
+LOGIN_ATTEMPTS = _core.LOGIN_ATTEMPTS
+MAX_LOGINS_PER_RUN = _core.MAX_LOGINS_PER_RUN
+MAX_DIAGNOSTICS_PER_RUN = _core.MAX_DIAGNOSTICS_PER_RUN
+MAX_DIAGNOSTICS_FILES = _core.MAX_DIAGNOSTICS_FILES
 DIAGNOSTICS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "diagnostics")
 
-BUSINESS_TRIP_STATUS_TEXT = "On a business trip"
-BUSINESS_TRIP_STATUS_EMOJI = ":airplane:"
 
 def _active_business_trip_end_date():
     """If business_trip_override.txt (written by override_location.py
@@ -54,18 +54,16 @@ def _active_business_trip_end_date():
 
     with open(override_file) as f:
         try:
-            start_str, end_str = f.read().strip().split(",")
-            start_date = datetime.date.fromisoformat(start_str)
-            end_date = datetime.date.fromisoformat(end_str)
+            start_date, end_date = parse_strict_date_range(f.read())
         except ValueError:
             print("Invalid business trip override file format.")
             return None
 
-    today = datetime.date.today()
-    if end_date < today:
+    state = range_state(start_date, end_date, datetime.date.today())
+    if state == "past":
         os.remove(override_file)  # every date in the range has passed
         return None
-    if start_date <= today:
+    if state == "active":
         return end_date
     return None
 
@@ -111,6 +109,29 @@ class _Tee(io.TextIOBase):
         self.stream.flush()
 
 
+class _StdoutCapture:
+    """Everything printed during the run (including by the HTTP client and the
+    notification channels) is copied into the run's log block."""
+
+    def __init__(self):
+        self.tee = _Tee(sys.stdout)
+        self._redirect = None
+
+    def __enter__(self):
+        self._redirect = contextlib.redirect_stdout(self.tee)
+        self._redirect.__enter__()
+        return self
+
+    def __exit__(self, *exc):
+        return self._redirect.__exit__(*exc)
+
+    def write(self, text):
+        self.tee.copy.write(text)
+
+    def getvalue(self):
+        return self.tee.copy.getvalue()
+
+
 def _log_http_attempt(action_type, location, outcome, output=""):
     """One block per clock run in logs/http_clock.log: the outcome, then
     everything perform() printed (the HTTP attempt incl. the session-age line,
@@ -125,23 +146,28 @@ def _log_http_attempt(action_type, location, outcome, output=""):
         print(f"Could not write {path}: {e}")
 
 
-# Anti-forgery token values in saved pages (same pattern as utility/capture_dashboard.py).
-_TOKEN_VALUE = re.compile(
-    r'(name="__RequestVerificationToken"[^>]*value=")[^"]*(")', re.IGNORECASE)
-_DIAGNOSTICS_NAME = re.compile(r"^\d{8}-\d{6}-.+\.(html|png)$")
+class _ModuleSetting:
+    """A class attribute that reads this module's global of the same meaning on
+    every access, so `patch("eportem_action.RETRY_PAUSE_SECONDS", 0)` still works."""
+
+    def __init__(self, name):
+        self.name = name
+
+    def __get__(self, obj, owner=None):
+        return globals()[self.name]
 
 
-class LoginBudgetExceeded(RuntimeError):
-    """The run has used all its login form submissions. Deliberately not a
-    WebDriverException, so the retry loops don't swallow it."""
+class EPortemAction(_core.ClockAction):
+    button_wait_seconds = _ModuleSetting("BUTTON_WAIT_SECONDS")
+    retry_budget_seconds = _ModuleSetting("RETRY_BUDGET_SECONDS")
+    retry_pause_seconds = _ModuleSetting("RETRY_PAUSE_SECONDS")
+    login_attempts = _ModuleSetting("LOGIN_ATTEMPTS")
+    max_logins_per_run = _ModuleSetting("MAX_LOGINS_PER_RUN")
+    max_diagnostics_per_run = _ModuleSetting("MAX_DIAGNOSTICS_PER_RUN")
+    max_diagnostics_files = _ModuleSetting("MAX_DIAGNOSTICS_FILES")
+    diagnostics_dir = _ModuleSetting("DIAGNOSTICS_DIR")
+    failure_report = "cron mail"
 
-
-class ActionNotApplicable(RuntimeError):
-    """The dashboard shows a state in which this action would record nothing
-    (or the wrong thing); nothing was clicked."""
-
-
-class EPortemAction:
     def __init__(self, action_type, location="office", driver=None):
         """
         Initialize the EPortem action
@@ -151,326 +177,36 @@ class EPortemAction:
         - location: office, home
         - driver: optional selenium webdriver instance
         """
-        if action_type not in ACTIONS:
-            raise ValueError(f"Unknown action_type {action_type!r}; expected one of {', '.join(ACTIONS)}")
-        if location not in LOCATIONS:
-            raise ValueError(f"Unknown location {location!r}; expected one of {', '.join(LOCATIONS)}")
-        self.action_type = action_type
-        self.location = location
-        self.driver = driver
-        self.logins_used = 0
-        self.diagnostics_saved = 0
-        self.selectors = self._get_selectors()
+        super().__init__(action_type, location, driver, activity_ids=ACTIVITY_IDS, target=TARGET)
 
-    def _get_selectors(self):
-        """Return appropriate selectors based on action type and location"""
-        selectors = {
-            "start_day": {
-                "office": {
-                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button",
-                    "button2": None
-                },
-                "home": {
-                    "button1": "//*[@id=\"buttonsRegBox\"]/div/button[@data-toggle=\"dropdown\"]",
-                    "button2": f"//*[@id=\"_ststart\" and @name=\"{SESSION_ID_HOME}\"]"
-                }
-            },
-            "lunch_break": {
-                "office": {
-                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button",
-                    "button2": "//*[@id=\"_stpause\"]"
-                },
-                "home": {
-                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button",
-                    "button2": "//*[@id=\"_stpause\"]"
-                }
-            },
-            "after_lunch": {
-                "office": {
-                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
-                    "button2": f"//a[@id=\"_stini\" and @name=\"{SESSION_ID_OFFICE_DEFAULT}\"]"
-                },
-                "home": {
-                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button/div/div[2]/h2",
-                    "button2": f"//a[@id=\"_stini\" and @name=\"{SESSION_ID_HOME}\"]"
-                }
-            },
-            "stop_day": {
-                "office": {
-                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button",
-                    "button2": "//*[@id=\"_ststop\"]"
-                },
-                "home": {
-                    "button1": "//*[@id=\"buttonsRegBox\"]/div/div/button",
-                    "button2": "//*[@id=\"_ststop\"]"
-                }
-            }
-        }
-        return selectors.get(self.action_type, {}).get(self.location, {})
+    def _new_driver(self):
+        return create_driver()
 
-    def _get_message(self):
-        """Return the appropriate notification message"""
-        messages = {
-            "start_day": f"RePortemed at {self.location}",
-            "lunch_break": "RePortemed going to lunch break",
-            "after_lunch": "RePortemed back from lunch break",
-            "stop_day": "RePortemed done for the day"
-        }
-        return messages.get(self.action_type, "RePortem action completed")
+    def _login_driver(self, driver):
+        return login_and_navigate(driver)
 
-    def _button_appears(self, xpath):
-        """Wait for a button without clicking it; True if it showed up in time."""
-        try:
-            WebDriverWait(self.driver, BUTTON_WAIT_SECONDS).until(
-                lambda d: d.find_elements(By.XPATH, xpath))
-            return True
-        except WebDriverException:  # includes the wait's TimeoutException
-            return False
+    def _http_enabled(self):
+        return http_enabled_for(self.action_type)
 
-    def _save_diagnostics(self):
-        """Record what the browser was showing, for the cron failure mail and later study.
-        At most MAX_DIAGNOSTICS_PER_RUN times per run, newest MAX_DIAGNOSTICS_FILES kept."""
-        if self.diagnostics_saved >= MAX_DIAGNOSTICS_PER_RUN:
-            return
-        self.diagnostics_saved += 1
-        try:
-            print(f"URL: {self.driver.current_url} Title: {self.driver.title}")
-            os.makedirs(DIAGNOSTICS_DIR, mode=0o700, exist_ok=True)
-            stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            base = os.path.join(DIAGNOSTICS_DIR, f"{stamp}-{self.action_type}")
-            html = _TOKEN_VALUE.sub(r"\1<redacted>\2", str(self.driver.page_source))
-            fd = os.open(f"{base}.html", os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-            with os.fdopen(fd, "w") as f:
-                f.write(html)
-            self.driver.save_screenshot(f"{base}.png")
-            with contextlib.suppress(OSError):
-                os.chmod(f"{base}.png", 0o600)
-            print(f"Diagnostics saved to {base}.html and .png")
-        except Exception as e:  # must never hide the real failure
-            print(f"Could not save diagnostics: {e}")
-        self._prune_diagnostics()
+    def _new_http_clock(self):
+        from utility.http_clock import HttpClock
+        return HttpClock()
 
-    @staticmethod
-    def _prune_diagnostics():
-        """Delete all but the newest MAX_DIAGNOSTICS_FILES saved files."""
-        try:
-            files = [os.path.join(DIAGNOSTICS_DIR, n) for n in os.listdir(DIAGNOSTICS_DIR)
-                     if _DIAGNOSTICS_NAME.match(n)]
-            files.sort(key=lambda p: (os.path.getmtime(p), p), reverse=True)
-            for old in files[MAX_DIAGNOSTICS_FILES:]:
-                with contextlib.suppress(OSError):
-                    os.remove(old)
-        except OSError:
-            pass
-
-    def _login(self):
-        """Log in, retrying a few times if the site is failing. Nothing is clicked on
-        the registro page here, so a retry can't record anything. Every form
-        submission counts against MAX_LOGINS_PER_RUN."""
-        new_browser = self.driver is None
-        if new_browser:
-            self.driver = create_driver()
-        for attempt in range(1, LOGIN_ATTEMPTS + 1):
-            if self.logins_used >= MAX_LOGINS_PER_RUN:
-                print(f"Login budget spent ({MAX_LOGINS_PER_RUN} submissions this run); "
-                      "not trying again so the account isn't hammered.")
-                self._save_diagnostics()
-                raise LoginBudgetExceeded(
-                    f"gave up after {MAX_LOGINS_PER_RUN} login submissions in one run")
-            self.logins_used += 1
-            try:
-                if new_browser or attempt > 1:
-                    self.driver.get(LOGIN_URL)
-                self.driver = login_and_navigate(self.driver)
-                return
-            except WebDriverException as e:
-                print(f"Login attempt {attempt} of {LOGIN_ATTEMPTS} failed: {type(e).__name__}")
-                if attempt == LOGIN_ATTEMPTS:
-                    self._save_diagnostics()
-                    raise
-                time.sleep(RETRY_PAUSE_SECONDS)
-
-    def _ensure_button(self, xpath):
-        """Give the first button time to appear, reopening the page until
-        RETRY_BUDGET_SECONDS have passed and logging in again if the session was lost.
-        Clicks nothing, so a retry can't record anything twice. If it is still missing,
-        save diagnostics and let the caller's find_element raise as usual."""
-        deadline = time.monotonic() + RETRY_BUDGET_SECONDS
-        while not self._button_appears(xpath):
-            if time.monotonic() >= deadline:
-                print(f"Button not found after {RETRY_BUDGET_SECONDS}s of retries")
-                self._save_diagnostics()
-                return
-            print(f"{datetime.datetime.now():%H:%M:%S} Button not found, "
-                  f"reopening the page in {RETRY_PAUSE_SECONDS}s")
-            time.sleep(RETRY_PAUSE_SECONDS)
-            try:
-                self.driver.get(REGISTRO_URL)
-                if "/Usuario/Login" in self.driver.current_url:
-                    print("Session lost, logging in again")
-                    self._login()
-            except WebDriverException as e:
-                print(f"Reopening failed: {type(e).__name__}")
-
-    def _page_state(self):
-        """The label on ePortem's main button (Iniciar, Pausar, Reanudar), for messages."""
-        try:
-            button = self.driver.find_element(By.XPATH, "//*[@id=\"buttonsRegBox\"]//button")
-            label = button.get_attribute("textContent")
-            if not isinstance(label, str):
-                return "unknown"
-            return " ".join(label.split()) or "unknown"
-        except WebDriverException:
-            return "unknown"
-
-    def _report_missing_option(self):
-        """The dropdown doesn't offer this action. Opening it records nothing, so say so."""
-        print(f"{self.action_type} ({self.location}) is not available: ePortem shows "
-              f"'{self._page_state()}' and doesn't offer this option. Nothing was recorded.")
-        if self.action_type == "after_lunch":
-            print("There is no lunch break to resume, so the lunch_break run probably failed "
-                  "(look for its cron mail). Correct the day in Registro Jornada > Detalle registro.")
-        self._save_diagnostics()
-
-    # For actions with no second button, the main button's label (lowercase prefix)
-    # that shows the action is still possible, and the labels that clearly show it
-    # isn't. Anything else (unreadable, new wording) is not blocked.
-    _STATE_OK = {"start_day": "iniciar"}
-    _STATE_WRONG = ("pausar", "reanudar")
-
-    def _check_state_for_single_button(self):
-        """start_day at the office has no second button: clicking the main button
-        on an already-started day just opens the "Pausar" dropdown, records
-        nothing, and would still notify. So refuse when the label shows that."""
-        expected = self._STATE_OK.get(self.action_type)
-        if not expected:
-            return
-        label = self._page_state()
-        lowered = label.strip().lower()
-        if lowered.startswith(self._STATE_WRONG):
-            print(f"{self.action_type} ({self.location}) is not needed: ePortem shows "
-                  f"'{label}', so the day is already started - nothing was recorded.")
-            self._save_diagnostics()
-            raise ActionNotApplicable(f"already started (button shows '{label}')")
-
-    def perform(self):
-        """Perform the action: over HTTP if EPORTEM_HTTP enables it for this action,
-        falling back to the browser only when HTTP recorded nothing.
-
-        Holidays, location overrides and the schedule are decided before this (in
-        main.py), so they apply whichever way the action is sent."""
+    def _before_perform(self):
         check_env_variable()
 
-        # Everything printed from here on (HTTP attempt, browser fallback,
-        # follow-ups) is copied into this run's block in logs/http_clock.log.
-        tee = _Tee(sys.stdout)
-        run = {"outcome": None, "fallback": False}
-        try:
-            with contextlib.redirect_stdout(tee):
-                how = self._clock(run)
-                # Before the follow-ups: main.py --verify-day reads this to spot missed actions
-                record_action(self.action_type, self.location, how)
-                self.after_action()
-        except BaseException as e:
-            if run["outcome"] is None:
-                run["outcome"] = f"ERROR, browser run failed: {type(e).__name__}: {e}"
-            elif run["fallback"]:
-                tee.copy.write(f"Browser fallback failed: {type(e).__name__}: {e}\n")
-            raise
-        finally:
-            _log_http_attempt(self.action_type, self.location,
-                              run["outcome"] or "ERROR: run did not finish", tee.copy.getvalue())
-        return True
+    def _capture(self):
+        return _StdoutCapture()
 
-    def _clock(self, run):
-        """Record the action over HTTP or the browser; returns how. Fills
-        run["outcome"] (the header for the log block) as soon as it is known."""
-        if self.driver is None and http_enabled_for(self.action_type):
-            from utility.http_clock import NotRecorded, OutcomeUnknown
-            try:
-                self._perform_http()
-                run["outcome"] = "recorded over HTTP"
-                return "http"
-            except NotRecorded as e:
-                run["outcome"] = f"not recorded, falling back to the browser: {e}"
-                print(f"HTTP clock recorded nothing ({e}); falling back to the browser")
-            except OutcomeUnknown as e:
-                # Retrying could clock twice. Fail, so cron mails the output.
-                run["outcome"] = f"OUTCOME UNKNOWN: {e}"
-                raise
-            except Exception as e:
-                # A bug, not a known "nothing sent" case: don't guess, fail loudly.
-                run["outcome"] = f"ERROR, no fallback: {type(e).__name__}: {e}"
-                raise
-            run["fallback"] = True
-        else:
-            why = ("HTTP not enabled for this action" if self.driver is None
-                   else "browser supplied by the caller")
-            self._perform_selenium()
-            run["outcome"] = f"recorded with the browser ({why})"
-            return "browser"
-        self._perform_selenium()
-        return "browser"
+    def _record(self, how):
+        # main.py --verify-day reads logs/actions.log to spot missed actions
+        record_action(self.action_type, self.location, how)
 
-    def _perform_http(self):
-        """Clock via a direct HTTP request; the browser is only used to log in
-        when the saved session has expired (see utility/http_clock.py).
-        Raises NotRecorded or OutcomeUnknown if it isn't recorded."""
-        from utility.http_clock import HttpClock
-        params, _ = HttpClock().clock_and_verify(self.action_type, self.location)
-        print(f"HTTP clock action recorded: {params['action']} {params['_descactiv']}")
+    def _log_run(self, outcome, output):
+        _log_http_attempt(self.action_type, self.location, outcome, output)
 
-    def _perform_selenium(self):
-        try:
-            # Log in to ePortem
-            self._login()
-
-            # Find and click the first button
-            self._ensure_button(self.selectors["button1"])
-            button1 = self.driver.find_element(By.XPATH, self.selectors["button1"])
-            if not self.selectors["button2"]:
-                self._check_state_for_single_button()
-            print("Clicking button 1")
-            button1.click()
-
-            # Click the second button if needed
-            if self.selectors["button2"]:
-                time.sleep(1)  # Small delay to ensure dropdown is visible
-                try:
-                    button2 = self.driver.find_element(By.XPATH, self.selectors["button2"])
-                except NoSuchElementException:
-                    self._report_missing_option()
-                    raise
-                print("Clicking button 2")
-                button2.click()
-
-            time.sleep(3)
-        finally:
-            # Close the browser window
-            if self.driver:
-                self.driver.quit()
-
-    def after_action(self):
-        """Notifications and Slack status, once the action has been recorded.
-
-        Never raises: the action is already recorded, and a failing follow-up must
-        not turn this into a non-zero exit (cron mail, a tempting manual re-run =
-        a double clock). Each part is isolated from the other."""
-        failed = []
-        try:
-            failed += self._send_notifications()
-        except Exception as e:
-            print(f"Notifications failed: {_describe_error(e, *_env_secrets())}")
-            failed.append("notifications")
-        try:
-            if self._update_slack_status() is False:
-                failed.append("slack status")
-        except Exception as e:
-            print(f"Slack status failed: {_describe_error(e, *_env_secrets())}")
-            failed.append("slack status")
-        if failed:
-            print("WARNING: the clock action WAS recorded, but these follow-ups failed: "
-                  + ", ".join(failed))
+    def _secrets(self):
+        return _env_secrets()
 
     def _send_notifications(self):
         """Returns the names of the channels that did not deliver."""
@@ -491,36 +227,9 @@ class EPortemAction:
         except ValueError:
             print("Slack status skipped: SLACK_TOKEN is not configured.")
             return None  # not set up is not a failure
-
-        trip_end_date = _active_business_trip_end_date()
-        if trip_end_date:
-            # On a business trip, every check-in (including stop_day)
-            # keeps the same status instead of reverting to "Done for
-            # the day" - it only changes once the trip range ends.
-            status_text = BUSINESS_TRIP_STATUS_TEXT
-            emoji = BUSINESS_TRIP_STATUS_EMOJI
-            expiration = int(datetime.datetime.combine(trip_end_date, datetime.time(23, 59)).timestamp())
-        elif self.action_type == "start_day":
-            status_text = f"Working at {self.location}"
-            emoji = ":house:" if self.location == "home" else ":office:"
-            expiration = 0
-        elif self.action_type == "lunch_break":
-            status_text = "Away for lunch"
-            emoji = ":fork_and_knife:"
-            expiration = 0
-        elif self.action_type == "after_lunch":
-            status_text = f"Working at {self.location}"
-            emoji = ":house:" if self.location == "home" else ":office:"
-            expiration = 0
-        elif self.action_type == "stop_day":
-            status_text = "Done for the day"
-            emoji = ":palm_tree:"
-            expiration = 0
-        else:
-            status_text = "Working"
-            emoji = ":computer:"
-            expiration = 0
-        return status_updater.set_status(status_text, emoji, expiration)
+        text, emoji, expiration = _core.status_for(
+            self.action_type, self.location, _active_business_trip_end_date())
+        return status_updater.set_status(text, emoji, expiration)
 
 
 def execute_action(action_type, location="office"):
