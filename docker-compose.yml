@@ -31,6 +31,8 @@ services:
       com.centurylinklabs.watchtower.enable: "false"
     command: ["python", "-m", "fake_eportem", "--host", "0.0.0.0", "--port", "8081",
               "--account", "DEMO:demo-password", "--recaptcha"]
+    healthcheck:
+      disable: true   # the image's check is for the service's port
     expose:
       - "8081"
 

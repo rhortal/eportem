@@ -223,15 +223,21 @@ def import_legacy(db, settings, box, source, username, email=None, today=None, r
     added = 0
     for ts, action, location, how in _read_actions_log(source / "logs" / "actions.log"):
         date = ts.date()
-        if db.scalar(select(PlannedRun.id).where(PlannedRun.user_id == user.id, PlannedRun.date == date,
-                                                 PlannedRun.action == action)):
+        existing = db.scalar(select(PlannedRun).where(PlannedRun.user_id == user.id, PlannedRun.date == date,
+                                                      PlannedRun.action == action))
+        # Cron recorded it: that wins over a service run that never went out
+        # (planned, skipped, cancelled, dry run), never over one that did.
+        if existing is not None and existing.status in ("recorded", "running", "unknown", "failed",
+                                                        "not_recorded"):
             continue
         at_utc = ts.replace(tzinfo=tz).astimezone(datetime.UTC).replace(tzinfo=None)
         day = template.day(date.weekday())
         target = dict(day.actions()).get(action) if day else None
-        db.add(PlannedRun(user_id=user.id, date=date, action=action, location=location, via=f"legacy-{how}",
-                          target_minute=target if target is not None else ts.hour * 60 + ts.minute,
-                          planned_at=at_utc, started_at=at_utc, finished_at=at_utc, status="recorded"))
+        run = existing or PlannedRun(user_id=user.id, date=date, action=action)
+        run.location, run.via, run.status, run.error = location, f"legacy-{how}", "recorded", None
+        run.target_minute = target if target is not None else ts.hour * 60 + ts.minute
+        run.planned_at = run.started_at = run.finished_at = at_utc
+        db.add(run)
         db.flush()
         added += 1
     report.add(f"history: {added} recorded action(s) added from logs/actions.log")

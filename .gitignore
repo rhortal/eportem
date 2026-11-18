@@ -183,3 +183,6 @@ venv.old.*/
 
 # Personal names for tests/test_portability.py; never commit
 .portability-denylist
+
+# Local Docker Compose overrides (host-specific networks, ports)
+docker-compose.override.yml

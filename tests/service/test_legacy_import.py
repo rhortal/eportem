@@ -125,6 +125,17 @@ class TestImport(ImportCase):
             self.assertEqual(db.query(NotificationChannelRow).count(), 2)
             self.assertEqual(db.query(PlannedRun).count(), 3)
 
+    def test_cron_wins_over_runs_the_service_never_sent(self):
+        self.run_import()
+        with self.Session.begin() as db:
+            for run in db.scalars(select(PlannedRun).where(PlannedRun.date == TODAY)):
+                run.status, run.via = ("skipped", None) if run.action == "start_day" else ("recorded", "http")
+        self.run_import()
+        with self.Session() as db:
+            runs = {r.action: r for r in db.scalars(select(PlannedRun).where(PlannedRun.date == TODAY))}
+        self.assertEqual((runs["start_day"].status, runs["start_day"].via), ("recorded", "legacy-http"))
+        self.assertEqual(runs["lunch_break"].via, "http")  # a run the service sent is left alone
+
     def test_disabled_host_imports_as_paused_and_http_flag_is_kept(self):
         (self.src / "config" / ".env").write_text(ENV.replace("EPORTEM_ENABLED=YES", "EPORTEM_ENABLED=NO")
                                                   .replace("EPORTEM_HTTP=YES", "EPORTEM_HTTP=NO"))
