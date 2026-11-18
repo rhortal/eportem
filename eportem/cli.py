@@ -6,6 +6,7 @@
     config new-key    print a new secret key for EPORTEM_SECRET_KEY
     migrate           create or upgrade the database
     import-legacy     bring a person's cron set-up into the database (see eportem/legacy_import.py)
+    scheduler         run the scheduler in the foreground (until Ctrl-C or SIGTERM)
     check-contract    read-only check of the real site (see eportem/contract.py)
 """
 import argparse
@@ -103,6 +104,31 @@ def _import_legacy(args):
     return 0
 
 
+def _scheduler(args):
+    import logging
+    import signal
+
+    from eportem.db.crypto import SecretBox
+    from eportem.db.engine import make_engine, make_sessionmaker, migrate
+    from eportem.scheduler.runner import Engine
+    from eportem.scheduler.scheduler import Scheduler
+    settings = _load_settings_or_exit()
+    if settings is None:
+        return 2
+    logging.basicConfig(level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    migrate(settings.effective_database_url)
+    sessionmaker = make_sessionmaker(make_engine(settings.effective_database_url))
+    sched = Scheduler(settings, sessionmaker, SecretBox.from_settings(settings), Engine(settings))
+    signal.signal(signal.SIGTERM, lambda *_: sched.stop())
+    print(f"Scheduler running against {settings.target_url}"
+          + (" (DRY RUN: nothing is sent)" if settings.dry_run else "") + "; Ctrl-C to stop.")
+    try:
+        sched.run_forever()
+    except KeyboardInterrupt:
+        sched.stop()
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="eportem", description="ePortem service commands.")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -114,6 +140,7 @@ def main(argv=None):
     imp.add_argument("--email")
     imp.add_argument("--from", dest="source", default=str(REPO), help="the cron checkout (default: this one)")
     imp.add_argument("--dry-run", action="store_true")
+    sub.add_parser("scheduler", help="run the scheduler in the foreground")
     sub.add_parser("check-contract", help="read-only check of the real site", add_help=False)
     args, rest = parser.parse_known_args(argv)
     if args.command != "check-contract" and rest:
@@ -124,6 +151,8 @@ def main(argv=None):
         return _migrate(args)
     if args.command == "import-legacy":
         return _import_legacy(args)
+    if args.command == "scheduler":
+        return _scheduler(args)
     from eportem import contract
     return contract.main(rest)
 

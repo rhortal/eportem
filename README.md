@@ -472,7 +472,7 @@ The multi-user service being built on the `refactor/multiuser-service` branch
 install-specific is in the code or the image. Set them as environment variables,
 or in a TOML file named by `EPORTEM_CONFIG_FILE` (keys in lower case, without the
 prefix). Secrets can also be read from a file with `EPORTEM_<NAME>_FILE`.
-`.env.example` lists them all. `python -m eportem migrate` creates the database, and `python -m eportem import-legacy --user NAME --dry-run` shows what moving this checkout's cron set-up into it would do (drop `--dry-run` to do it). Check the settings with `python -m eportem config check`,
+`.env.example` lists them all. `python -m eportem migrate` creates the database, and `python -m eportem import-legacy --user NAME --dry-run` shows what moving this checkout's cron set-up into it would do (drop `--dry-run` to do it). `python -m eportem scheduler` runs the scheduler in the foreground (set `EPORTEM_DRY_RUN=true` to plan and log without sending anything). Check the settings with `python -m eportem config check`,
 and see what is in effect with `python -m eportem config show`. The table is
 generated from `eportem/settings.py` by `python -m eportem config docs`.
 

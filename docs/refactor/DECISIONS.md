@@ -200,3 +200,21 @@ That last part matters at cutover: the scheduler sees today's earlier actions
 as done and doesn't clock them again. The activity IDs come from the legacy
 adapter's constants, not from new code. Notification channels are replaced on
 every import. Changes and history are only added.
+
+**D-018: Scheduler details** (Accepted, 2026-11-18)
+- Statuses: `planned`, `running`, `recorded`, `not_recorded` (nothing sent,
+  or the browser fallback failed safely), `unknown` (may be recorded: never
+  retried), `failed` (unexpected error), `skipped` (window missed),
+  `cancelled` (the plan changed), `dry_run`.
+- Runs whose window already passed when first planned get an alert only on the
+  first planning pass after start-up, which means the service was down. Later
+  passes come from the person's own edits (hours set to times already gone)
+  and are only marked `skipped`.
+- The leader lock is a row with a heartbeat. Another replica takes over after
+  2 minutes of silence. Claims are conditional updates, so a takeover in the
+  middle of a run still can't clock twice.
+- Runs execute in an 8-thread pool in production and inline in tests. Each run
+  opens its own short database sessions. The engine reports through the run's
+  `say`, so concurrent runs keep separate logs (D-014).
+- The end-of-day check is stored in `day_checks`, once per person per day,
+  `verify_after_minutes` after their last planned action.

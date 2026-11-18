@@ -186,6 +186,13 @@ class TestCommand(ImportCase):
     def test_migrate_command(self):
         self.assertEqual(self.cli("migrate")[0], 0)
 
+    def test_scheduler_command_starts_the_loop(self):
+        with patch("eportem.scheduler.scheduler.Scheduler.run_forever") as loop:
+            code, out, _ = self.cli("scheduler")
+        self.assertEqual(code, 0)
+        loop.assert_called_once()
+        self.assertIn("Scheduler running against https://eportem.es", out)
+
 
 if __name__ == "__main__":
     unittest.main()

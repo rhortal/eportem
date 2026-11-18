@@ -193,6 +193,18 @@ class AuditEvent(Base):
     at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow, index=True)
 
 
+class DayCheck(Base):
+    """The end-of-day check has run for this person and date."""
+    __tablename__ = "day_checks"
+    __table_args__ = (UniqueConstraint("user_id", "date"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    date: Mapped[datetime.date] = mapped_column(Date)
+    ok: Mapped[bool] = mapped_column(Boolean)
+    detail: Mapped[str] = mapped_column(Text, default="")
+    checked_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+
+
 class SchedulerLock(Base):
     __tablename__ = "scheduler_lock"
     name: Mapped[str] = mapped_column(String(32), primary_key=True)

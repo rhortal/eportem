@@ -451,26 +451,36 @@ Done 2026-11-18.
       cron path's `requirements.txt` (D-017).
 
 ### Phase 4: scheduler and workers
-- **Planner.** At local midnight for each user (and on start-up, and whenever
-  something that affects the calendar changes) it writes the day's
-  `planned_runs` from `calendar.resolve()`, with random jitter.
-- **Dispatcher.** It wakes up for the next due run. It sets the row to `running`
-  with a conditional update, runs `core.actions.perform`, and stores the
-  outcome. The unique row per user, date and action means a restart or a second
-  replica can't clock twice.
-- **Restart rules.** A run left `running` from a crash becomes `unknown`
-  and sends an alert, never a retry (same idea as `OutcomeUnknown`). A
-  `planned` run whose window was missed while the service was down becomes
-  `skipped` and sends an alert. It is never clocked late.
-- **Mid-day changes.** Changing today's location or times re-plans only the
-  runs that haven't started. Marking today as time off after `start_day` was
-  recorded only cancels the runs still planned, and the UI says so.
-- At most `EPORTEM_BROWSER_CONCURRENCY` (default 1) browser logins at once, and
-  HTTP clocks have their own limit. Logins due soon are spread out so ten users
-  at 09:00 don't start ten Chromiums together.
-- Verify-day is a scheduled job for each user, reading `planned_runs`.
-- Leader lock in `scheduler_lock`, so a second replica only serves the web UI
-  and API.
+Done 2026-11-18 (D-018).
+- [x] **Planner** (`eportem/scheduler/planner.py`): each person's day from
+      `calendar.resolve()`, with their own random offset. Idempotent: adds
+      missing runs, moves runs not yet started when the plan changed, cancels
+      runs the plan no longer has, never touches a run that started.
+- [x] **Dispatcher** (`eportem/scheduler/scheduler.py`): claims a run with a
+      conditional `planned → running` update; runs it through the engine
+      built from the person's rows (`runner.py`: account, activity IDs,
+      encrypted session store, channels, Slack status, business trip);
+      stores status, how it was sent and the run log; alerts on
+      `unknown` / `not_recorded` / `failed`.
+- [x] **Never late, never twice:** past its window a run becomes `skipped`
+      (alerted); a run left `running` at start-up becomes `unknown`
+      (alerted, never retried); runs the legacy import recorded are not
+      redone.
+- [x] Mid-day changes re-plan only what hasn't run (`Scheduler.replan()`).
+- [x] Browser gate (`EPORTEM_BROWSER_CONCURRENCY`), worker pool, leader lock
+      (stale after 2 minutes), end-of-day check per person (`day_checks`,
+      migration `0002`).
+- [x] `EPORTEM_DRY_RUN`: runs are planned and logged as `dry_run`, nothing is
+      sent (shadow mode).
+- [x] `python -m eportem scheduler` runs it in the foreground, before the web
+      app exists.
+- [x] Tests in simulated time against the fake: full days, offsets, weekends
+      and pauses, the lock, claiming, late start-up, crash recovery,
+      OutcomeUnknown, re-planning, time off added mid-day, missing activity
+      IDs, dry run, 30 people with mixed templates for a week (4 s), the
+      browser gate, channels and alerts, the background thread.
+- Still to do with phase 5: start the scheduler inside the web app's
+  process, and replan when the API changes a calendar.
 
 ### Phase 5: auth and API
 - Passwords: argon2id (`argon2-cffi`). Sign-in is rate-limited for each user
