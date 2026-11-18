@@ -395,10 +395,33 @@ Done 2026-11-18 (commits `a2046d5`..`de40deb` plus the closing commit).
   uses it. That is the owner's call.
 
 ### Phase 2: fake ePortem + contract check
-- `fake_eportem/` as in section 7, a `fixtures/` directory shared with the
-  tests, and `eportem check-contract`.
-- End-to-end tests: core HTTP clock and Selenium login against the fake
-  (Selenium tests marked `browser`, skipped when no Chromium is present).
+Done 2026-11-18.
+- [x] `fake_eportem/` (standard library only, D-015): login form with an
+      optional stub reCAPTCHA, the dashboard in every state, the clock
+      endpoint, several accounts with their own activity IDs and state,
+      faults (`error_500`, `maintenance`, `drop`, `slow`, `captcha`, before or
+      after recording, per account, skipping the first N requests), session
+      expiry, a record of events and requested paths, control endpoints and a
+      CLI (`python -m fake_eportem`).
+- [x] `eportem.contract`: read-only structure checks (login fields, the clock
+      box on the login's landing page, the dashboard layout the Selenium flow
+      clicks, button attributes, this account's buttons for the current state)
+      and a list of the activities found. Same checks on the fake in tests.
+- [x] Tests: the fake follows the captures in `tests/test_http_clock.py`;
+      `tests/fake/` (engine over HTTP: full days, two accounts at once, every
+      fault, sessions, reCAPTCHA blocking a plain-HTTP login, the contract run
+      never requesting the clock URL); `tests/browser/` (real headless Chromium:
+      login, both full days by clicking, the already-started guard, browser
+      login then HTTP, fallback to clicking).
+- [x] `make test-fast` leaves out `tests/browser/` (~35 s).
+- [ ] **Run `python -m eportem.contract --activity-ids 1,1293,2` on the
+      owner's host once**, at a time no cron line is due (it refreshes the
+      saved session). Needs the owner's go-ahead. It confirms the fake's
+      structure against the real site, including one assumption the captures
+      don't show directly: that the page a login lands on has the clock box.
+- The plan's "fixtures shared in `fake_eportem/fixtures/`" became a test
+  instead: the fake must offer every button in the captures the unit tests
+  use, so the old test files stay as they are.
 
 ### Phase 3: settings, persistence and the calendar
 - `eportem/settings.py` with every setting in section 6, `*_FILE` support, the

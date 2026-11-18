@@ -22,9 +22,8 @@ include = ["eportem*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-p no:cacheprovider"
-markers = [
-    "browser: needs a real Chromium + chromedriver (skipped when missing)",
-]
+# tests/browser/ drives a real headless Chromium against the fake ePortem; it
+# skips itself when no browser can start. `make test-fast` leaves it out.
 
 [tool.coverage.run]
 branch = true

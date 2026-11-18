@@ -154,3 +154,17 @@ module-level names when used. That keeps the old patches working. The
 adapters, and that indirection, go away at cutover (phase 8).
 → Settings named in messages come from `labels`. The legacy scripts pass
 their environment variable names, so their output is unchanged.
+
+**D-015: The fake ePortem uses only the standard library** (Accepted, 2026-11-18)
+The plan said a small FastAPI app. But the fake has five routes, has to be a
+real HTTP server (the engine uses `requests`, and the browser tests drive
+Chromium against it), and must not add packages to `requirements.txt`, which
+`run.sh` installs on the live host.
+→ `http.server.ThreadingHTTPServer` in a thread, started per test on a free
+port. Faults, sessions and per-account state live in the `FakeEportem`
+object. It also runs on its own for local tries and the dev profile.
+→ FastAPI arrives with the service itself (phase 5), not before.
+→ The fake redirects the login's landing page (`/aplicaciones`) to the
+dashboard. That page on the real site must show the clock box, because the
+click flow finds its button there straight after login, but no capture shows
+it. `eportem.contract` checks it on the real site.

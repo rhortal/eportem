@@ -3,7 +3,7 @@ PYTHON ?= python3.13
 VENV   ?= .venv
 BIN     = $(VENV)/bin
 
-.PHONY: venv lint test check clean-venv
+.PHONY: venv lint test test-fast check clean-venv
 
 $(BIN)/python: requirements.txt requirements-dev.txt
 	$(PYTHON) -m venv $(VENV)
@@ -24,6 +24,10 @@ test: venv
 	$(BIN)/python -m coverage report --include='eportem/*' --fail-under=$(CORE_COVERAGE_FLOOR) > /dev/null \
 		|| { echo "eportem/ coverage is below $(CORE_COVERAGE_FLOOR)%:"; \
 		     $(BIN)/python -m coverage report --include='eportem/*'; exit 1; }
+
+# Everything except the real-browser tests (tests/browser/, ~35 s).
+test-fast: venv
+	$(BIN)/python -m pytest --ignore=tests/browser
 
 check: lint test
 

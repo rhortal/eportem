@@ -286,7 +286,9 @@ class HttpClock:
         self.save_cookies()
 
     # --- dashboard -----------------------------------------------------
-    def fetch_buttons(self):
+    def fetch_dashboard(self):
+        """The dashboard's HTML. Raises SessionExpired, an HTTP error, or
+        DashboardUnreadable for a page without the clock box."""
         resp = self.session.get(self.target.dashboard_url, timeout=REQUEST_TIMEOUT_SECONDS)
         if Target.is_login_page(resp.url) or 'id="login-form"' in resp.text:
             raise SessionExpired("Session cookies are no longer valid")
@@ -295,7 +297,10 @@ class HttpClock:
             raise DashboardUnreadable(
                 f"the page at {self.target.dashboard_url} has no {DASHBOARD_MARKER} "
                 "(maintenance or error page?)")
-        return parse_buttons(resp.text)
+        return resp.text
+
+    def fetch_buttons(self):
+        return parse_buttons(self.fetch_dashboard())
 
     def ensure_session(self):
         """Return the dashboard buttons, logging in with a browser if needed."""

@@ -486,6 +486,28 @@ The scripts:
 - `utility/http_clock.py` - the core HTTP clock with this account's activity IDs and `config/.session_cookies.json`, plus a CLI for runs by hand
 - `utility/capture_dashboard.py` - read-only diagnostic for the direct-HTTP work (see `docs/http-api-investigation.md`): logs in, saves the dashboard HTML, button markup, scripts, script hits, cookie names and a session check to `capture/` (gitignored) without clicking anything. Run with `venv/bin/python3 -m utility.capture_dashboard`
 
+### The fake ePortem and the contract check
+
+There is only one real ePortem account to test with, and it is in live use, so
+development and tests run against a fake: `fake_eportem/` serves the login form,
+the clock dashboard and the clock endpoint for several accounts, each with its
+own activity IDs and clock state, and can inject faults (server errors, a
+maintenance page, dropped connections before or after recording, slow answers,
+expired sessions, reCAPTCHA rejections). Its button attributes come from real
+captures; its layout is what the Selenium flow clicks. Run it on its own with
+`python -m fake_eportem --account ALICE:secret` (local use only).
+
+`tests/fake/` runs the engine against it over HTTP; `tests/browser/` drives a real
+headless Chromium through the login form and every click path (it skips itself
+when no browser can start).
+
+`python -m eportem.contract --activity-ids 1,1293,2` checks that the real site
+still has the structure the engine relies on: the login form's fields, the clock
+box on the page a login lands on, the dashboard layout and its buttons. It is
+read-only and never requests the clock URL, but it reuses and refreshes the saved
+session (logging in with the browser only if it has expired), so don't run it
+just before a scheduled clock run.
+
 ### Where the code lives
 
 The public repository is <https://github.com/rhortal/eportem>, a mirror of the
@@ -494,8 +516,8 @@ maintainer's own Git server. Open issues and pull requests there.
 ### Checks
 
 `make check` runs the linter (`ruff`), the test suite (`pytest`, with
-coverage) and the portability test, from a `.venv` that `make venv` builds
-with Python 3.13 and `requirements-dev.txt`. The same checks run in CI
+coverage, and a floor of 85% for `eportem/`) and the portability test, from a `.venv` that `make venv` builds
+with Python 3.13 and `requirements-dev.txt`. `make test-fast` skips the real-browser tests. The same checks run in CI
 (`.github/workflows/check.yml`, which Gitea Actions also reads).
 
 The portability test (`tests/test_portability.py`) fails when a tracked file
