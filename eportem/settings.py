@@ -78,6 +78,8 @@ class Settings(BaseSettings):
     chromedriver_path: str | None = _f(None, "Target site", "chromedriver binary, if not on the PATH.")
     browser_concurrency: int = _f(1, "Target site", "Browser logins allowed at the same time.", ge=1, le=16)
     headless: bool = _f(True, "Target site", "Run the browser without a window.")
+    browser_sandbox: bool = _f(True, "Target site", "Use Chromium's own sandbox. The Docker image turns it off "
+                               "(it can't start as a non-root user there; the container isolates it instead).")
 
     # --- Defaults for new users
     default_timezone: str = _f("Europe/Madrid", "Defaults for new users", "Time zone for new users.")
@@ -348,6 +350,10 @@ def env_example():
             lines.append(f"# {f.description}")
             lines.append(f"{env_name(name)}={_default_text(f)}")
         lines.append("")
+    lines += ["# --- Docker Compose only (not read by the service)",
+              "# Where the published port listens on the host. The default keeps it local;",
+              "# put a reverse proxy in front for HTTPS, or use 0.0.0.0:8080 on a trusted LAN.",
+              "EPORTEM_PUBLISH=127.0.0.1:8080", ""]
     return "\n".join(lines)
 
 

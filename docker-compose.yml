@@ -1,0 +1,31 @@
+# ePortem: copy .env.example to .env, set EPORTEM_SECRET_KEY
+# (`docker compose run --rm eportem python -m eportem config new-key`), then:
+#   docker compose up -d
+#   docker compose exec eportem python -m eportem create-admin YOUR_NAME
+# To try it without a real ePortem account, start the fake too and point the
+# service at it (EPORTEM_TARGET_URL=http://fake-eportem:8081 in .env):
+#   docker compose --profile dev up -d      (demo account DEMO / demo-password)
+services:
+  eportem:
+    build: .
+    image: eportem:latest
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${EPORTEM_PUBLISH:-127.0.0.1:8080}:8080"
+    volumes:
+      - eportem-data:/data
+    # Chromium needs more shared memory than Docker's 64 MB default.
+    shm_size: "512m"
+    mem_limit: "1g"
+
+  fake-eportem:
+    profiles: ["dev"]
+    image: eportem:latest
+    command: ["python", "-m", "fake_eportem", "--host", "0.0.0.0", "--port", "8081",
+              "--account", "DEMO:demo-password", "--recaptcha"]
+    expose:
+      - "8081"
+
+volumes:
+  eportem-data:

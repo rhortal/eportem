@@ -465,6 +465,48 @@ The schedule is in `config/config.json`:
 
 The whole file is validated on every run, not just today's entry. Every problem found is printed with its location in the file (e.g. `schedule["2"]["lunch_break"]: must be a time like "9:00"...`) and the run exits 2 without clocking, so a typo shows up in the next cron mail instead of waiting for that task's time. A missing file or missing `schedule` key is treated the same way. Check by hand with `./run.sh --check`.
 
+## Running the service with Docker (refactor branch)
+
+The multi-user service runs as one container: web UI, API, scheduler, health
+checks and metrics on one port, data in one volume. It needs nothing else
+(SQLite by default; Postgres through `EPORTEM_DATABASE_URL` for more than one
+replica).
+
+```bash
+cp .env.example .env
+docker compose build
+# put the output in EPORTEM_SECRET_KEY in .env, and keep a copy somewhere safe
+docker compose run --rm eportem python -m eportem config new-key
+docker compose up -d
+docker compose exec eportem python -m eportem create-admin YOUR_NAME
+```
+
+Then open `http://127.0.0.1:8080`, sign in, and work through the setup
+checklist: ePortem account (verify it; it logs in and never clocks), working-day
+template, home days, notifications.
+
+- **HTTPS and a hostname:** put any reverse proxy in front (Caddy, Traefik,
+  nginx, nginx-proxy-manager...) pointing at port 8080, set `EPORTEM_PUBLIC_URL`
+  to its address (e.g. `https://eportem.example.com`) and `EPORTEM_TRUSTED_PROXIES`
+  to the proxy's address. `EPORTEM_PUBLISH` controls where Compose publishes the
+  port (default: `127.0.0.1:8080`, local only).
+- **Monitoring:** `/healthz` (process up), `/readyz` (database and scheduler),
+  `/metrics` (Prometheus, with `EPORTEM_METRICS_TOKEN`), error reports to Sentry or
+  GlitchTip (`EPORTEM_SENTRY_DSN`), and a dead-man switch (`EPORTEM_HEARTBEAT_URL`,
+  pinged every minute while the scheduler is healthy).
+- **Backups:** `docker compose exec eportem python -m eportem backup` copies the
+  database to `/data/backups/` (newest 7 kept). Back up that folder and your
+  `EPORTEM_SECRET_KEY`; without the key the stored ePortem passwords can't be read.
+  To restore, stop the service and put a backup back as `/data/eportem.db`.
+- **Upgrades:** `git pull && docker compose build && docker compose up -d`; the
+  database is migrated on start.
+- **Sizing:** the image is about 1.4 GB (it includes Chromium). Chromium only
+  starts to log in, one at a time by default (`EPORTEM_BROWSER_CONCURRENCY`).
+  `docker-compose.yml` gives it 512 MB of shared memory and 1 GB in total.
+- **Trying it without a real ePortem account:** `docker compose --profile dev up -d`
+  also starts the fake ePortem (account `DEMO` / `demo-password`); set
+  `EPORTEM_TARGET_URL=http://fake-eportem:8081` in `.env` and restart.
+
 ## Service settings (refactor branch)
 
 The multi-user service being built on the `refactor/multiuser-service` branch
@@ -498,6 +540,7 @@ generated from `eportem/settings.py` by `python -m eportem config docs`.
 | `EPORTEM_CHROMEDRIVER_PATH` |  | chromedriver binary, if not on the PATH. |
 | `EPORTEM_BROWSER_CONCURRENCY` | `1` | Browser logins allowed at the same time. |
 | `EPORTEM_HEADLESS` | `true` | Run the browser without a window. |
+| `EPORTEM_BROWSER_SANDBOX` | `true` | Use Chromium's own sandbox. The Docker image turns it off (it can't start as a non-root user there; the container isolates it instead). |
 | **Defaults for new users** | | |
 | `EPORTEM_DEFAULT_TIMEZONE` | `Europe/Madrid` | Time zone for new users. |
 | `EPORTEM_DEFAULT_LOCALE` | `es` | Language for new users. |

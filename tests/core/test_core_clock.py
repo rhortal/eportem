@@ -158,6 +158,18 @@ class TestHttpClockCore(unittest.TestCase):
         printed.assert_not_called()
 
 
+class TestCookieDomains(unittest.TestCase):
+
+    def test_hosts_without_a_dot_are_stored_for_any_host(self):
+        from eportem.core.clock_http import cookie_domain
+        self.assertEqual(cookie_domain("fake-eportem"), "")
+        self.assertEqual(cookie_domain("localhost"), "")
+        self.assertEqual(cookie_domain("eportem.es"), "eportem.es")
+        self.assertEqual(cookie_domain(".eportem.es"), ".eportem.es")
+        self.assertEqual(cookie_domain("127.0.0.1"), "127.0.0.1")
+        self.assertEqual(cookie_domain(None), "")
+
+
 class TestFileCookieStore(unittest.TestCase):
 
     def setUp(self):

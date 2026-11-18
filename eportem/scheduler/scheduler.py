@@ -40,7 +40,7 @@ def _naive_utc(now):
 
 
 class Scheduler:
-    def __init__(self, settings, sessionmaker, box, engine, executor=None, rng=None, holder=None):
+    def __init__(self, settings, sessionmaker, box, engine, executor=None, rng=None, holder=None, heartbeat=None):
         self.settings, self.Session, self.box, self.engine = settings, sessionmaker, box, engine
         self.executor = executor  # None: run inline (tests); else a ThreadPoolExecutor
         self.rng = rng
@@ -48,6 +48,7 @@ class Scheduler:
         self._planned = {}         # user_id -> local date planned
         self._started = False
         self._stop = threading.Event()
+        self.heartbeat = heartbeat  # eportem.ops.Heartbeat, pinged after each good tick
 
     # --- leadership --------------------------------------------------------
     def acquire_lock(self, now):
@@ -124,6 +125,9 @@ class Scheduler:
                     continue
                 _, _, missed = plan_day(db, user, today, now, self.settings.window_minutes, self.rng)
                 self._planned[user.id] = today
+                # Not for windows that closed before the person even existed.
+                tz = zoneinfo.ZoneInfo(user.timezone)
+                missed = [r for r in missed if window_end_utc(r, tz, self.settings.window_minutes) > user.created_at]
                 if alert_missed and missed:
                     names = ", ".join(r.action for r in missed)
                     send_alert(db, self.box, user.id, f"ePortem: {names} on {today} were not clocked: the "
@@ -248,6 +252,8 @@ class Scheduler:
             while not self._stop.is_set():
                 try:
                     self.tick()
+                    if self.heartbeat:
+                        self.heartbeat.beat()
                 except Exception:
                     log.exception("scheduler tick failed")
                 self._stop.wait(interval_seconds)

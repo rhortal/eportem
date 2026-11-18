@@ -115,7 +115,9 @@ def create_app(settings, sessionmaker=None, engine=None, scheduler=None, start_s
         sessionmaker = make_sessionmaker(make_engine(settings.effective_database_url))
     box = SecretBox.from_settings(settings)
     engine = engine or Engine(settings)
-    scheduler = scheduler or Scheduler(settings, sessionmaker, box, engine)
+    from eportem.ops import Heartbeat
+    scheduler = scheduler or Scheduler(settings, sessionmaker, box, engine,
+                                       heartbeat=Heartbeat(settings.heartbeat_url))
     ensure_first_admin(settings, sessionmaker)
 
     @contextlib.asynccontextmanager
@@ -178,6 +180,23 @@ def create_app(settings, sessionmaker=None, engine=None, scheduler=None, start_s
         if problems:
             return JSONResponse({"status": "unavailable", "problems": problems}, status_code=503)
         return {"status": "ready"}
+
+    @app.get("/metrics", include_in_schema=False)
+    def metrics(request: Request):
+        """Prometheus metrics; needs `Authorization: Bearer <EPORTEM_METRICS_TOKEN>`."""
+        import hmac
+
+        from fastapi.responses import PlainTextResponse
+
+        from eportem.ops import metrics_text
+        token = settings.metrics_token.get_secret_value() if settings.metrics_token else None
+        if not token:
+            raise HTTPException(404, "metrics are off (EPORTEM_METRICS_TOKEN is not set)")
+        presented = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
+        if not hmac.compare_digest(presented, token):
+            raise HTTPException(401, "wrong metrics token")
+        with _state(request).Session() as db:
+            return PlainTextResponse(metrics_text(db), media_type="text/plain; version=0.0.4")
 
     from fastapi.staticfiles import StaticFiles
 

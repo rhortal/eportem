@@ -10,6 +10,7 @@
     serve             run the web app, API and scheduler (what the container runs)
     create-admin      create an admin (password from EPORTEM_NEW_PASSWORD or a prompt)
     create-token      create a personal access token for a person and print it once
+    backup            copy the SQLite database to <data dir>/backups (keeps the newest 7)
     check-contract    read-only check of the real site (see eportem/contract.py)
 """
 import argparse
@@ -145,6 +146,9 @@ def _serve(args):
     settings = _load_settings_or_exit()
     if settings is None:
         return 2
+    from eportem.ops import init_error_reports, setup_logging
+    setup_logging(settings)
+    init_error_reports(settings)
     app = create_app(settings, _db(settings), start_scheduler=True)
     uvicorn.run(app, host=settings.host, port=settings.port, log_level=settings.log_level.lower(),
                 proxy_headers=bool(settings.trusted_proxies),
@@ -196,6 +200,19 @@ def _create_token(args):
     return 0
 
 
+def _backup(args):
+    from eportem.ops import backup
+    settings = _load_settings_or_exit()
+    if settings is None:
+        return 2
+    try:
+        print(f"Backup written to {backup(settings, keep=args.keep)}")
+    except ValueError as e:
+        print(str(e), file=sys.stderr)
+        return 2
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="eportem", description="ePortem service commands.")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -217,6 +234,8 @@ def main(argv=None):
     tok.add_argument("--name", default="command line")
     tok.add_argument("--scopes", default="read,write")
     tok.add_argument("--expires-in-days", type=int)
+    bk = sub.add_parser("backup", help="back up the SQLite database")
+    bk.add_argument("--keep", type=int, default=7)
     sub.add_parser("check-contract", help="read-only check of the real site", add_help=False)
     args, rest = parser.parse_known_args(argv)
     if args.command != "check-contract" and rest:
@@ -235,6 +254,8 @@ def main(argv=None):
         return _create_admin(args)
     if args.command == "create-token":
         return _create_token(args)
+    if args.command == "backup":
+        return _backup(args)
     from eportem import contract
     return contract.main(rest)
 

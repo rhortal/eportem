@@ -43,9 +43,13 @@ def uses_recaptcha(driver):
         "return [...document.scripts].some(s => /recaptcha/i.test(s.src))")
 
 
-def start_browser(user_agent, headless, binary_location=None):
-    """One Chromium with the given UA. `webdriver.Chrome` is looked up per call."""
+def start_browser(user_agent, headless, binary_location=None, sandbox=True, driver_path=None):
+    """One Chromium with the given UA. `webdriver.Chrome` is looked up per call.
+    sandbox=False adds --no-sandbox, for containers where Chromium's own sandbox
+    can't start as a non-root user (the container is the isolation then)."""
     chrome_options = ChromeOptions()
+    if not sandbox:
+        chrome_options.add_argument("--no-sandbox")
     if binary_location:
         chrome_options.binary_location = binary_location
     chrome_options.add_argument("--disable-gpu")
@@ -60,7 +64,11 @@ def start_browser(user_agent, headless, binary_location=None):
     chrome_options.add_argument(f"user-agent={user_agent}")
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option("useAutomationExtension", False)
-    driver = webdriver.Chrome(options=chrome_options)
+    if driver_path:
+        from selenium.webdriver.chrome.service import Service
+        driver = webdriver.Chrome(options=chrome_options, service=Service(driver_path))
+    else:
+        driver = webdriver.Chrome(options=chrome_options)
     try:
         driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT_SECONDS)
         driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
@@ -73,12 +81,12 @@ def start_browser(user_agent, headless, binary_location=None):
 
 
 def create_driver(headless=True, user_agent=USER_AGENT, binary_location=None,
-                  say=default_say, stale_hint=""):
+                  say=default_say, stale_hint="", sandbox=True, driver_path=None):
     """Start the browser. The UA has to be given before start-up, and the real
     version is only known afterwards, so start with `user_agent` and, only if its
     Chrome version turns out to be stale, start again with the right one. A UA that
     disagrees with the browser's own client hints is a bot signal."""
-    driver = start_browser(user_agent, headless, binary_location)
+    driver = start_browser(user_agent, headless, binary_location, sandbox, driver_path)
     try:
         wanted = user_agent_for(driver.capabilities.get("browserVersion"), fallback=user_agent)
     except BaseException:
@@ -89,7 +97,7 @@ def create_driver(headless=True, user_agent=USER_AGENT, binary_location=None,
     say(f"Browser is not the Chrome version in USER_AGENT; restarting it as: {wanted}"
         + (f" {stale_hint}" if stale_hint else ""))
     driver.quit()
-    return start_browser(wanted, headless, binary_location)
+    return start_browser(wanted, headless, binary_location, sandbox, driver_path)
 
 
 def wait_for_login_result(driver, wait=None):

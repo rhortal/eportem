@@ -46,6 +46,15 @@ RESULT_KEYS = ("isActive", "LastDescAct", "listActiv")
 CLOCK_IDS = ("_ststart", "_stpause", "_stini", "_ststop")
 
 
+def cookie_domain(domain):
+    """The domain to store a cookie under in requests. Python's cookie jar treats
+    a host without a dot ("fake-eportem", a container name) as "<host>.local",
+    so a cookie for it would never be sent back: store those for any host. Each
+    HttpClock session only ever talks to its one target site."""
+    domain = domain or ""
+    return domain if "." in domain.strip(".") else ""
+
+
 def _parse_time(value):
     return datetime.datetime.fromisoformat(value) if value else None
 
@@ -210,7 +219,7 @@ class HttpClock:
             user_agent = data.get("user_agent")
             # requests can't take domain=None (it crashes on .startswith), so a
             # cookie saved without one is stored for any host, as "" means.
-            cookies = [(c["name"], c["value"], c.get("domain") or "", c.get("path") or "/")
+            cookies = [(c["name"], c["value"], cookie_domain(c.get("domain")), c.get("path") or "/")
                        for c in data["cookies"]]
             if not all(isinstance(x[0], str) and isinstance(x[1], str) for x in cookies):
                 raise TypeError("cookie name/value is not a string")
@@ -254,7 +263,7 @@ class HttpClock:
         self.session.cookies.clear()
         for c in driver.get_cookies():
             self.session.cookies.set(c["name"], c["value"],
-                                     domain=c.get("domain"), path=c.get("path", "/"))
+                                     domain=cookie_domain(c.get("domain")), path=c.get("path", "/"))
 
     # --- browser login -------------------------------------------------
     def _make_driver(self):

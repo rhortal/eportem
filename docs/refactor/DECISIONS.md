@@ -248,3 +248,22 @@ unwelcome.
   of only an English sentence, so every language gets short labels.
 - A setup checklist on the home page instead of a wizard for now. It is
   simpler, works with the normal pages, and doesn't trap anyone mid-flow.
+
+**D-021: Packaging details** (Accepted, 2026-11-18)
+- Debian's `chromium` + `chromium-driver` in the image, matching the cron host
+  and keeping browser and driver in step without Selenium Manager downloads.
+- Chromium runs with `--no-sandbox` only in the container
+  (`EPORTEM_BROWSER_SANDBOX=false` set by the image). Its sandbox needs user
+  namespaces that a non-root container usually lacks, and the container
+  isolates it instead. The setting defaults to on everywhere else.
+- Compose publishes on `127.0.0.1` by default. Exposing the UI is a deliberate
+  choice (`EPORTEM_PUBLISH`), made with a reverse proxy for HTTPS.
+- Metrics are computed from the database on each scrape, so there is no
+  in-process state to lose on restart and no extra dependency. `/metrics`
+  doesn't exist unless a token is set.
+- Error reports never include request bodies, headers or cookies, and token-
+  shaped strings are scrubbed.
+- A cookie whose domain has no dot is stored for any host
+  (`core.clock_http.cookie_domain`). Python's cookie jar would otherwise file
+  it under `<host>.local` and never send it. Each HTTP session only talks to
+  its own target, so this widens nothing.

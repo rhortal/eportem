@@ -1,0 +1,9 @@
+# Only what the image needs; never local secrets, state or caches.
+*
+!requirements.txt
+!requirements-service.txt
+!eportem/
+!fake_eportem/
+!utility/
+**/__pycache__
+**/*.pyc

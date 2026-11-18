@@ -134,8 +134,18 @@ class TestNeverTwiceNeverLate(SchedulerCase):
         self.assertTrue(sched._claim(run.id, uid, now))
         self.assertFalse(sched._claim(run.id, uid, now))
 
+    def test_a_person_created_after_the_window_gets_no_alert(self):
+        uid = self.person(0)
+        with self.Session.begin() as db:
+            db.get(User, uid).created_at = utc(DAY, "09:45")
+        self.scheduler().tick(utc(DAY, "10:00"))
+        self.assertEqual(self.runs(uid)["start_day"].status, "skipped")
+        self.assertEqual(self.alerts, [])
+
     def test_started_after_the_window_skips_and_alerts(self):
         uid = self.person(0)
+        with self.Session.begin() as db:
+            db.get(User, uid).created_at = utc(DAY, "06:00")
         self.scheduler().tick(utc(DAY, "10:00"))                  # was down at 09:00
         self.assertEqual(self.runs(uid)["start_day"].status, "skipped")
         self.assertEqual(self.events(0), [])

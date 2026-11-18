@@ -56,7 +56,7 @@ class Engine:
         user_agent = settings.browser_user_agent or browser.USER_AGENT
         self._make_driver = make_driver or (lambda: browser.create_driver(
             headless=settings.headless, user_agent=user_agent, binary_location=settings.chromium_path,
-            say=lambda *a: None))
+            say=lambda *a: None, sandbox=settings.browser_sandbox, driver_path=settings.chromedriver_path))
         self._login_for = login_for or (lambda u, p: (lambda d: (browser.login(d, u, p), d)[1]))
 
     def make_driver(self):

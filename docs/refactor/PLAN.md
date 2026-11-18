@@ -542,30 +542,32 @@ Done 2026-11-18 (D-020), with the items below left open.
 - [ ] The iCal feed.
 
 ### Phase 7: packaging and operations
-- `Dockerfile`: `python:3.13-slim-trixie` plus Debian's `chromium` and
-  `chromium-driver`, a non-root user, `tini`, a `HEALTHCHECK` against
-  `/healthz`, and a `/data` volume. No config baked in. Multi-arch (amd64 +
-  arm64). Published to a container registry (which registry is a setting of
-  the CI, not of the code).
-- `docker-compose.yml`: the `eportem` service, reading `.env`, with the port
-  mapping set from `.env`, the secret key from a file, and `profiles: [dev]`
-  for `fake-eportem`. Docs for running it directly on a port or behind
-  a reverse proxy.
-- Observability:
-  - Logs: structured JSON on stdout, with `user_id` and `run_id` and secrets
-    scrubbed.
-  - Metrics: `/metrics` in Prometheus format, protected by a token. Includes
-    runs by outcome, clock latency, browser logins, session age at login,
-    scheduler lag and notification failures.
-  - Errors: the Sentry SDK, off unless a DSN is set. It works with sentry.io or
-    self-hosted GlitchTip, and personal data is removed before sending.
-  - Dead-man switch: an optional heartbeat URL (healthchecks.io style) is
-    pinged every minute while the scheduler is healthy. That covers "the whole
-    container died", which the service can't report itself.
-  - Failure alerts to the user's own channels as today, plus an admin alert
-    channel.
-- Backups: `eportem backup` (SQLite `.backup` into the data dir, rotated),
-  documented with the restore steps.
+Done 2026-11-18 (D-021).
+- [x] `Dockerfile`: `python:3.13-slim-trixie`, Debian's `chromium` and
+      `chromium-driver`, `tini`, non-root user 10001, `/data` volume,
+      `HEALTHCHECK` on `/healthz`, no configuration baked in; `.dockerignore`
+      keeps local secrets and state out. About 1.4 GB.
+- [x] `docker-compose.yml`: reads `.env`, publishes on `EPORTEM_PUBLISH`
+      (default `127.0.0.1:8080`), 512 MB shared memory for Chromium, 1 GB
+      memory limit, and a `dev` profile with the fake ePortem.
+- [x] `eportem/ops.py`: JSON logs (secrets scrubbed), Sentry/GlitchTip error
+      reports when a DSN is set (no request data, scrubbed), the heartbeat
+      (at most once a minute, never blocking), Prometheus `/metrics` with a
+      token (users, runs by status, how they were sent, scheduler lag and
+      heartbeat age), `python -m eportem backup` (SQLite online backup,
+      rotated).
+- [x] `EPORTEM_BROWSER_SANDBOX` (off in the image: Chromium's sandbox can't
+      start as a non-root user there) and `EPORTEM_CHROMEDRIVER_PATH`.
+- [x] Tested end to end in containers on the Mac (arm64) against the fake with
+      its stub reCAPTCHA: verify through Chromium in the container, a clock over
+      HTTP, a clock through the browser click flow, health, metrics, backup. That
+      run found and fixed two bugs: cookies for single-word host names (a
+      container name) were never sent back, and people created after a window
+      got "service was down" alerts.
+- [x] CI builds the image and smoke-tests `/healthz` and `/readyz`.
+- [ ] Multi-arch images published to a registry: a CI and registry choice
+      (Gitea's registry, GHCR...) for when there are releases. Building from
+      source works on amd64 and arm64.
 
 ### Phase 8: cutover on the owner's host
 The owner picks their production values (public URL, port, proxy, email,
