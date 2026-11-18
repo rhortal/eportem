@@ -135,3 +135,22 @@ enabled, on Gitea Actions, which reads the same directory.
 → Lint fixes to existing code were mechanical (import order, `open()` modes,
 `raise ... from e`, one `contextlib.suppress`), and the suite proves they
 change no behaviour.
+
+**D-014: Core reports through `say`, and takes its collaborators as arguments or overridable methods** (Accepted, 2026-11-18)
+The legacy run log copies stdout (`contextlib.redirect_stdout`). That works
+for one run per process. The service will run several users at once, and a
+redirect of the process-wide stdout would mix their logs. The legacy tests also
+patch module-level names (`eportem_action.RETRY_PAUSE_SECONDS`,
+`utility.login_and_navigate.WebDriverWait`, `utility.http_clock.COOKIE_FILE`,
+...), and the gate for phase 1 was to keep them unchanged.
+→ Every core class takes `say` (default: `print`, looked up per call). A run
+captures its log by wrapping its own `say` (`SayCapture`). A test runs two
+actions in threads and checks the logs stay apart.
+→ Each collaborator (browser start, login, HTTP clock, channels, status
+updater, recorder, run log, timings, diagnostics dir, label text) is a
+constructor argument and also a method or attribute. The legacy adapters
+subclass the core classes and override those methods to call their own
+module-level names when used. That keeps the old patches working. The
+adapters, and that indirection, go away at cutover (phase 8).
+→ Settings named in messages come from `labels`. The legacy scripts pass
+their environment variable names, so their output is unchanged.

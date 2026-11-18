@@ -467,14 +467,23 @@ The whole file is validated on every run, not just today's entry. Every problem 
 
 ## Development
 
-The codebase follows DRY (Don't Repeat Yourself) principles with unified components:
+The clock engine is the `eportem.core` package. It reads no environment variables and no files: the site URL, the account's activity IDs, the credentials, where the session cookies are kept and how to start a browser are all arguments, and progress messages go through a `say` callable instead of `print`. The scripts below are adapters that fill it in from `config/.env` and the repository's files, so their behaviour and output are the same as before. The multi-user service being built on the `refactor/multiuser-service` branch (see `docs/refactor/PLAN.md`) will use the same engine.
 
-- `eportem_action.py` - Core action handler for all operations: chooses HTTP or the Selenium click flow (with the fallback), then notifications and Slack status
+- `eportem/core/actions.py` - one clock action: HTTP first, browser click flow as the fallback, follow-ups that never fail a recorded action
+- `eportem/core/clock_http.py` - the HTTP clock client; `clock_and_verify()` tells "nothing recorded" (safe to fall back) from "outcome unknown"
+- `eportem/core/browser.py` - starts Chromium so it looks like a desktop browser, and fills in the login form
+- `eportem/core/notify.py` - Telegram, Slack and the Slack status, with secrets scrubbed
+- `eportem/core/schedule.py`, `overrides.py` - schedule validation and windows, holiday/location/business-trip parsing
+- `eportem/core/target.py`, `activities.py`, `cookies.py` - the site URLs, the account's activity IDs, and the session stores (file or memory)
+
+The scripts:
+
+- `eportem_action.py` - `EPortemAction`: the core clock action configured from `config/.env` (`EPORTEM_HTTP`, notification and Slack settings, the business-trip file, `logs/`, `diagnostics/`)
 - `main.py` - Scheduler entrypoint called by cron; decides which action (if any) to run based on the current time and `config/config.json`
 - `start_day.py`, `lunch_break_unified.py`, `after_lunch.py`, `stop_day.py` - thin CLI wrappers, each pinning one action and delegating to `eportem_action.run_fixed_action()`
 - `override_location.py` / `holiday_override.py` - write (atomically) the override files that `main.py`/`eportem_action.py` read, in the repository root (or `EPORTEM_STATE_DIR`); stdlib-only, so they run with plain `python3`
 - `utility/` - shared helpers: state file locations (`paths.py`), env loading/checking, Selenium login, Telegram/Slack notifications, Slack status, the recorded-actions log (`action_log.py`), failure/day-check alerts (`alerts.py`), and the timestamp wrapper for output (`timestamps.py`)
-- `utility/http_clock.py` - HTTP clock client for the actions `EPORTEM_HTTP` enables (browser only for login); `clock_and_verify()` tells "nothing recorded" (safe to fall back) from "outcome unknown"
+- `utility/http_clock.py` - the core HTTP clock with this account's activity IDs and `config/.session_cookies.json`, plus a CLI for runs by hand
 - `utility/capture_dashboard.py` - read-only diagnostic for the direct-HTTP work (see `docs/http-api-investigation.md`): logs in, saves the dashboard HTML, button markup, scripts, script hits, cookie names and a session check to `capture/` (gitignored) without clicking anything. Run with `venv/bin/python3 -m utility.capture_dashboard`
 
 ### Where the code lives

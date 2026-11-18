@@ -208,7 +208,9 @@ class HttpClock:
             logged_in_at = _parse_time(data.get("logged_in_at"))
             last_used_at = _parse_time(data.get("last_used_at"))
             user_agent = data.get("user_agent")
-            cookies = [(c["name"], c["value"], c.get("domain"), c.get("path", "/"))
+            # requests can't take domain=None (it crashes on .startswith), so a
+            # cookie saved without one is stored for any host, as "" means.
+            cookies = [(c["name"], c["value"], c.get("domain") or "", c.get("path") or "/")
                        for c in data["cookies"]]
             if not all(isinstance(x[0], str) and isinstance(x[1], str) for x in cookies):
                 raise TypeError("cookie name/value is not a string")

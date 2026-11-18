@@ -371,15 +371,28 @@ earlier in pieces if phase 1 turns out cleanly separable.
       office day); it only logs in and reports.
 
 ### Phase 1: pull out `eportem.core` (no behaviour change)
-- Move the HTTP clock, browser login and click path, schedule/window logic,
-  overrides and notifications into `eportem/core/`. Settings are passed in as
-  arguments (`EportemAccount`, `NotificationConfig`, `CookieStore`,
-  `target_url`, `clock`). No `os.getenv` inside core.
-- Today's scripts become adapters. They read `.env`, `config.json` and the
-  override files, build the objects and call core. Cron output, exit codes and
-  log files stay byte-for-byte the same where tests check them.
-- **Gate:** the whole old suite passes unchanged. The branch could be deployed
-  to the owner's host at this point, but that's optional.
+Done 2026-11-18 (commits `a2046d5`..`de40deb` plus the closing commit).
+- [x] `eportem/core/`: `notify`, `schedule`, `overrides`, `target`, `browser`,
+      `activities`, `cookies`, `clock_http`, `actions`. No `os.getenv`, no
+      file paths. Progress goes through a `say` callable (D-014).
+- [x] Today's scripts are adapters: `utility/notification_send.py`,
+      `utility/slack_status.py`, `utility/login_and_navigate.py`,
+      `utility/http_clock.py`, `eportem_action.py` and `main.py` fill core in
+      from `config/.env` and the repository's files.
+- [x] **Gate met:** the old suite passes with no test file changed (only
+      `tests/test_portability.py` skips its own sample values). `main.py
+      --check` and every script's `--help` were run by hand.
+- [x] Direct tests of core (`tests/core/`): another site URL, another
+      company's activity IDs, memory and file cookie stores, the fallback rules,
+      and two runs at once keeping separate logs. Coverage of `eportem/` is 96%,
+      with a floor of 85% in `make check` and CI.
+- [x] `[project]` metadata in `pyproject.toml` (package `eportem`).
+- [x] Found and fixed on the way: a saved cookie without a `domain` crashed
+      `requests` while loading the session (outside the corrupt-file handling).
+      Real cookie files always have one, so the cron path never hit it.
+- Not deployed to the owner's host. It can be (the cron path is unchanged and
+  tested), which would run the core engine in production before the service
+  uses it. That is the owner's call.
 
 ### Phase 2: fake ePortem + contract check
 - `fake_eportem/` as in section 7, a `fixtures/` directory shared with the

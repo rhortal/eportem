@@ -20,3 +20,5 @@ jobs:
         run: ruff check .
       - name: Test
         run: python -m pytest --cov --cov-report=term:skip-covered
+      - name: Coverage floor for eportem/
+        run: python -m coverage report --include='eportem/*' --fail-under=85
