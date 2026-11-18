@@ -47,10 +47,10 @@ class TestLoading(unittest.TestCase):
         self.assertEqual(st.port, 8080)
 
     def test_environment_parsing(self):
-        st = s.load_settings(env(port="9000", trusted_proxies="10.0.0.1, 10.0.0.0/8", headless="false",
+        st = s.load_settings(env(port="9000", trusted_proxies="192.0.2.1, 203.0.113.0/24", headless="false",
                                  public_url="https://eportem.example.com/", smtp_host=""))
         self.assertEqual(st.port, 9000)
-        self.assertEqual(st.trusted_proxies, ["10.0.0.1", "10.0.0.0/8"])
+        self.assertEqual(st.trusted_proxies, ["192.0.2.1", "203.0.113.0/24"])
         self.assertFalse(st.headless)
         self.assertEqual(st.public_url, "https://eportem.example.com")
         self.assertTrue(st.effective_secure_cookies)
