@@ -15,9 +15,16 @@ import argparse
 import datetime
 import json
 import os
-import re
 import sys
 
+from eportem.core import schedule as core_schedule
+from eportem.core.overrides import (
+    OverrideFormatError,
+    parse_date_range,
+    parse_location_override,
+    range_state,
+)
+from eportem.core.schedule import LOCATIONS, TASK_ACTIONS  # noqa: F401  (re-exported for tests)
 from eportem_action import execute_action
 from utility import alerts
 from utility.action_log import actions_recorded_on
@@ -41,15 +48,6 @@ VERIFY_GRACE_MINUTES = 15
 
 HOLIDAY_STATUS_TEXT = "On holiday"
 HOLIDAY_STATUS_EMOJI = ":palm_tree:"
-
-LOCATIONS = ("home", "office")
-TASK_ACTIONS = {
-    "start_the_day": "start_day",
-    "lunch_break": "lunch_break",
-    "after_lunch_break": "after_lunch",
-    "stop_the_day": "stop_day",
-}
-_TIME_RE = re.compile(r"^(\d{1,2}):(\d{2})$")
 
 
 class HolidayFileError(Exception):
@@ -94,17 +92,10 @@ def read_holiday_file():
         raise HolidayFileError(f"cannot read it ({e})") from e
     if not text:
         return None
-    parts = [p.strip() for p in text.split(",")]
-    if len(parts) not in (1, 2):
-        raise HolidayFileError(f"expected 'START,END' or a single date, got {text!r}")
     try:
-        start = datetime.date.fromisoformat(parts[0])
-        end = datetime.date.fromisoformat(parts[-1])
-    except ValueError as e:
-        raise HolidayFileError(f"expected YYYY-MM-DD dates, got {text!r}") from e
-    if end < start:
-        raise HolidayFileError(f"the end date {end} is before the start date {start}")
-    return start, end
+        return parse_date_range(text)
+    except OverrideFormatError as e:
+        raise HolidayFileError(str(e)) from e
 
 def get_today_holiday(remove_stale=True):
     """Return {"start", "end"} if today falls within the range set via
@@ -115,12 +106,12 @@ def get_today_holiday(remove_stale=True):
         return None
     start_date, end_date = parsed
 
-    today = _now().date()
-    if end_date < today:
+    state = range_state(start_date, end_date, _now().date())
+    if state == "past":
         if remove_stale:
             _remove_quietly(holiday_file())  # every date in the range has passed
         return None
-    if start_date <= today:
+    if state == "active":
         return {"start": start_date, "end": end_date}
     return None
 
@@ -145,43 +136,8 @@ def update_holiday_slack_status(holiday):
         print("Slack status skipped: SLACK_TOKEN is not configured.")
 
 
-def _parse_time(value):
-    """Return minutes since midnight for 'H:MM'/'HH:MM', else None."""
-    m = _TIME_RE.match(value) if isinstance(value, str) else None
-    if not m or int(m.group(1)) > 23 or int(m.group(2)) > 59:
-        return None
-    return int(m.group(1)) * 60 + int(m.group(2))
-
-
-def validate_config(config):
-    """Return a list of human-readable problems (empty if the config is fine)."""
-    problems = []
-    if not isinstance(config, dict) or "schedule" not in config:
-        return ['top level must be an object with a "schedule" key']
-    schedule = config["schedule"]
-    if not isinstance(schedule, dict):
-        return ['"schedule" must be an object keyed by weekday "0".."6"']
-    for key, day in schedule.items():
-        where = f'schedule["{key}"]'
-        if key not in {str(i) for i in range(7)}:
-            problems.append(f'{where}: weekday key must be "0" (Monday) to "6" (Sunday)')
-        if not isinstance(day, dict):
-            problems.append(f"{where}: must be an object")
-            continue
-        for name, value in day.items():
-            if name == "day":
-                if not isinstance(value, str):
-                    problems.append(f'{where}["day"]: must be a string')
-            elif name == "location":
-                if value not in LOCATIONS:
-                    problems.append(f'{where}["location"]: must be "home" or "office", got {value!r}')
-            elif name in TASK_ACTIONS:
-                if _parse_time(value) is None:
-                    problems.append(f'{where}["{name}"]: must be a time like "9:00" or "13:30" '
-                                    f'(00:00-23:59), got {value!r}')
-            else:
-                problems.append(f'{where}: unknown key "{name}" (allowed: day, location, {", ".join(TASK_ACTIONS)})')
-    return problems
+_parse_time = core_schedule.parse_time
+validate_config = core_schedule.validate_week_schedule
 
 
 def load_config():
@@ -210,12 +166,7 @@ def _read_location_override(remove_stale=True):
     if not os.path.exists(path):
         return None
     try:
-        text = _read_text(path)
-        location, date_str = [p.strip() for p in text.split(",")]
-        location = location.lower()
-        if location not in LOCATIONS:
-            raise ValueError(f"location must be home or office, got {location!r}")
-        override_date = datetime.date.fromisoformat(date_str)
+        location, override_date = parse_location_override(_read_text(path))
     except (ValueError, OSError, UnicodeDecodeError) as e:
         print(f"Ignoring invalid location override file {path} ({e}); using the "
               f"location from config. Delete it or re-run override_location.py.",
@@ -234,26 +185,22 @@ def determine_location(config, remove_stale=True):
     override = _read_location_override(remove_stale)
     if override:
         return override
-    schedule = config["schedule"].get(str(_now().weekday()))
+    schedule = core_schedule.day_for(config, _now().weekday())
     if schedule:
         return schedule.get("location", "office")
     return "office"  # Default to office if not specified
 
 
-def _fmt(minutes):
-    return f"{minutes // 60:02d}:{minutes % 60:02d}"
-
-
-def _targets(day):
-    return [(name, _parse_time(day[name])) for name in day if name in TASK_ACTIONS]
+_fmt = core_schedule.format_minutes
+_targets = core_schedule.day_targets
 
 
 def _report_no_action(now, day, stream):
     lines = [f"No action matches the current time ({now:%H:%M}). Today's targets and windows "
              f"(+/-{WINDOW_MINUTES} min):"]
     for name, target in _targets(day):
-        lines.append(f"  {name}: {_fmt(target)} (window {_fmt(max(target - WINDOW_MINUTES, 0))}"
-                     f"-{_fmt(min(target + WINDOW_MINUTES, 24 * 60 - 1))})")
+        low, high = core_schedule.window_bounds(target, WINDOW_MINUTES)
+        lines.append(f"  {name}: {_fmt(target)} (window {_fmt(low)}-{_fmt(high)})")
     lines.append("If cron started this run, the crontab entry's time (base time + maximum "
                  "random sleep) is outside the window: fix the crontab.")
     print("\n".join(lines), file=stream)
@@ -268,13 +215,12 @@ def _join_names(names):
 def _verify_day(config, now, location):
     """Compare today's scheduled actions whose window has closed with what
     logs/actions.log recorded. Returns EXIT_OK or EXIT_UNVERIFIED."""
-    day = config["schedule"].get(str(now.weekday()))
+    day = core_schedule.day_for(config, now.weekday())
     if not day:
         print("No schedule for today; nothing to verify.")
         return EXIT_OK
     minutes = now.hour * 60 + now.minute
-    due = [TASK_ACTIONS[name] for name, target in _targets(day)
-           if minutes >= target + WINDOW_MINUTES + VERIFY_GRACE_MINUTES]
+    due = core_schedule.actions_due_for_verify(day, minutes, WINDOW_MINUTES, VERIFY_GRACE_MINUTES)
     if not due:
         print("No scheduled action is past its window yet; nothing to verify.")
         return EXIT_OK
@@ -331,23 +277,24 @@ def _run(args, ctx):
     now = _now()
     if args.verify_day:
         return _verify_day(config, now, determine_location(config, remove_stale=False))
-    day = config["schedule"].get(str(now.weekday()))
+    day = core_schedule.day_for(config, now.weekday())
     if not day:
         print("No schedule for today.")
         return EXIT_OK
 
     location = determine_location(config, remove_stale=not args.check)
     minutes = now.hour * 60 + now.minute
-    for task, target in _targets(day):
-        if abs(minutes - target) <= WINDOW_MINUTES:
-            action = TASK_ACTIONS[task]
-            if args.check:
-                print(f"Config OK. Would run {action} ({location}) now ({now:%H:%M}); "
-                      f"{task} is scheduled for {_fmt(target)}.")
-                return EXIT_OK
-            ctx["action"] = action
-            execute_action(action, location)
+    match = core_schedule.due_task(day, minutes, WINDOW_MINUTES)
+    if match:
+        task, target = match
+        action = TASK_ACTIONS[task]
+        if args.check:
+            print(f"Config OK. Would run {action} ({location}) now ({now:%H:%M}); "
+                  f"{task} is scheduled for {_fmt(target)}.")
             return EXIT_OK
+        ctx["action"] = action
+        execute_action(action, location)
+        return EXIT_OK
 
     if args.check:
         print(f"Config OK. No action would run now ({now:%H:%M}); location would be {location}.")
