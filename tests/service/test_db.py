@@ -59,9 +59,12 @@ class TestMigrations(DbCase):
         tables = set(inspect(self.engine).get_table_names())
         self.assertIn("planned_runs", tables)
         downgrade(self.url, "base")
-        self.assertEqual(set(inspect(make_engine(self.url)).get_table_names()), {"alembic_version"})
-        migrate(self.url)
-        self.assertEqual(set(inspect(make_engine(self.url)).get_table_names()), tables)
+        for expected in ({"alembic_version"}, tables):
+            engine = make_engine(self.url)
+            self.assertEqual(set(inspect(engine).get_table_names()), expected)
+            engine.dispose()
+            if expected != tables:
+                migrate(self.url)
 
     def test_sqlite_runs_in_wal_mode_with_foreign_keys(self):
         with self.engine.connect() as c:

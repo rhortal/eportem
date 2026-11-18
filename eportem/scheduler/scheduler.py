@@ -76,13 +76,31 @@ class Scheduler:
         self._verify_days(now)
         return started
 
-    def replan(self, user_id, now=None):
-        """Call after a person's calendar or profile changed."""
+    def replan(self, user_id, now=None, db=None):
+        """Call after a person's calendar or profile changed. With `db`, the
+        re-plan joins that transaction (an API request saving the change), so
+        the change and its new plan are saved together."""
         now = _naive_utc(now or datetime.datetime.now(datetime.UTC))
-        with self.Session.begin() as db:
+        if db is not None:
+            db.flush()
             user = db.get(User, user_id)
             if user:
                 plan_day(db, user, self._local_date(user, now), now, self.settings.window_minutes, self.rng)
+            return
+        with self.Session.begin() as session:
+            self.replan(user_id, now, session)
+
+    def run_now(self, run_id, user_id, now=None):
+        """Claim and start one run straight away (a manual clock from the API/UI).
+        False if it was already claimed."""
+        now = _naive_utc(now or datetime.datetime.now(datetime.UTC))
+        if not self._claim(run_id, user_id, now):
+            return False
+        if self.executor:
+            self.executor.submit(self._execute, run_id)
+        else:
+            self._execute(run_id)
+        return True
 
     def _local_date(self, user, now):
         return now.replace(tzinfo=datetime.UTC).astimezone(zoneinfo.ZoneInfo(user.timezone)).date()

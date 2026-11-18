@@ -49,3 +49,7 @@ select = ["E", "W", "F", "B", "I", "UP", "S"]
 [tool.ruff.lint.per-file-ignores]
 # Tests use asserts and fake credentials on purpose.
 "tests/*" = ["S101", "S103", "S104", "S105", "S106", "S108", "S311", "S603", "S607"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's way of declaring dependencies and parameters
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Body"]

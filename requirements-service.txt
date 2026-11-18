@@ -4,19 +4,27 @@
 -r requirements.txt
 
 alembic==1.20.1
+argon2-cffi==25.1.0
 cryptography==50.0.2
+fastapi==0.164.0
 holidays==0.109
 pydantic==2.14.3
 pydantic-settings==2.16.3
 sqlalchemy==2.1.9
+uvicorn==0.54.0
 
 # Dependencies of the above
+annotated-doc==0.0.7
 annotated-types==0.8.0
+anyio==4.16.0
+argon2-cffi-bindings==26.2.0
 cffi==2.1.1
+click==8.5.1
 mako==1.4.3
 markupsafe==3.0.4
 pycparser==3.12
 pydantic-core==2.50.4
 python-dateutil==2.9.0.post0
 six==1.17.0
+starlette==1.10.0
 typing-inspection==0.4.5

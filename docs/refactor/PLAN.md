@@ -483,25 +483,33 @@ Done 2026-11-18 (D-018).
   process, and replan when the API changes a calendar.
 
 ### Phase 5: auth and API
-- Passwords: argon2id (`argon2-cffi`). Sign-in is rate-limited for each user
-  and each IP. The session cookie is `HttpOnly` and `SameSite=Lax`, with
-  `Secure` when served over HTTPS, and there is CSRF protection on forms.
-  Password reset and email verification by email (SMTP settings).
-- Personal access tokens: only their hash is stored. Each has scopes (`read`,
-  `write`, `admin`), an optional expiry, can be revoked, and records when it
-  was last used.
-- First admin through `eportem create-admin` (or the admin settings on first
-  start). Registration: `closed` (default), `invite`, or `open` plus email
-  verification.
-- API `/api/v1`: `me`, `eportem-account` (set, verify with a test login that
-  doesn't clock, and find the activity IDs), `templates`, `schedule`,
-  `periods`, `days/{date}` (override one day), `time-off`, `calendar?from&to`
-  (resolved preview), `channels` (with "send test"), `runs` (history, today's
-  plan), `runs/{id}/log`, `actions/{action}` (clock now, by hand, with
-  confirmation), `tokens`. Admin endpoints: `users`, suspend/activate,
-  `stats`.
-- Every API change is written to `audit_events`. Secrets are never returned:
-  they can be set but not read back.
+Done 2026-11-18, except the parts that come with the web UI (below).
+- [x] `eportem/auth.py`: argon2id passwords (same timing for unknown users,
+      rehash on login), personal access tokens `ept_<prefix>_<secret>` (only
+      sha256 stored, scopes read < write < admin, expiry, revocation,
+      last used), a rate limiter, the audit log.
+- [x] `eportem/service.py`: every operation, shared with the UI. It checks
+      input and reports every problem, writes audit events, and returns
+      secrets only as `(set)`. Verifying an ePortem account logs in (a browser
+      only if the saved session expired), reads the dashboard, never clocks,
+      and fills in the activity IDs it can work out.
+- [x] `eportem/web/app.py` + `api.py`: `/api/v1` with OpenAPI at `/api/docs`:
+      me, password, eportem-account (+ verify), templates, schedule, periods,
+      days, local-holidays, calendar, channels (+ test), runs (+ log),
+      actions (clock now, needs `confirm`), tokens, admin users/runs/stats.
+      `/healthz`, `/readyz` (database and scheduler heartbeat). Calendar
+      changes re-plan today in the same transaction.
+- [x] Commands: `serve` (web app + API + scheduler), `create-admin`,
+      `create-token`; `EPORTEM_ADMIN_*` creates the first admin on start-up.
+- [x] Tests (20): auth, rate limit, scopes, expiry, suspension, isolation
+      (every route that takes an id answers 404 for another person's
+      row), validation, audit, verify against the fake, clock now through
+      the scheduler, channels, admin, health.
+- [ ] With phase 6: web sessions (cookie + CSRF), sign-in rate limit per user
+      and address (the limiter exists), registration modes, email
+      verification and password reset (SMTP).
+- [ ] Starlette warns that its test client's use of `httpx` is deprecated;
+      switch the dev dependency when the replacement is stable.
 
 ### Phase 6: web UI
 - Server-rendered Jinja2 with htmx, no JS build step. English and Spanish.

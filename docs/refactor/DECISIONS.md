@@ -218,3 +218,17 @@ every import. Changes and history are only added.
   `say`, so concurrent runs keep separate logs (D-014).
 - The end-of-day check is stored in `day_checks`, once per person per day,
   `verify_after_minutes` after their last planned action.
+
+**D-019: Never hold a database write lock across network I/O** (Accepted, 2026-11-18)
+SQLite allows one writer. The API tests deadlocked twice. First a request
+saved a change and asked the scheduler to re-plan in a second transaction.
+Then checking a token (which records `last_used_at`) held the write lock while
+`verify` logged in to ePortem, and the session store's own write waited behind
+it.
+→ Re-planning after an API change joins the request's transaction
+(`Scheduler.replan(user_id, db=db)`), so the change and its plan are saved
+together. Token checks commit at once. Any route that talks to ePortem, Slack
+or Telegram commits first. Each run's engine uses its own short sessions
+(D-018).
+→ This also applies on Postgres, where long transactions are just as
+unwelcome.
