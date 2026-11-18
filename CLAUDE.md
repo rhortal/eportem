@@ -68,8 +68,10 @@ pushed, since `--single-process` still crashed on this host as of 150.x.
 
 ### Browser flags and version (checked 2026-11-16)
 
-`omv` now runs Chromium `156.0.8078.79`. The flags come from `_start_browser()`
-in `utility/login_and_navigate.py`, not `eportem_action.py`: `--disable-gpu`,
+`omv` now runs Chromium `156.0.8078.79`. The flags come from `start_browser()`
+in `eportem/core/browser.py` (called through `utility/login_and_navigate.py`
+on the refactor branch; on `main` before the merge it is `_start_browser()` in
+`utility/login_and_navigate.py` itself), not `eportem_action.py`: `--disable-gpu`,
 `--headless=new` (only when `HEADLESS_BROWSING=YES`), `--window-size=1366,900`,
 `--lang=es-ES`, `--disable-blink-features=AutomationControlled`, a desktop
 `user-agent=`, and the automation switches turned off. They were added on
@@ -77,7 +79,8 @@ in `utility/login_and_navigate.py`, not `eportem_action.py`: `--disable-gpu`,
 cover them. The `chromium --headless ...` command above only shows whether
 Chromium starts at all.
 
-The `USER_AGENT` constant says Chrome/156, matching the host. When Chromium's
+The `USER_AGENT` constant (in `eportem/core/browser.py` on the refactor
+branch) says Chrome/156, matching the host. When Chromium's
 major version changes, `create_driver()` notices, restarts the browser once
 with the right version in the UA and prints a line saying so; update the
 constant to avoid that extra start. The UA is set with the launch flag on
