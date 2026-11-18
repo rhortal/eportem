@@ -135,6 +135,22 @@ def create_app(settings, sessionmaker=None, engine=None, scheduler=None, start_s
                   docs_url="/api/docs", openapi_url="/api/openapi.json", redoc_url=None)
     app.state.eportem = AppState(settings, sessionmaker, box, engine, scheduler)
 
+    csp = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+           "form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'")
+
+    @app.middleware("http")
+    async def security_headers(request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/api/docs"):
+            return response  # the API docs page loads its own scripts
+        response.headers.setdefault("Content-Security-Policy", csp)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("Referrer-Policy", "same-origin")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        if settings.effective_secure_cookies:
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+        return response
+
     @app.middleware("http")
     async def load_web_session(request, call_next):
         """Who is signed in with the session cookie (None otherwise)."""

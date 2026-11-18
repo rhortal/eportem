@@ -112,6 +112,24 @@ class TestPages(UiCase):
             self.assertEqual(db.query(DayChangeRow).count(), 0)
 
 
+class TestSecurityHeaders(UiCase):
+
+    def test_pages_forbid_framing_and_inline_scripts(self):
+        r = self.browser().get("/")
+        csp = r.headers["content-security-policy"]
+        self.assertIn("frame-ancestors 'none'", csp)
+        self.assertIn("script-src 'self';", csp)
+        self.assertEqual(r.headers["x-content-type-options"], "nosniff")
+        self.assertNotIn("onsubmit", r.text)
+        self.assertNotIn("onclick", r.text)
+        self.assertNotIn("strict-transport-security", r.headers)  # plain http here
+
+    def test_clock_now_buttons_post_to_each_action(self):
+        r = self.browser().get("/")
+        for action in ("start_day", "lunch_break", "after_lunch", "stop_day"):
+            self.assertIn(f'formaction="/actions/{action}"', r.text)
+
+
 class TestForms(UiCase):
 
     def test_schedule_template_home_days_custom_week_and_periods(self):
