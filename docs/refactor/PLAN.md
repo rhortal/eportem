@@ -275,8 +275,8 @@ instance settings.
 
 ### Keeping the repository portable
 
-- **Portability test:** a test scans tracked files (except `docs/` history
-  and `CLAUDE.md`) for email addresses outside `example.com`/`example.org`,
+- **Portability test:** a test scans tracked files (except the host notes:
+  `docs/OPERATIONS.md`, `docs/HANDOFF.md`, `TODO.md`, `docs/http-api-investigation.md`) for email addresses outside `example.com`/`example.org`,
   private IP addresses and hostnames outside an allow-list (`eportem.es`,
   `localhost`, `example.*`, library and CDN hosts). It fails CI when one shows
   up.
@@ -288,7 +288,7 @@ instance settings.
 - Docs: README and `docs/` are written for any install. Deployment examples are
   generic: plain `docker compose` with a port mapping, and behind a reverse
   proxy (Caddy, Traefik and nginx-proxy-manager examples) with placeholder
-  domains. The owner's host notes stay in `CLAUDE.md` (operations), and the
+  domains. The owner's host notes stay in `docs/OPERATIONS.md`, and the
   owner's real values stay in their untracked `.env`.
 - The image has no config baked in. `docker-compose.yml` reads `.env` and
   works as it is for a local try-out (`EPORTEM_TARGET_URL` pointing at the
@@ -584,7 +584,7 @@ hostname, logins) are in `docs/HANDOFF.md`, not here.
       deleted afterwards), with recorded actions as history.
 - [x] Error reports and the heartbeat go to GlitchTip over the Compose
       network, both checked.
-- [ ] Daily shadow report (command in `CLAUDE.md`). The first day with the
+- [ ] Daily shadow report (command in `docs/HANDOFF.md`). The first day with the
       service's own plan is 2026-11-19.
 - [ ] Public hostname: a DNS record and a reverse-proxy host. Needs the
       owner's DNS and proxy logins (the step-by-step is in `docs/HANDOFF.md`).
@@ -606,7 +606,7 @@ error tracking, heartbeat) at this point, in their own `.env`.
 5. **Rollback:** stop the container and restore the crontab. The legacy
    scripts are still on disk, and `config/.env` hasn't changed.
 6. After two clean weeks, delete `legacy/` and the cron-specific docs, and
-   rewrite the operations sections of README and CLAUDE.md.
+   rewrite the operations sections of README and `docs/OPERATIONS.md`.
 
 ### Phase 9: groundwork for selling it (after cutover, when wanted)
 - Entitlements in one place (`can_clock(user)`, users per instance, channels
@@ -655,5 +655,5 @@ are no longer open questions: they are settings the owner fills in at phase 8.
   (including authorization checks), end to end against the fake (HTTP and
   browser), migration upgrade and downgrade. All pass in CI. Coverage is
   reported, with a floor of 85% for `eportem/core` and `eportem/scheduler`.
-- README describes the service for any install. CLAUDE.md describes the
-  owner's container operations. DECISIONS.md is up to date.
+- README describes the service for any install. `docs/OPERATIONS.md`
+  describes the owner's container operations. DECISIONS.md is up to date.

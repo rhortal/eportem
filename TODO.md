@@ -1,7 +1,7 @@
 # To do
 
 Open items for ePortem on `omv`. Tick them off (or delete the line) when done,
-and note anything learnt in `docs/http-api-investigation.md` or `CLAUDE.md`.
+and note anything learnt in `docs/http-api-investigation.md` or `docs/OPERATIONS.md`.
 
 ## Open checks from the HTTP rollout
 

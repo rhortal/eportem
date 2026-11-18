@@ -2,8 +2,9 @@
 
 Where the work stands and how to pick it up, for the next session or another
 machine. This file holds host-specific details (host names, paths, logins), so
-the portability test skips it, like `CLAUDE.md` and `TODO.md`. Update it at the
-end of each session. General guidance lives in `CLAUDE.md`, the plan in
+the portability test skips it, like `docs/OPERATIONS.md` and `TODO.md`. Update it at the
+end of each session. General guidance lives in `CLAUDE.md`, the live host in
+`docs/OPERATIONS.md`, the plan in
 `docs/refactor/PLAN.md`, the decisions in `docs/refactor/DECISIONS.md`.
 
 ## Where things stand (2026-11-18, night)
@@ -39,8 +40,9 @@ end of each session. General guidance lives in `CLAUDE.md`, the plan in
 - Docker Desktop is only needed to build and try the image locally.
 - `omv` is `ssh omv` on the home LAN and `ssh omve` from outside (port 61022);
   the new machine needs those SSH aliases and its key authorised for `pi`.
-- Personal values never go in tracked files except this file, `CLAUDE.md`
-  and `TODO.md` (all skipped by the portability test).
+- Personal values never go in tracked files except this file,
+  `docs/OPERATIONS.md`, `TODO.md` and `docs/http-api-investigation.md` (all
+  skipped by the portability test).
 
 ## Shadow on `omv` (since 2026-11-18 evening)
 

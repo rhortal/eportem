@@ -633,8 +633,8 @@ with Python 3.13 and `requirements-dev.txt`. `make test-fast` skips the real-bro
 
 The portability test (`tests/test_portability.py`) fails when a tracked file
 has an email address outside the example domains, a private IP address, or a
-URL whose host isn't on its allow-list. `CLAUDE.md`, `TODO.md`,
-`docs/HANDOFF.md` and `docs/http-api-investigation.md` are skipped: they are the maintainer's notes
+URL whose host isn't on its allow-list. `docs/OPERATIONS.md`, `docs/HANDOFF.md`,
+`TODO.md` and `docs/http-api-investigation.md` are skipped: they are the maintainer's notes
 about their own host. To also catch names that are only personal to you (a
 host name, a domain, your email), list them one per line in
 `.portability-denylist` at the top of the repository. That file is

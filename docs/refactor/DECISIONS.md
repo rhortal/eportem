@@ -121,6 +121,9 @@ IDs, status texts, timezone) live in the database.
 → The owner's production values (hostname, port, proxy, SMTP, Sentry,
 heartbeat) are chosen at cutover in an untracked `.env`. Host-specific
 operations notes stay in `CLAUDE.md`. README and `docs/` stay generic.
+(Superseded 2026-11-18: host notes moved to `docs/OPERATIONS.md`, session
+state to `docs/HANDOFF.md`; `CLAUDE.md` holds only general guidance and is
+checked by the portability test. See D-023.)
 
 **D-013: Tooling: pytest, ruff, coverage, one CI workflow for both forges** (Accepted, 2026-11-18)
 Phase 0 needed a check that is the same locally and in CI. The repository
@@ -291,3 +294,13 @@ unwelcome.
   GlitchTip and the fake stay on `127.0.0.1`. Follow-up: behind Cloudflare the
   per-address sign-in limit sees Cloudflare's addresses. The per-user limit
   still holds. Trusting `CF-Connecting-IP` from Cloudflare's ranges would fix it.
+
+**D-023: CLAUDE.md is general guidance; host notes and session state live elsewhere** (Accepted, 2026-11-18, owner's request)
+CLAUDE.md had grown into the live host's logbook, and then a session handoff.
+→ `CLAUDE.md`: only how to work on the repository (where things are written
+down, README upkeep, commits and checks, testing against ePortem, the
+refactor's rules). It is no longer skipped by the portability test, which now
+keeps it free of personal values. `docs/OPERATIONS.md`: the live host (cron,
+Chromium, mail, Slack credentials, deploying). `docs/HANDOFF.md`: where ongoing
+work stands. Both are skipped by the portability test, with `TODO.md` and
+`docs/http-api-investigation.md`.
