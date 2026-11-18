@@ -8,8 +8,11 @@
 services:
   eportem:
     build: .
-    image: eportem:latest
+    image: eportem-local:latest   # built here; never pulled
     restart: unless-stopped
+    labels:
+      # Auto-updaters (Watchtower) must not replace a locally built image from a registry.
+      com.centurylinklabs.watchtower.enable: "false"
     env_file:
       - path: .env
         required: false   # so `docker compose config` works before .env exists
@@ -23,7 +26,9 @@ services:
 
   fake-eportem:
     profiles: ["dev"]
-    image: eportem:latest
+    image: eportem-local:latest
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
     command: ["python", "-m", "fake_eportem", "--host", "0.0.0.0", "--port", "8081",
               "--account", "DEMO:demo-password", "--recaptcha"]
     expose:
