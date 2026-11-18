@@ -571,7 +571,7 @@ Done 2026-11-18 (D-021).
 
 ### Phase 8: cutover on the owner's host
 **Progress (2026-11-18, evening).** The host-specific details (paths, names,
-hostname, logins) are in `CLAUDE.md`, not here.
+hostname, logins) are in `docs/HANDOFF.md`, not here.
 - [x] Contract check against the real site from the owner's host (read-only):
       all checks pass, including the login landing on the page with the clock
       box. The activities found match what verify would pick.
@@ -587,7 +587,7 @@ hostname, logins) are in `CLAUDE.md`, not here.
 - [ ] Daily shadow report (command in `CLAUDE.md`). The first day with the
       service's own plan is 2026-11-19.
 - [ ] Public hostname: a DNS record and a reverse-proxy host. Needs the
-      owner's DNS and proxy logins (the step-by-step is in `CLAUDE.md`).
+      owner's DNS and proxy logins (the step-by-step is in `docs/HANDOFF.md`).
 - [ ] A destination for GlitchTip's alerts, and an outside uptime monitor on
       `/healthz` (a monitor on the same host can't notice the host going down).
 

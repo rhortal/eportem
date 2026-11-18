@@ -22,7 +22,7 @@ and note anything learnt in `docs/http-api-investigation.md` or `CLAUDE.md`.
 
 ## Refactor branch (`refactor/multiuser-service`)
 
-Details for each item are in `CLAUDE.md` ("Refactor to a multi-user service").
+Details for each item are in `docs/HANDOFF.md`.
 
 - [x] 2026-11-18 18:50: contract check against the real site: all PASS.
 - [x] 2026-11-18 evening: shadow deployed on `omv` (dry run, sends nothing).

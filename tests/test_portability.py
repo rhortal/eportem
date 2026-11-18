@@ -16,7 +16,7 @@ REPO = Path(__file__).resolve().parent.parent
 DENYLIST_FILE = REPO / ".portability-denylist"
 
 # The maintainer's own operational notes about their host; not shipped as docs.
-SKIPPED_FILES = {"CLAUDE.md", "TODO.md", "docs/http-api-investigation.md", "LICENSE",
+SKIPPED_FILES = {"CLAUDE.md", "TODO.md", "docs/HANDOFF.md", "docs/http-api-investigation.md", "LICENSE",
                  "tests/test_portability.py"}  # its own made-up bad examples
 
 ALLOWED_HOSTS = {
