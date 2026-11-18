@@ -242,6 +242,8 @@ class TestAdminAndHealth(ApiCase):
 
     def test_health(self):
         self.assertEqual(self.client.get("/healthz").json(), {"status": "ok"})
+        self.assertEqual(self.client.head("/healthz").status_code, 200)
+        self.assertEqual(self.client.head("/readyz").status_code, 200)
         self.assertEqual(self.client.get("/readyz").json(), {"status": "ready"})
         self.assertEqual(self.client.get("/api/openapi.json").status_code, 200)
 

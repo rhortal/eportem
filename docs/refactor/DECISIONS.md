@@ -267,3 +267,27 @@ unwelcome.
   (`core.clock_http.cookie_domain`). Python's cookie jar would otherwise file
   it under `<host>.local` and never send it. Each HTTP session only talks to
   its own target, so this widens nothing.
+
+**D-022: Shadow deployment and monitoring on the owner's host** (Accepted, 2026-11-18, owner's go-ahead)
+- The shadow runs from a git worktree beside the live checkout, as its own
+  Compose project. Your crontab and the live files are never touched. Dry run
+  sends nothing to ePortem, Slack or Telegram, and the target is the fake as a
+  second guard.
+- Legacy files go into the container through a tar stream, not a bind mount.
+  The container's user can't read `pi`'s `chmod 600` files, and loosening their
+  permissions, or running the import as root, which would leave root-owned
+  files in the data volume, was worse.
+- GlitchTip (owner's choice of a free, bundled error tracker) runs without
+  Valkey, using Postgres for queue and cache, to save memory on the NAS.
+  The service reaches it over the Compose network, so it doesn't need to be
+  public.
+- Heartbeat: the owner suggested a path on the service's own hostname. A heartbeat has
+  to be received by something other than the thing being watched, so the
+  service POSTs to a GlitchTip heartbeat monitor instead. That catches a stuck or
+  stopped service container. A dead host needs an outside monitor on
+  `/healthz`, which now answers HEAD too.
+- Going public: security headers and a strict CSP were added first, sessions are
+  `Secure`, the admin password is 24 random URL-safe characters, and metrics,
+  GlitchTip and the fake stay on `127.0.0.1`. Follow-up: behind Cloudflare the
+  per-address sign-in limit sees Cloudflare's addresses. The per-user limit
+  still holds. Trusting `CF-Connecting-IP` from Cloudflare's ranges would fix it.

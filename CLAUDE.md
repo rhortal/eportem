@@ -254,3 +254,27 @@ database, scheduler, API, web UI, Docker), `make check` green. Phase 8 (the
 cutover on `omv`) and the read-only contract check against the real site wait
 for the owner; see `TODO.md`. Rule from D-019: never hold a database write lock
 across network I/O.
+
+### Shadow on `omv` (since 2026-11-18 evening)
+
+- Worktree `/home/pi/Apps/eportem-refactor` (detached at
+  `origin/refactor/multiuser-service`; update with `git fetch && git checkout
+  --detach origin/refactor/multiuser-service`, then `docker compose -p eportem
+  --profile dev --profile errors up -d --build`). Untracked there: `.env`
+  (`chmod 600`, secrets generated on `omv`, `EPORTEM_DRY_RUN=true`, target the
+  fake) and `docker-compose.override.yml` (joins `ngingx-proxy-manager_default`).
+- Containers: `eportem-eportem-1` (`127.0.0.1:8095`), `eportem-glitchtip-1`
+  (`127.0.0.1:8098`, login `admin@hortal.me`), `eportem-glitchtip-db-1`,
+  `eportem-fake-eportem-1`. Passwords: `/home/pi/.eportem-admin-password`
+  (service user `roberto`, admin) and `/home/pi/.glitchtip-admin-password`. From
+  the Mac: `ssh -L 8095:127.0.0.1:8095 -L 8098:127.0.0.1:8098 omv`.
+- Daily comparison with cron, from the worktree:
+  `cat /home/pi/Apps/eportem/logs/actions.log | docker compose -p eportem exec -T
+  eportem python -m eportem shadow-report --user roberto --actions-log /dev/stdin
+  --days 3`
+- To re-import: stream the legacy files with `tar` into the container (it can't
+  read `pi`'s `chmod 600` files) and run `import-legacy --from` the copy, then
+  delete it (see the 2026-11-18 session).
+- Public step, waiting for the owner: Cloudflare DNS for `checkin.hortal.me`
+  (zone on Cloudflare; no Cloudflare connection from Claude Code) and an
+  nginx-proxy-manager proxy host to `eportem-eportem-1:8080`.

@@ -20,15 +20,16 @@ and note anything learnt in `docs/http-api-investigation.md` or `CLAUDE.md`.
       longer-lived session, which would cut the morning browser logins. Add the
       result to the session data points in `docs/http-api-investigation.md`.
 
-## Refactor branch (`refactor/multiuser-service`), waiting for the owner
+## Refactor branch (`refactor/multiuser-service`)
 
-- [ ] Run the read-only contract check once on `omv`, at a time no cron line
-      is due (it refreshes the saved session):
-      `venv/bin/python -m eportem.contract --activity-ids 1,1293,2` from a
-      checkout of the branch. It never requests the clock URL.
-- [ ] Decide when to start phase 8 (`docs/refactor/PLAN.md`): shadow mode
-      on `omv` (`EPORTEM_DRY_RUN=true`, target the fake) for 3 working days,
-      then `import-legacy`, then switch cron off and the service on.
-- [ ] Production values for `omv` in an untracked `.env`: public URL and
-      proxy, metrics token, error tracking (sentry.io or GlitchTip), heartbeat.
-
+- [x] 2026-11-18 18:50: contract check against the real site: all PASS.
+- [x] 2026-11-18 19:00-19:30: shadow deployed on `omv` (dry run, sends nothing).
+      See "Phase 8" in `docs/refactor/PLAN.md` for where everything is.
+- [ ] From 2026-11-19, each evening: the shadow report (command in the plan);
+      after 3 matching working days, decide the switch.
+- [ ] With the owner: Cloudflare DNS for `checkin.hortal.me` and an
+      nginx-proxy-manager proxy host to `eportem-eportem-1:8080`, then the
+      public sign-in test.
+- [ ] With the owner: a destination for GlitchTip alerts (Slack incoming
+      webhook?), and an outside uptime monitor on `/healthz`.
+- [ ] The owner's region for public holidays (only national ones for now).

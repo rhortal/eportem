@@ -570,6 +570,27 @@ Done 2026-11-18 (D-021).
       source works on amd64 and arm64.
 
 ### Phase 8: cutover on the owner's host
+**Progress (2026-11-18, evening).** The host-specific details (paths, names,
+hostname, logins) are in `CLAUDE.md`, not here.
+- [x] Contract check against the real site from the owner's host (read-only):
+      all checks pass, including the login landing on the page with the clock
+      box. The activities found match what verify would pick.
+- [x] Shadow running on the owner's host from a git worktree of this branch,
+      as its own Compose project. The live checkout and crontab are untouched.
+      It runs the service in dry run with the fake as its target, GlitchTip with
+      Postgres, and the fake, all published on `127.0.0.1` only. In dry run it
+      sends nothing: no ePortem request, no notification, no alert.
+- [x] Owner imported with `import-legacy` (files streamed into the container,
+      deleted afterwards), with recorded actions as history.
+- [x] Error reports and the heartbeat go to GlitchTip over the Compose
+      network, both checked.
+- [ ] Daily shadow report (command in `CLAUDE.md`). The first day with the
+      service's own plan is 2026-11-19.
+- [ ] Public hostname: a DNS record and a reverse-proxy host. Needs the
+      owner's DNS and proxy logins.
+- [ ] A destination for GlitchTip's alerts, and an outside uptime monitor on
+      `/healthz` (a monitor on the same host can't notice the host going down).
+
 The owner picks their production values (public URL, port, proxy, email,
 error tracking, heartbeat) at this point, in their own `.env`.
 1. Deploy the container in **shadow mode** (dry run, fake target) for at least

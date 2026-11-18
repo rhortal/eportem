@@ -175,11 +175,12 @@ def create_app(settings, sessionmaker=None, engine=None, scheduler=None, start_s
     async def service_error(request, exc):
         return JSONResponse({"detail": exc.problems}, status_code=exc.status)
 
-    @app.get("/healthz", include_in_schema=False)
+    # HEAD too: uptime monitors (GlitchTip's ping, UptimeRobot...) often use it.
+    @app.api_route("/healthz", methods=["GET", "HEAD"], include_in_schema=False)
     def healthz():
         return {"status": "ok"}
 
-    @app.get("/readyz", include_in_schema=False)
+    @app.api_route("/readyz", methods=["GET", "HEAD"], include_in_schema=False)
     def readyz(request: Request):
         state = _state(request)
         problems = []
