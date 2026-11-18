@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import contextlib
@@ -12,7 +13,6 @@ from unittest.mock import patch
 
 import holiday_override
 import main
-
 
 NOW = datetime.datetime(2026, 8, 10, 9, 0)
 

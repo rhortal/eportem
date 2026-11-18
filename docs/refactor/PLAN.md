@@ -355,12 +355,20 @@ earlier in pieces if phase 1 turns out cleanly separable.
 
 ### Phase 0: groundwork
 - [x] Branch, baseline: 352 tests pass (`./run_tests.sh`, 2026-11-18).
-- [ ] `pyproject.toml` (Python 3.13, the version on the owner's host and in the
-      image), `pytest` alongside today's unittest suite (pytest runs unittest
-      cases), `ruff`, and coverage reporting.
-- [ ] CI: a Gitea Actions workflow (or a `make check` if no runner) running
-      lint + tests + the portability test + the Docker build. The workflow
-      must also run on GitHub Actions, for people who use the GitHub mirror.
+- [x] `pyproject.toml` with tool settings (the `[project]` table comes with
+      the package in phase 1), `requirements-dev.txt`, `pytest` running
+      today's unittest suite unchanged, `ruff` (rules in D-013, existing code
+      fixed to pass) and coverage (88% overall at the start).
+- [x] `make check` (lint + tests + coverage) from a Python 3.13 `.venv`.
+- [x] CI workflow `.github/workflows/check.yml`, read by GitHub Actions and by
+      Gitea Actions. The Docker build is added to it in phase 7.
+- [x] Portability test (`tests/test_portability.py`), plus the gitignored
+      `.portability-denylist` for personal names.
+- [x] README's "Where to push" section, which named the maintainer's Git
+      server, replaced with a generic one.
+- [x] `utility/login_and_navigate.py` run as a script no longer clicks the
+      dashboard's main button (which records a clock-in on a not-started
+      office day); it only logs in and reports.
 
 ### Phase 1: pull out `eportem.core` (no behaviour change)
 - Move the HTTP clock, browser login and click path, schedule/window logic,
@@ -518,7 +526,7 @@ error tracking, heartbeat) at this point, in their own `.env`.
 | R5 | SQLite with several replicas. | One replica on SQLite. Postgres is needed for more than one. Documented. |
 | R6 | Chromium memory on small hosts. | Browser concurrency 1 by default, Chromium closed after each login, container memory limit. |
 | R7 | Regional and local holiday data can be wrong or missing. | The preview shows them ahead, they can be overridden per day (`work_on_holiday`), local holidays are added by hand, and the `holidays` package version is pinned. |
-| Q1 | Gitea Actions runner available on the owner's host? | Check in phase 0; the fallback is `make check` run before each push. |
+| Q1 | ~~Gitea Actions runner available on the owner's host?~~ | Answered 2026-11-18: Actions are off for the repository and no runner is registered. `make check` before each push; the workflow runs on GitHub through the mirror, and on Gitea once the owner enables Actions and registers a runner. |
 
 Production choices (hostname, port, proxy, email, error tracking, heartbeat)
 are no longer open questions: they are settings the owner fills in at phase 8.

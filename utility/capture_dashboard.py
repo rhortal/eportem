@@ -30,8 +30,7 @@ import requests
 from selenium.webdriver.common.by import By
 
 from utility.env_loader import load_environment
-from utility.login_and_navigate import (LOGIN_URL, LoginRejected, create_driver,
-                                        login_and_navigate)
+from utility.login_and_navigate import LOGIN_URL, LoginRejected, create_driver, login_and_navigate
 
 BASE_URL = "https://eportem.es"
 

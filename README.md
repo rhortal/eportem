@@ -425,6 +425,8 @@ To run the tests, use the `run_tests.sh` script in the root directory:
 
 It runs from any directory, uses `venv/bin/python3` (or `.venv/bin/python3`), runs every test found by `unittest discover` in `tests/`, and passes extra arguments to unittest (`./run_tests.sh -v`, or a module such as `tests.test_main`).
 
+For development, `make check` runs the linter and the same tests under pytest with coverage, from a Python 3.13 `.venv` (see "Checks" under Development).
+
 Tests cover `main.py`'s scheduling/holiday logic, `--verify-day`, failure alerts, the kill switch and the timestamped output, `eportem_action.py`'s
 click flow, HTTP/browser choice and fallback, and Slack status handling,
 `utility/http_clock.py`'s button selection, session cookies and outcome
@@ -475,11 +477,26 @@ The codebase follows DRY (Don't Repeat Yourself) principles with unified compone
 - `utility/http_clock.py` - HTTP clock client for the actions `EPORTEM_HTTP` enables (browser only for login); `clock_and_verify()` tells "nothing recorded" (safe to fall back) from "outcome unknown"
 - `utility/capture_dashboard.py` - read-only diagnostic for the direct-HTTP work (see `docs/http-api-investigation.md`): logs in, saves the dashboard HTML, button markup, scripts, script hits, cookie names and a session check to `capture/` (gitignored) without clicking anything. Run with `venv/bin/python3 -m utility.capture_dashboard`
 
-### Where to push
+### Where the code lives
 
-Push to Gitea only (`https://gitea.tiorob-home.mywire.org/roberto/eportem.git`,
-the `origin` remote). Gitea mirrors every push to GitHub; pushing to GitHub
-directly bypasses that and leaves Gitea, which `omv` pulls from, behind.
+The public repository is <https://github.com/rhortal/eportem>, a mirror of the
+maintainer's own Git server. Open issues and pull requests there.
+
+### Checks
+
+`make check` runs the linter (`ruff`), the test suite (`pytest`, with
+coverage) and the portability test, from a `.venv` that `make venv` builds
+with Python 3.13 and `requirements-dev.txt`. The same checks run in CI
+(`.github/workflows/check.yml`, which Gitea Actions also reads).
+
+The portability test (`tests/test_portability.py`) fails when a tracked file
+has an email address outside the example domains, a private IP address, or a
+URL whose host isn't on its allow-list. `CLAUDE.md`, `TODO.md` and
+`docs/http-api-investigation.md` are skipped: they are the maintainer's notes
+about their own host. To also catch names that are only personal to you (a
+host name, a domain, your email), list them one per line in
+`.portability-denylist` at the top of the repository. That file is
+gitignored, so the names never get committed.
 
 ## Acknowledgements
 

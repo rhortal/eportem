@@ -1,0 +1,22 @@
+# Lint and tests on every push and pull request. Gitea Actions reads
+# .github/workflows too, so this one file serves both forges.
+name: check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install
+        run: python -m pip install -r requirements-dev.txt
+      - name: Lint
+        run: ruff check .
+      - name: Test
+        run: python -m pytest --cov --cov-report=term:skip-covered

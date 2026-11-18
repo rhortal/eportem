@@ -1,7 +1,8 @@
 import os
 import re
-import requests
 from abc import ABC, abstractmethod
+
+import requests
 from dotenv import load_dotenv
 
 # Seconds to wait for Telegram/Slack. Without it a hung connection would block

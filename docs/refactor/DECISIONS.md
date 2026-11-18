@@ -121,3 +121,17 @@ IDs, status texts, timezone) live in the database.
 → The owner's production values (hostname, port, proxy, SMTP, Sentry,
 heartbeat) are chosen at cutover in an untracked `.env`. Host-specific
 operations notes stay in `CLAUDE.md`. README and `docs/` stay generic.
+
+**D-013: Tooling: pytest, ruff, coverage, one CI workflow for both forges** (Accepted, 2026-11-18)
+Phase 0 needed a check that is the same locally and in CI. The repository
+lives on Gitea (Actions off, no runner) and is mirrored to GitHub.
+→ pytest runs the existing unittest suite unchanged. ruff checks `E, W, F, B,
+I, UP, S` at line length 120, with asserts, fake secrets, permissive chmods
+and subprocess allowed in `tests/`. Coverage is reported with branches.
+Nothing is formatted automatically yet (`ruff format` would rewrite most
+lines; decide when the code moves in phase 1). `make check` is the single
+command. `.github/workflows/check.yml` runs it on GitHub Actions and, once
+enabled, on Gitea Actions, which reads the same directory.
+→ Lint fixes to existing code were mechanical (import order, `open()` modes,
+`raise ... from e`, one `contextlib.suppress`), and the suite proves they
+change no behaviour.

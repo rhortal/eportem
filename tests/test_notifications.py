@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import contextlib
@@ -11,7 +12,11 @@ import requests
 
 from utility import env_check
 from utility.notification_send import (
-    REQUEST_TIMEOUT, NotificationManager, SlackChannel, TelegramChannel, _scrub,
+    REQUEST_TIMEOUT,
+    NotificationManager,
+    SlackChannel,
+    TelegramChannel,
+    _scrub,
 )
 from utility.slack_status import SlackStatusUpdater
 
@@ -118,7 +123,8 @@ class TestSlackChannel(unittest.TestCase):
         self.assertIn("404", out.getvalue())
 
     def test_missing_webhook_and_token_skips(self):
-        with patch.dict(os.environ, {"SLACK_WEBHOOK_URL": "", "SLACK_TOKEN": "", "SLACK_BOT_TOKEN": "", "SLACK_NOTIFY_CHANNEL": ""}), \
+        no_slack = {"SLACK_WEBHOOK_URL": "", "SLACK_TOKEN": "", "SLACK_BOT_TOKEN": "", "SLACK_NOTIFY_CHANNEL": ""}
+        with patch.dict(os.environ, no_slack), \
                 patch("requests.post") as post, _capture() as out:
             self.assertIsNone(SlackChannel().send("hi"))
         post.assert_not_called()

@@ -1,0 +1,32 @@
+# Tool settings. The importable `eportem` package and its [project] metadata
+# arrive in phase 1 of docs/refactor/PLAN.md; until then the runtime
+# dependencies stay pinned in requirements.txt (what run.sh installs).
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
+markers = [
+    "browser: needs a real Chromium + chromedriver (skipped when missing)",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["."]
+omit = ["tests/*", ".venv/*", "venv/*"]
+
+[tool.coverage.report]
+skip_empty = true
+show_missing = false
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+extend-exclude = ["venv", "capture", "diagnostics"]
+
+[tool.ruff.lint]
+# pyflakes, pycodestyle, bugbear, import order, pyupgrade, bandit (security)
+select = ["E", "W", "F", "B", "I", "UP", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests use asserts and fake credentials on purpose.
+"tests/*" = ["S101", "S103", "S105", "S106", "S108", "S603", "S607"]

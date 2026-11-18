@@ -1,12 +1,13 @@
 #!/usr/bin/env python
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.common.exceptions import TimeoutException, WebDriverException
-from selenium.webdriver.support.ui import WebDriverWait
-import time
+import contextlib
 import os
+import time
+
+from selenium import webdriver
+from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
 
 # ePortem added reCAPTCHA v3 to the login form (2026-10-29). Its score rejects
 # plain headless Chrome, so the browser is made to look like a normal desktop one.
@@ -109,10 +110,8 @@ def login_and_navigate(driver=None):
         _login(driver, uname, pwd)
     except BaseException:
         if created:
-            try:
+            with contextlib.suppress(Exception):  # the original error matters more
                 driver.quit()
-            except Exception:
-                pass
         raise
     return driver
 
@@ -152,15 +151,14 @@ def _login(driver, uname, pwd):
         raise LoginRejected("Login rejected by reCAPTCHA ('no es un robot')")
     time.sleep(3)
 
-# example usage of the function
 if __name__ == '__main__':
+    # Log in and report where the browser ended up. Clicks nothing: the old example
+    # clicked the main dashboard button, which on a not-started office day records
+    # a clock-in.
+    from utility.env_loader import load_environment
+    load_environment()
     driver = login_and_navigate()
-
-    # find the button element and click it
-    button = driver.find_element(By.XPATH,"/html/body[@class='pace-done skin-1 fixed-sidebar']/div[@id='wrapper']/div[@id='page-wrapper']/div[@class='wrapper wrapper-content']/div[@class='row']/div[@class='col-lg-6 col-sm-12'][1]/div[@class='ibox']/div[@class='ibox-content']/div[@class='row']/div[@id='buttonsRegBox']/div[@class='btn-group']/div[@class='btn-group']/button[@class='btn btn-outline btn-block btn-primary dropdown-toggle']")
-    button.click()
-
-    time.sleep(3)
-
-    # close the browser window
-    driver.quit()
+    try:
+        print(f"Logged in: {driver.current_url}")
+    finally:
+        driver.quit()

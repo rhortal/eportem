@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import contextlib
@@ -7,13 +8,13 @@ import datetime
 import io
 import stat
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import eportem_action
 from eportem_action import EPortemAction
+from tests.test_eportem import IsolatedCase
 from utility import action_log, logfiles
 from utility.http_clock import NotRecorded, OutcomeUnknown
-from tests.test_eportem import IsolatedCase
 
 
 def _http(self):

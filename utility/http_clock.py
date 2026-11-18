@@ -41,8 +41,7 @@ import requests
 from urllib3.exceptions import NewConnectionError
 
 # Same browser identity the Selenium login uses, so the session looks consistent.
-from utility.login_and_navigate import (  # noqa: F401  (re-exported)
-    LOGIN_URL, USER_AGENT, create_driver, login_and_navigate)
+from utility.login_and_navigate import LOGIN_URL, USER_AGENT, create_driver, login_and_navigate  # noqa: F401  (re-exported)
 
 BASE_URL = "https://eportem.es"
 DASHBOARD_URL = f"{BASE_URL}/aplicaciones/e-portem/registro/"

@@ -180,3 +180,6 @@ logs/
 # Lock held by run.sh while a run is in progress
 .run.lock
 venv.old.*/
+
+# Personal names for tests/test_portability.py; never commit
+.portability-denylist

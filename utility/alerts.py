@@ -3,10 +3,8 @@ Slack, honouring TELEGRAM_NOTIFY / SLACK_NOTIFY). Used for failed cron runs and
 by `main.py --verify-day`. Sending never raises: an alert is a courtesy on top
 of the cron mail, and must not change a run's exit code."""
 import os
-import re
 
-from utility.notification_send import (
-    NotificationManager, SlackChannel, TelegramChannel, _describe_error, _scrub)
+from utility.notification_send import NotificationManager, SlackChannel, TelegramChannel, _describe_error, _scrub
 
 MAX_REASON_CHARS = 200
 

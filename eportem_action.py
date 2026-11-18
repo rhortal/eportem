@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
-import contextlib
-import io
-import sys
-import time
 import argparse
+import contextlib
 import datetime
+import io
 import os
 import re
+import sys
+import time
+
 from selenium.common.exceptions import NoSuchElementException, WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from utility.login_and_navigate import LOGIN_URL, create_driver, login_and_navigate
-from utility.notification_send import NotificationManager, TelegramChannel, SlackChannel, _describe_error
-from utility.paths import business_trip_file, state_dir
-from utility.env_check import check_env_variable
-from utility.action_log import record_action
+
 from utility import logfiles
+from utility.action_log import record_action
+from utility.env_check import check_env_variable
+from utility.login_and_navigate import LOGIN_URL, create_driver, login_and_navigate
+from utility.notification_send import NotificationManager, SlackChannel, TelegramChannel, _describe_error
+from utility.paths import business_trip_file, state_dir
 
 # ePortem session-type IDs used in the "start"/"resume" button selectors below.
 # These are specific to this account's ePortem configuration, not a fixed
@@ -50,7 +52,7 @@ def _active_business_trip_end_date():
     if not os.path.exists(override_file):
         return None
 
-    with open(override_file, "r") as f:
+    with open(override_file) as f:
         try:
             start_str, end_str = f.read().strip().split(",")
             start_date = datetime.date.fromisoformat(start_str)

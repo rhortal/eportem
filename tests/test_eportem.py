@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import contextlib
@@ -7,7 +8,9 @@ import io
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
+
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
+
 import eportem_action
 from eportem_action import EPortemAction, http_enabled_for
 from utility.login_and_navigate import LOGIN_URL
@@ -59,7 +62,8 @@ class TestEPortem(IsolatedCase):
         EPortemAction("start_day", "home", mock_driver).perform()
         self.assertEqual(mock_driver.get.call_count, 3)
         mock_driver.get.assert_called_with("https://eportem.es/aplicaciones/e-portem/registro/")
-        mock_driver.find_element.assert_any_call("xpath", '//*[@id="buttonsRegBox"]/div/button[@data-toggle="dropdown"]')
+        mock_driver.find_element.assert_any_call(
+            "xpath", '//*[@id="buttonsRegBox"]/div/button[@data-toggle="dropdown"]')
         mock_driver.save_screenshot.assert_not_called()
 
     @patch("eportem_action.RETRY_PAUSE_SECONDS", 0)
@@ -156,7 +160,8 @@ class TestEPortem(IsolatedCase):
         action.perform()
         self.assertEqual(mock_driver.find_element.return_value.click.call_count, 2)
         mock_driver.quit.assert_called_once()
-        mock_driver.find_element.assert_any_call("xpath", '//*[@id="buttonsRegBox"]/div/button[@data-toggle="dropdown"]')
+        mock_driver.find_element.assert_any_call(
+            "xpath", '//*[@id="buttonsRegBox"]/div/button[@data-toggle="dropdown"]')
         mock_driver.find_element.assert_any_call("xpath", '//*[@id="_ststart" and @name="1293"]')
 
     def test_lunch_break(self):

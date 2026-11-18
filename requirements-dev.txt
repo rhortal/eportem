@@ -1,0 +1,14 @@
+# Development and CI tools, on top of the pinned runtime requirements.
+# Installed by `make venv`. Versions pinned 2026-11-18.
+-r requirements.txt
+
+pytest==9.2.0
+pytest-cov==7.1.0
+coverage==7.17.3
+ruff==0.17.5
+
+# Dependencies of the above
+iniconfig==2.3.1
+packaging==26.3
+pluggy==1.7.0
+pygments==2.21.0

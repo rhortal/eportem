@@ -36,7 +36,7 @@ def actions_recorded_on(date):
     found = []
     for p in [*reversed(logfiles.generation_paths(path)), path]:
         try:
-            with open(p, "r", encoding="utf-8", errors="replace") as f:
+            with open(p, encoding="utf-8", errors="replace") as f:
                 for line in f:
                     parts = line.split()
                     if len(parts) >= 3 and parts[1] == date.isoformat():

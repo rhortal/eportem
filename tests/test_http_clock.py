@@ -1,14 +1,22 @@
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import unittest
 from unittest.mock import MagicMock, patch
 
 from utility import http_clock
-from utility.http_clock import (HttpClock, ButtonNotFound, SessionExpired,
-                                parse_buttons, select_button, build_params,
-                                CLOCK_URL, DASHBOARD_URL)
+from utility.http_clock import (
+    CLOCK_URL,
+    DASHBOARD_URL,
+    ButtonNotFound,
+    HttpClock,
+    SessionExpired,
+    build_params,
+    parse_buttons,
+    select_button,
+)
 
 # #buttonsRegBox as captured from the live dashboard while working (2026-11-16),
 # trimmed to the clock buttons.
@@ -530,13 +538,15 @@ class TestCliExitCodes(unittest.TestCase):
 class TestCookieFile(unittest.TestCase):
 
     def setUp(self):
-        import tempfile, pathlib
+        import pathlib
+        import tempfile
         self.dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.dir.cleanup)
         self.path = pathlib.Path(self.dir.name) / "cookies.json"
 
     def test_round_trip_keeps_login_time_and_sets_last_used(self):
-        import datetime, json
+        import datetime
+        import json
         clock = HttpClock(requests_session())
         clock.session.cookies.set(".ASPXAUTH", "abc", domain="eportem.es", path="/")
         clock.logged_in_at = datetime.datetime(2026, 11, 16, 10, 27)
@@ -599,7 +609,8 @@ class TestCookieFile(unittest.TestCase):
         self.assertTrue(again.load_cookies(self.path))
 
     def test_save_is_atomic_and_mode_600(self):
-        import json, os
+        import json
+        import os
         self.path.write_text("old")
         os.chmod(self.path, 0o644)
         clock = HttpClock(requests_session())

@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import contextlib
@@ -9,13 +10,13 @@ import stat
 import unittest
 from unittest.mock import MagicMock, patch
 
-import main
 import eportem_action
+import main
 from eportem_action import EPortemAction
+from tests.test_eportem import IsolatedCase
+from tests.test_main import MONDAY, _StateDirMixin
 from utility import action_log, alerts
 from utility.timestamps import TimestampedStream
-from tests.test_main import _StateDirMixin, MONDAY
-from tests.test_eportem import IsolatedCase
 
 DAY = {"day": "Monday", "location": "office", "start_the_day": "09:00",
        "lunch_break": "13:30", "after_lunch_break": "14:30", "stop_the_day": "18:00"}
@@ -51,9 +52,11 @@ class TestActionLog(IsolatedCase):
 
     def test_nothing_recorded_when_the_action_fails(self):
         driver = MagicMock()
-        driver.find_element.side_effect = Exception("boom")
+        class Boom(Exception):
+            pass
+        driver.find_element.side_effect = Boom("boom")
         with patch("eportem_action.RETRY_PAUSE_SECONDS", 0), patch("eportem_action.BUTTON_WAIT_SECONDS", 0):
-            with self.assertRaises(Exception), contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(Boom), contextlib.redirect_stdout(io.StringIO()):
                 EPortemAction("lunch_break", "office", driver).perform()
         self.assertFalse(os.path.exists(action_log.actions_log_path()))
 

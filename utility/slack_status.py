@@ -1,6 +1,9 @@
 import os
+
 import requests
+
 from utility.notification_send import REQUEST_TIMEOUT, _describe_error, _scrub
+
 
 class SlackStatusUpdater:
     def __init__(self, token=None):
@@ -47,8 +50,9 @@ class SlackStatusUpdater:
 
 if __name__ == "__main__":
     # When run directly, load environment and set a test status
-    from dotenv import load_dotenv
     import os
+
+    from dotenv import load_dotenv
     env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "config", ".env")
     load_dotenv(env_path)
     updater = SlackStatusUpdater()

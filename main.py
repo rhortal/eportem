@@ -17,12 +17,13 @@ import json
 import os
 import re
 import sys
+
+from eportem_action import execute_action
 from utility import alerts
 from utility.action_log import actions_recorded_on
 from utility.env_check import DISABLED_MESSAGE, is_enabled
 from utility.env_loader import load_environment
 from utility.paths import config_file, holiday_file, location_file
-from eportem_action import execute_action
 
 load_environment()
 
@@ -76,7 +77,7 @@ def _remove_quietly(path):
 
 def _read_text(path):
     # utf-8-sig drops a BOM that some editors add
-    with open(path, "r", encoding="utf-8-sig") as f:
+    with open(path, encoding="utf-8-sig") as f:
         return f.read().strip()
 
 
@@ -90,7 +91,7 @@ def read_holiday_file():
     try:
         text = _read_text(path)
     except (OSError, UnicodeDecodeError) as e:
-        raise HolidayFileError(f"cannot read it ({e})")
+        raise HolidayFileError(f"cannot read it ({e})") from e
     if not text:
         return None
     parts = [p.strip() for p in text.split(",")]
@@ -99,8 +100,8 @@ def read_holiday_file():
     try:
         start = datetime.date.fromisoformat(parts[0])
         end = datetime.date.fromisoformat(parts[-1])
-    except ValueError:
-        raise HolidayFileError(f"expected YYYY-MM-DD dates, got {text!r}")
+    except ValueError as e:
+        raise HolidayFileError(f"expected YYYY-MM-DD dates, got {text!r}") from e
     if end < start:
         raise HolidayFileError(f"the end date {end} is before the start date {start}")
     return start, end
@@ -176,7 +177,8 @@ def validate_config(config):
                     problems.append(f'{where}["location"]: must be "home" or "office", got {value!r}')
             elif name in TASK_ACTIONS:
                 if _parse_time(value) is None:
-                    problems.append(f'{where}["{name}"]: must be a time like "9:00" or "13:30" (00:00-23:59), got {value!r}')
+                    problems.append(f'{where}["{name}"]: must be a time like "9:00" or "13:30" '
+                                    f'(00:00-23:59), got {value!r}')
             else:
                 problems.append(f'{where}: unknown key "{name}" (allowed: day, location, {", ".join(TASK_ACTIONS)})')
     return problems
@@ -187,14 +189,14 @@ def load_config():
     listing every problem found."""
     path = config_file()
     try:
-        with open(path, "r", encoding="utf-8-sig") as f:
+        with open(path, encoding="utf-8-sig") as f:
             config = json.load(f)
-    except FileNotFoundError:
-        raise ConfigError([f"file not found: {path}"])
+    except FileNotFoundError as e:
+        raise ConfigError([f"file not found: {path}"]) from e
     except (OSError, UnicodeDecodeError) as e:
-        raise ConfigError([f"cannot read {path}: {e}"])
+        raise ConfigError([f"cannot read {path}: {e}"]) from e
     except json.JSONDecodeError as e:
-        raise ConfigError([f"not valid JSON: line {e.lineno}, column {e.colno}: {e.msg}"])
+        raise ConfigError([f"not valid JSON: line {e.lineno}, column {e.colno}: {e.msg}"]) from e
     problems = validate_config(config)
     if problems:
         raise ConfigError(problems)
