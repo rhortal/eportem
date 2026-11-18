@@ -33,7 +33,7 @@ ALLOWED_HOST_SUFFIXES = (".example.com", ".example.org", ".example.net", ".test"
 ALLOWED_EMAIL_DOMAINS = {"example.com", "example.org", "example.net", "users.noreply.github.com"}
 
 EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,})\b")
-URL_HOST = re.compile(r"\bhttps?://([A-Za-z0-9.-]+)")
+URL_HOST = re.compile(r"\bhttps?://(?:[^@/\s]+@)?([A-Za-z0-9.-]+)")  # skips user:password@
 PRIVATE_IP = re.compile(r"\b(?:10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])|192\.168)\.\d{1,3}\.\d{1,3}\b")
 
 
@@ -107,6 +107,10 @@ class FindProblemsTest(unittest.TestCase):
 
     def test_flags_an_unknown_url_host(self):
         self.assertIn("not on the allow-list", find_problems("f", "https://git.my-home.lan/repo")[0])
+
+    def test_the_user_part_of_a_url_is_not_the_host(self):
+        self.assertEqual(find_problems("f", "https://key@errors.example.com/1"), [])
+        self.assertIn("URL host 'git.my-home.lan'", " ".join(find_problems("f", "https://key@git.my-home.lan/x")))
 
     def test_allows_known_and_example_hosts(self):
         text = "https://eportem.es/x https://hooks.slack.com/y https://eportem.example.com http://localhost:8080"

@@ -248,3 +248,9 @@ they describe. Until the phase 8 cutover, `main` and the cron path on `omv`
 stay live and must keep working. Nothing on the branch may call the real
 clock endpoint: development and tests use the fake ePortem server
 (`fake_eportem/`, PLAN.md section 7).
+
+State on 2026-11-18: phases 0-7 done on the branch (engine, fake, calendar,
+database, scheduler, API, web UI, Docker), `make check` green. Phase 8 (the
+cutover on `omv`) and the read-only contract check against the real site wait
+for the owner; see `TODO.md`. Rule from D-019: never hold a database write lock
+across network I/O.
