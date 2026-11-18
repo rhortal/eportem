@@ -69,8 +69,10 @@ def init_error_reports(settings, version="0.1.0"):
 
 # --- heartbeat ----------------------------------------------------------------------------
 class Heartbeat:
-    """Pings a healthchecks.io-style URL at most every `every` seconds, in the
-    background, so a slow or failing ping never delays the scheduler."""
+    """POSTs to a heartbeat URL at most every `every` seconds, in the
+    background, so a slow or failing ping never delays the scheduler. POST is
+    what GlitchTip's heartbeat monitors require, and healthchecks.io-style
+    services accept it too."""
 
     def __init__(self, url, every=60, timeout=10):
         self.url, self.every, self.timeout = url, every, timeout
@@ -90,7 +92,7 @@ class Heartbeat:
 
     def _ping(self):
         try:
-            requests.get(self.url, timeout=self.timeout)
+            requests.post(self.url, timeout=self.timeout)
         except requests.RequestException as e:
             log.warning("heartbeat ping failed: %s", type(e).__name__)
 

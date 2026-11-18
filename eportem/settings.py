@@ -129,8 +129,9 @@ class Settings(BaseSettings):
     sentry_dsn: SecretStr | None = _f(None, "Observability", "Report errors to Sentry or GlitchTip. "
                                       "Empty: off.")
     sentry_environment: str = _f("production", "Observability", "Environment name in error reports.")
-    heartbeat_url: str | None = _f(None, "Observability", "Pinged every minute while the scheduler is "
-                                   "healthy (healthchecks.io style), so a dead instance gets noticed.")
+    heartbeat_url: str | None = _f(None, "Observability", "POSTed to every minute while the scheduler is "
+                                   "healthy (a GlitchTip heartbeat monitor, healthchecks.io...), so a dead "
+                                   "instance gets noticed.")
     admin_alert_channel: str | None = _f(None, "Observability", "Where admin alerts go, e.g. "
                                          "telegram:<chat id> or slack:<channel id>.")
 

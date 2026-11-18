@@ -53,7 +53,7 @@ class TestHeartbeat(ApiCase):
 
     def test_at_most_once_a_minute_and_never_blocking(self):
         hb = ops.Heartbeat("https://hc.example.com/ping/abc", every=60)
-        with patch("requests.get") as get:
+        with patch("requests.post") as get:
             self.assertTrue(hb.beat(now=1000))
             self.assertFalse(hb.beat(now=1030))
             self.assertTrue(hb.beat(now=1061))
@@ -66,7 +66,7 @@ class TestHeartbeat(ApiCase):
     def test_a_failing_ping_is_only_logged(self):
         hb = ops.Heartbeat("https://hc.example.com/ping/abc")
         import requests
-        with patch("requests.get", side_effect=requests.ConnectionError("down")), \
+        with patch("requests.post", side_effect=requests.ConnectionError("down")), \
                 self.assertLogs("eportem.ops", "WARNING"):
             hb._ping()
 

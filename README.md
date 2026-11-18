@@ -572,7 +572,7 @@ generated from `eportem/settings.py` by `python -m eportem config docs`.
 | `EPORTEM_METRICS_TOKEN` |  | Bearer token required on /metrics. Empty: /metrics is off. Secret: also `_FILE`. |
 | `EPORTEM_SENTRY_DSN` |  | Report errors to Sentry or GlitchTip. Empty: off. Secret: also `_FILE`. |
 | `EPORTEM_SENTRY_ENVIRONMENT` | `production` | Environment name in error reports. |
-| `EPORTEM_HEARTBEAT_URL` |  | Pinged every minute while the scheduler is healthy (healthchecks.io style), so a dead instance gets noticed. |
+| `EPORTEM_HEARTBEAT_URL` |  | POSTed to every minute while the scheduler is healthy (a GlitchTip heartbeat monitor, healthchecks.io...), so a dead instance gets noticed. |
 | `EPORTEM_ADMIN_ALERT_CHANNEL` |  | Where admin alerts go, e.g. telegram:<chat id> or slack:<channel id>. |
 <!-- settings-table:end -->
 
