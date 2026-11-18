@@ -587,7 +587,7 @@ hostname, logins) are in `CLAUDE.md`, not here.
 - [ ] Daily shadow report (command in `CLAUDE.md`). The first day with the
       service's own plan is 2026-11-19.
 - [ ] Public hostname: a DNS record and a reverse-proxy host. Needs the
-      owner's DNS and proxy logins.
+      owner's DNS and proxy logins (the step-by-step is in `CLAUDE.md`).
 - [ ] A destination for GlitchTip's alerts, and an outside uptime monitor on
       `/healthz` (a monitor on the same host can't notice the host going down).
 

@@ -22,14 +22,15 @@ and note anything learnt in `docs/http-api-investigation.md` or `CLAUDE.md`.
 
 ## Refactor branch (`refactor/multiuser-service`)
 
+Details for each item are in `CLAUDE.md` ("Refactor to a multi-user service").
+
 - [x] 2026-11-18 18:50: contract check against the real site: all PASS.
-- [x] 2026-11-18 19:00-19:30: shadow deployed on `omv` (dry run, sends nothing).
-      See "Phase 8" in `docs/refactor/PLAN.md` for where everything is.
-- [ ] From 2026-11-19, each evening: the shadow report (command in the plan);
-      after 3 matching working days, decide the switch.
-- [ ] With the owner: Cloudflare DNS for `checkin.hortal.me` and an
-      nginx-proxy-manager proxy host to `eportem-eportem-1:8080`, then the
-      public sign-in test.
-- [ ] With the owner: a destination for GlitchTip alerts (Slack incoming
-      webhook?), and an outside uptime monitor on `/healthz`.
+- [x] 2026-11-18 evening: shadow deployed on `omv` (dry run, sends nothing).
+- [ ] From 2026-11-19, each evening: the shadow report; after about 3
+      matching working days, decide the switch.
+- [ ] `checkin.hortal.me`: a Cloudflare DNS record and an nginx-proxy-manager
+      proxy host. Needs a personal Cloudflare token (or the go-ahead to use
+      `ddclient`'s) and the nginx-proxy-manager login.
+- [ ] A destination for GlitchTip alerts (Slack incoming webhook?), and an
+      outside uptime monitor on `https://checkin.hortal.me/healthz`.
 - [ ] The owner's region for public holidays (only national ones for now).
