@@ -88,6 +88,21 @@ def due_task(day, minutes, window_minutes):
     return None
 
 
+def jitter_problems(before, after, window_minutes):
+    """Why a random offset of `before` minutes early to `after` minutes late
+    isn't allowed with this window (empty when it is). Each person sets their
+    own; the window is the instance's safety rule: an action never runs
+    outside it, and above all never late."""
+    problems = []
+    for label, value in (("before", before), ("after", after)):
+        if not isinstance(value, int) or value < 0:
+            problems.append(f"the random offset {label} must be 0 or more minutes")
+        elif value > window_minutes:
+            problems.append(f"the random offset {label} ({value} min) must not be larger than "
+                            f"the {window_minutes}-minute window")
+    return problems
+
+
 def actions_due_for_verify(day, minutes, window_minutes, grace_minutes):
     """The actions whose window closed at least grace_minutes before `minutes`."""
     return [TASK_ACTIONS[name] for name, target in day_targets(day)

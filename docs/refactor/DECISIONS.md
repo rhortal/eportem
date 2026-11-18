@@ -168,3 +168,17 @@ object. It also runs on its own for local tries and the dev profile.
 dashboard. That page on the real site must show the clock box, because the
 click flow finds its button there straight after login, but no capture shows
 it. `eportem.contract` checks it on the real site.
+
+**D-016: The random offset (jitter) belongs to each person's profile** (Accepted, 2026-11-18, owner's request)
+How far before or after the set time an action may start is a personal choice,
+like the ePortem credentials. One person may want 9:00 ± a few minutes, another
+a wider spread.
+→ `users.jitter_before_minutes` / `jitter_after_minutes`, editable in the
+profile and the API. New users start from `EPORTEM_DEFAULT_JITTER_BEFORE_MINUTES`
+(5) and `EPORTEM_DEFAULT_JITTER_AFTER_MINUTES` (4), the spread of the owner's
+cron lines. Templates don't carry a jitter.
+→ The window (`EPORTEM_WINDOW_MINUTES`, 15) stays instance-wide. It is the
+safety rule that an action never runs outside it, and above all never late.
+Every person's offset is checked against it by one function,
+`eportem.core.schedule.jitter_problems()`, which the settings, the profile form
+and the API all use.

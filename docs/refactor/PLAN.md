@@ -106,7 +106,7 @@ working from the same code until cutover.
 
 | Table | Key fields | Notes |
 |---|---|---|
-| `users` | id, email, username, password_hash (argon2id), role (`admin`/`user`), status (`pending`/`active`/`suspended`), email_verified_at, plan, timezone, locale, paused, created_at | Status and plan are the hooks for monetising later. Timezone and locale default to the instance settings |
+| `users` | id, email, username, password_hash (argon2id), role (`admin`/`user`), status (`pending`/`active`/`suspended`), email_verified_at, plan, timezone, locale, jitter_before_minutes, jitter_after_minutes, paused, created_at | Status and plan are the hooks for monetising later. Timezone, locale and the random offset are the person's own, starting from the instance defaults (D-016) |
 | `api_tokens` | id, user_id, name, prefix, token_hash (sha256), scopes, last_used_at, expires_at, revoked_at | Shown once. Format `ept_<prefix>_<secret>` |
 | `web_sessions` | id, user_id, created_at, expires_at, ip, user_agent | Server-side sessions; cookie holds only the id |
 | `eportem_accounts` | user_id, username, password_enc, office_activity_id, home_activity_id, lunch_pause_id, verified_at, last_login_at | Activity IDs are found from the dashboard when the account is verified; no hard-coded defaults |
@@ -135,8 +135,11 @@ code that is named after it.
 - An action fires only inside ±window (default 15 min) of its target. The
   planner picks a random time between target − 5 min and target + 4 min by
   default, the same spread as today's cron lines (base = target − 5,
-  `RANDOM % 10` minutes). Both can be changed per instance, and the jitter per
-  template too. Validation keeps the jitter inside the window.
+  `RANDOM % 10` minutes). The random offset (jitter) is part of each
+  person's profile, like their ePortem credentials; new users start from the
+  instance defaults. The window is instance-wide: it is the safety rule, and
+  every person's offset must fit inside it (`jitter_problems()`), so an
+  action can never run late (D-016).
 - Time off: skip clocking and set the "On holiday" Slack status. If the
   calendar can't be resolved, refuse to clock.
 - Location override for a day. Business trip: clock as usual, and the Slack
@@ -261,12 +264,12 @@ owner's own, untracked `.env` / config file.
 | Storage | `EPORTEM_DATA_DIR` (default `/data`), `EPORTEM_DATABASE_URL` (default SQLite in the data dir), `EPORTEM_SECRET_KEY` (required, plus a list of old keys for rotation) |
 | Target site | `EPORTEM_TARGET_URL` (default `https://eportem.es`; the fake in development), `EPORTEM_BROWSER_USER_AGENT` (optional override), `EPORTEM_CHROMIUM_PATH`, `EPORTEM_CHROMEDRIVER_PATH`, `EPORTEM_BROWSER_CONCURRENCY`, `EPORTEM_HEADLESS` |
 | Defaults for new users | `EPORTEM_DEFAULT_TIMEZONE` (default `Europe/Madrid`), `EPORTEM_DEFAULT_LOCALE`, `EPORTEM_DEFAULT_HOLIDAY_REGION`, `EPORTEM_DEFAULT_TEMPLATE` |
-| Scheduling | `EPORTEM_WINDOW_MINUTES` (15), `EPORTEM_JITTER_BEFORE_MINUTES` (5), `EPORTEM_JITTER_AFTER_MINUTES` (4), `EPORTEM_VERIFY_AFTER_MINUTES` (40), `EPORTEM_DRY_RUN` (log, never send) |
+| Scheduling | `EPORTEM_WINDOW_MINUTES` (15), `EPORTEM_VERIFY_AFTER_MINUTES` (40), `EPORTEM_DRY_RUN` (log, never send). Starting values for each person's random offset are under "Defaults for new users": `EPORTEM_DEFAULT_JITTER_BEFORE_MINUTES` (5), `EPORTEM_DEFAULT_JITTER_AFTER_MINUTES` (4) |
 | Accounts | `EPORTEM_REGISTRATION` (`closed`/`invite`/`open`), `EPORTEM_REQUIRE_EMAIL_VERIFICATION`, `EPORTEM_ADMIN_USERNAME` / `_EMAIL` / `_PASSWORD(_FILE)` (first start only) |
 | Email | `EPORTEM_SMTP_HOST`, `_PORT`, `_SECURITY` (`starttls`/`tls`/`none`), `_USERNAME`, `_PASSWORD(_FILE)`, `_FROM` |
 | Observability | `EPORTEM_LOG_LEVEL`, `EPORTEM_LOG_FORMAT` (`json`/`text`), `EPORTEM_METRICS_TOKEN`, `EPORTEM_SENTRY_DSN`, `EPORTEM_SENTRY_ENVIRONMENT`, `EPORTEM_HEARTBEAT_URL`, `EPORTEM_ADMIN_ALERT_CHANNEL` |
 
-Per-user things (ePortem credentials, activity IDs, Slack/Telegram tokens,
+Per-user things (ePortem credentials, activity IDs, the random offset, Slack/Telegram tokens,
 status texts, timezone, schedule) are user settings in the database, not
 instance settings.
 

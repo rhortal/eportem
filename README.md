@@ -465,6 +465,74 @@ The schedule is in `config/config.json`:
 
 The whole file is validated on every run, not just today's entry. Every problem found is printed with its location in the file (e.g. `schedule["2"]["lunch_break"]: must be a time like "9:00"...`) and the run exits 2 without clocking, so a typo shows up in the next cron mail instead of waiting for that task's time. A missing file or missing `schedule` key is treated the same way. Check by hand with `./run.sh --check`.
 
+## Service settings (refactor branch)
+
+The multi-user service being built on the `refactor/multiuser-service` branch
+(`docs/refactor/PLAN.md`) is configured only through these settings; nothing
+install-specific is in the code or the image. Set them as environment variables,
+or in a TOML file named by `EPORTEM_CONFIG_FILE` (keys in lower case, without the
+prefix). Secrets can also be read from a file with `EPORTEM_<NAME>_FILE`.
+`.env.example` lists them all. Check them with `python -m eportem config check`,
+and see what is in effect with `python -m eportem config show`. The table is
+generated from `eportem/settings.py` by `python -m eportem config docs`.
+
+<!-- settings-table:start -->
+| Setting | Default | What it does |
+|---|---|---|
+| **Server** | | |
+| `EPORTEM_PUBLIC_URL` |  | The address people use to reach this instance, e.g. https://eportem.example.com. Used in links and emails. Default: http://localhost:<port>. |
+| `EPORTEM_HOST` | `0.0.0.0` | Address to listen on inside the container. |
+| `EPORTEM_PORT` | `8080` | Port to listen on (web UI, API, admin, health, metrics). |
+| `EPORTEM_TRUSTED_PROXIES` |  | Reverse proxies whose X-Forwarded-* headers are believed (comma-separated IPs or CIDRs). |
+| `EPORTEM_SECURE_COOKIES` |  | Send cookies only over HTTPS. Default: on when the public URL is https. |
+| `EPORTEM_ROOT_PATH` |  | Serve under a sub-path, e.g. /eportem, behind a proxy. |
+| **Storage** | | |
+| `EPORTEM_DATA_DIR` | `/data` | Where the database, backups and diagnostics live. |
+| `EPORTEM_DATABASE_URL` |  | SQLAlchemy URL. Default: SQLite in the data dir. Postgres (postgresql+psycopg://...) is needed for more than one replica. |
+| `EPORTEM_SECRET_KEY` |  | Required. Encrypts stored credentials and tokens (a Fernet key: `python -m eportem config new-key`). Losing it means everyone re-enters their credentials. Secret: also `_FILE`. |
+| `EPORTEM_OLD_SECRET_KEYS` |  | Previous secret keys, still accepted for reading while rotating (comma-separated). Secret: also `_FILE`. |
+| **Target site** | | |
+| `EPORTEM_TARGET_URL` | `https://eportem.es` | The ePortem site to automate. Point it at the fake ePortem for trying things out. |
+| `EPORTEM_BROWSER_USER_AGENT` |  | Override the browser's User-Agent. Default: a desktop Chrome matching the installed version. |
+| `EPORTEM_CHROMIUM_PATH` |  | Chromium binary, if not on the PATH. |
+| `EPORTEM_CHROMEDRIVER_PATH` |  | chromedriver binary, if not on the PATH. |
+| `EPORTEM_BROWSER_CONCURRENCY` | `1` | Browser logins allowed at the same time. |
+| `EPORTEM_HEADLESS` | `true` | Run the browser without a window. |
+| **Defaults for new users** | | |
+| `EPORTEM_DEFAULT_TIMEZONE` | `Europe/Madrid` | Time zone for new users. |
+| `EPORTEM_DEFAULT_LOCALE` | `es` | Language for new users. |
+| `EPORTEM_DEFAULT_HOLIDAY_COUNTRY` | `ES` | Country for public holidays (ISO code); empty for none. |
+| `EPORTEM_DEFAULT_HOLIDAY_REGION` |  | Region for public holidays, e.g. MD (Madrid), CT (Catalonia). |
+| `EPORTEM_DEFAULT_TEMPLATE` | `european-9-18` | Working-day template for new users (a built-in key). |
+| `EPORTEM_DEFAULT_JITTER_BEFORE_MINUTES` | `5` | Random offset for new users: start up to this many minutes before an action's time. Each person changes their own in their profile. |
+| `EPORTEM_DEFAULT_JITTER_AFTER_MINUTES` | `4` | Random offset for new users: start up to this many minutes after an action's time. |
+| **Scheduling** | | |
+| `EPORTEM_WINDOW_MINUTES` | `15` | An action may run this many minutes either side of its time, never later. Everyone's random offset must fit inside it. |
+| `EPORTEM_VERIFY_AFTER_MINUTES` | `40` | The end-of-day check runs this long after a user's last action. |
+| `EPORTEM_DRY_RUN` | `false` | Plan and log, but never send a clock action. |
+| **Accounts** | | |
+| `EPORTEM_REGISTRATION` | `closed` | Who can create an account: closed (admins only), invite, open. |
+| `EPORTEM_REQUIRE_EMAIL_VERIFICATION` | `true` | New accounts must confirm their email. |
+| `EPORTEM_ADMIN_USERNAME` |  | Creates this admin on first start, if no admin exists. |
+| `EPORTEM_ADMIN_EMAIL` |  | Email of that first admin. |
+| `EPORTEM_ADMIN_PASSWORD` |  | Password of that first admin. Secret: also `_FILE`. |
+| **Email** | | |
+| `EPORTEM_SMTP_HOST` |  | SMTP server for verification, password reset and alerts. Empty: no email. |
+| `EPORTEM_SMTP_PORT` | `587` | SMTP port. |
+| `EPORTEM_SMTP_SECURITY` | `starttls` | starttls, tls (implicit, usually port 465) or none. |
+| `EPORTEM_SMTP_USERNAME` |  | SMTP login. |
+| `EPORTEM_SMTP_PASSWORD` |  | SMTP password. Secret: also `_FILE`. |
+| `EPORTEM_SMTP_FROM` |  | From address for the emails this instance sends. |
+| **Observability** | | |
+| `EPORTEM_LOG_LEVEL` | `INFO` | Log level. |
+| `EPORTEM_LOG_FORMAT` | `json` | Log lines as JSON or plain text. |
+| `EPORTEM_METRICS_TOKEN` |  | Bearer token required on /metrics. Empty: /metrics is off. Secret: also `_FILE`. |
+| `EPORTEM_SENTRY_DSN` |  | Report errors to Sentry or GlitchTip. Empty: off. Secret: also `_FILE`. |
+| `EPORTEM_SENTRY_ENVIRONMENT` | `production` | Environment name in error reports. |
+| `EPORTEM_HEARTBEAT_URL` |  | Pinged every minute while the scheduler is healthy (healthchecks.io style), so a dead instance gets noticed. |
+| `EPORTEM_ADMIN_ALERT_CHANNEL` |  | Where admin alerts go, e.g. telegram:<chat id> or slack:<channel id>. |
+<!-- settings-table:end -->
+
 ## Development
 
 The clock engine is the `eportem.core` package. It reads no environment variables and no files: the site URL, the account's activity IDs, the credentials, where the session cookies are kept and how to start a browser are all arguments, and progress messages go through a `say` callable instead of `print`. The scripts below are adapters that fill it in from `config/.env` and the repository's files, so their behaviour and output are the same as before. The multi-user service being built on the `refactor/multiuser-service` branch (see `docs/refactor/PLAN.md`) will use the same engine.
