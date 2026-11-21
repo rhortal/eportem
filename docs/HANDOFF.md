@@ -7,6 +7,30 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 `docs/OPERATIONS.md`, the plan in
 `docs/refactor/PLAN.md`, the decisions in `docs/refactor/DECISIONS.md`.
 
+## Renamed to CheckIn (2026-11-21)
+
+- The project is CheckIn (D-025); "ePortem" stays only where it names the site.
+  The shadow was moved over the same day: old project stopped
+  (`docker compose -p eportem --profile dev down`), worktree on the rename commit,
+  `.env` lines `EPORTEM_*` renamed to `CHECKIN_*` (backup
+  `.env.bak-20261121-rename`, also `docker-compose.override.yml.bak-20261121-rename`),
+  new project `checkin` created, the old volume's data copied into
+  `checkin_checkin-data` with `eportem.db*` renamed to `checkin.db*`, then started.
+  Checked: healthy, dry run, `checkin.db`, the public site shows CheckIn,
+  `shadow-report` OK for every day, heartbeat pings arriving, no old-name warnings.
+- nginx-proxy-manager's host 73 now forwards to `checkin-checkin-1` (changed in its
+  SQLite database and in `73.conf`, then `nginx -t` and a reload; backups
+  `database.sqlite.bak-20261121-checkin` in its data folder and
+  `/home/pi/npm-proxy_host-73.conf.bak-20261121`).
+- GlitchTip display names renamed (organisation "CheckIn", project "checkin",
+  monitor "checkin scheduler"); slugs unchanged, so the DSN and heartbeat URL are
+  the same.
+- Rollback copies to delete after about a week: the volume `eportem_eportem-data`
+  (with `eportem_glitchtip-db`, `eportem_glitchtip-uploads`).
+- Not renamed: the Gitea/GitHub repository, the worktree path
+  `/home/pi/Apps/eportem-refactor`, the live cron checkout `/home/pi/Apps/eportem`
+  and `main`.
+
 ## Shadow check (2026-11-21)
 
 - `shadow-report --days 4` exits 0: 2026-11-19 and 2026-11-20 match cron on
@@ -24,7 +48,7 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   Watchtower disabled.
 - The out-of-memory kill in the host's kernel log on 2026-11-20 11:13 was
   `immich_machine_learning`, not ePortem.
-- The service logs JSON to `docker logs eportem-eportem-1`;
+- The service logs JSON to `docker logs checkin-checkin-1`;
   `docker logs --since` returned nothing for it on 2026-11-21, so read the
   whole log and filter.
 
@@ -32,7 +56,7 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 
 - `checkin.hortal.me` already had a proxied CNAME to `hortal.me` in Cloudflare
   and an nginx-proxy-manager host (`proxymanager`, `proxy_host/73.conf`) to
-  `http://eportem-eportem-1:8080` with a Let's Encrypt certificate and Force
+  `http://checkin-checkin-1:8080` (was `eportem-eportem-1` until the rename) with a Let's Encrypt certificate and Force
   SSL, added after 2026-11-18. Nothing was written to DNS or the proxy.
 - Checked from outside: `/healthz` 200 (GET and HEAD), `/readyz` ready, `/login`
   200, `/` and `/admin` redirect to the sign-in, `/metrics` and `/api/v1/me`
@@ -108,7 +132,7 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 - Worktree `/home/pi/Apps/eportem-refactor` (detached at
   `origin/refactor/multiuser-service`). To update:
   `cd /home/pi/Apps/eportem-refactor && git fetch -q origin && git checkout -q
-  --detach origin/refactor/multiuser-service && docker compose -p eportem
+  --detach origin/refactor/multiuser-service && docker compose -p checkin
   --profile dev up -d --build`. **Not** `--profile errors` any more: GlitchTip
   moved out of this project on 2026-11-21 (below), and that profile would start
   a second, empty GlitchTip here.
@@ -119,8 +143,9 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   metrics token; GlitchTip DSN and heartbeat URL on `glitchtip:8000`) and
   `docker-compose.override.yml` (joins `ngingx-proxy-manager_default` and the
   `glitchtip` network; previous version `.bak-20261121`).
-- Containers: `eportem-eportem-1` (`127.0.0.1:8095`) and
-  `eportem-fake-eportem-1`, about 115 MB together.
+- Containers: `checkin-checkin-1` (`127.0.0.1:8095`) and
+  `checkin-fake-eportem-1`, about 115 MB together. Compose project `checkin`,
+  data volume `checkin_checkin-data` (database `checkin.db`).
 - GlitchTip is its own stack since 2026-11-21: `/home/pi/dockers/glitchtip`,
   container `glitchtip` (`127.0.0.1:8098`, network `glitchtip`), on the shared
   Postgres (`/home/pi/dockers/postgres`, database `glitchtip`), for every
@@ -132,12 +157,13 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 - Logins: the service user `roberto` (admin), password in
   `/home/pi/.eportem-admin-password`; GlitchTip `admin@hortal.me`, password in
   `/home/pi/.glitchtip-admin-password` (both `chmod 600`, 24 random characters).
-  GlitchTip has the organisation `eportem`, project `eportem` (DSN in `.env`)
-  and a heartbeat monitor "eportem scheduler". To open the UIs from a laptop:
+  GlitchTip has the organisation "CheckIn" (slug `eportem`, which is in the
+  heartbeat URL), project "checkin" (slug `eportem`, id 1; DSN in `.env`) and a
+  heartbeat monitor "checkin scheduler". To open the UIs from a laptop:
   `ssh -L 8095:127.0.0.1:8095 -L 8098:127.0.0.1:8098 omv` (or `omve`).
 - Daily comparison with cron (run in the worktree; exit 0 = every day matches):
-  `cat /home/pi/Apps/eportem/logs/actions.log | docker compose -p eportem exec -T
-  eportem python -m checkin shadow-report --user roberto --actions-log /dev/stdin
+  `cat /home/pi/Apps/eportem/logs/actions.log | docker compose -p checkin exec -T
+  checkin python -m checkin shadow-report --user roberto --actions-log /dev/stdin
   --days 3`
 - To re-import the cron set-up (the container's user can't read `pi`'s
   `chmod 600` files, so stream copies in and delete them after):
@@ -146,12 +172,12 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   FILES="config/.env config/config.json config/.session_cookies.json $(ls logs/actions.log*)"
   for f in holiday_override.txt location_override.txt business_trip_override.txt; do test -f $f && FILES="$FILES $f"; done
   cd /home/pi/Apps/eportem-refactor
-  tar -C /home/pi/Apps/eportem -cf - $FILES | docker compose -p eportem exec -T eportem sh -c "rm -rf /tmp/legacy && mkdir -m 700 /tmp/legacy && tar -x -C /tmp/legacy"
-  docker compose -p eportem exec -T eportem python -m checkin import-legacy --user roberto --from /tmp/legacy --dry-run
-  docker compose -p eportem exec -T eportem python -m checkin import-legacy --user roberto --from /tmp/legacy
-  docker compose -p eportem exec -T eportem rm -rf /tmp/legacy
+  tar -C /home/pi/Apps/eportem -cf - $FILES | docker compose -p checkin exec -T checkin sh -c "rm -rf /tmp/legacy && mkdir -m 700 /tmp/legacy && tar -x -C /tmp/legacy"
+  docker compose -p checkin exec -T checkin python -m checkin import-legacy --user roberto --from /tmp/legacy --dry-run
+  docker compose -p checkin exec -T checkin python -m checkin import-legacy --user roberto --from /tmp/legacy
+  docker compose -p checkin exec -T checkin rm -rf /tmp/legacy
   ```
-- To stop the shadow entirely: `docker compose -p eportem --profile dev
+- To stop the shadow entirely: `docker compose -p checkin --profile dev
   down` in the worktree (add `-v` to delete its data too; that would also
   delete the old GlitchTip volumes). GlitchTip keeps running.
 
@@ -168,7 +194,7 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 - Steps: (1) a DNS record for `checkin.hortal.me` shaped like the other
   `hortal.me` records that reach `omv`; (2) in nginx-proxy-manager (admin UI on
   `omv` port 82; login needed), a proxy host `checkin.hortal.me` →
-  `http://eportem-eportem-1:8080`, with a Let's Encrypt certificate and Force
+  `http://checkin-checkin-1:8080`, with a Let's Encrypt certificate and Force
   SSL; (3) sign in at `https://checkin.hortal.me` as `roberto`; (4) keep
   GlitchTip and `/metrics` off the public proxy; (5) optional: behind Cloudflare
   the per-address sign-in limit sees Cloudflare's addresses (the per-user limit
