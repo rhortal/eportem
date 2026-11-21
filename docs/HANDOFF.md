@@ -43,7 +43,7 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   the `zone=hortal.me` block) works: active, and it sees only the `hortal.me`
   zone. Its value is in single quotes in the file; strip them before use, and
   never print it. Only read with it so far.
-- Still to do: sign in at `https://checkin.hortal.me` as `roberto`, and an
+- Signed in at `https://checkin.hortal.me` as `roberto` (2026-11-21). Still to do: an
   outside uptime monitor on `/healthz`.
 
 ## Where things stood (2026-11-18, night)
