@@ -590,8 +590,9 @@ hostname, logins) are in `docs/HANDOFF.md`, not here.
       day is 2026-11-23. The host rebooted on the morning of 2026-11-19 and the
       service came back and planned the day by itself. In dry run the service
       never contacts its target, so the shadow tests the planning, not the send.
-- [ ] Public hostname: a DNS record and a reverse-proxy host. Needs the
-      owner's DNS and proxy logins (the step-by-step is in `docs/HANDOFF.md`).
+- [x] Public hostname: a DNS record and a reverse-proxy host, with HTTPS.
+      Checked from outside on 2026-11-21: health, sign-in and authentication
+      on `/metrics` and the API; error tracking is not exposed.
 - [ ] A destination for GlitchTip's alerts, and an outside uptime monitor on
       `/healthz` (a monitor on the same host can't notice the host going down).
 

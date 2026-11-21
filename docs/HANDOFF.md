@@ -28,6 +28,24 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   `docker logs --since` returned nothing for it on 2026-11-21, so read the
   whole log and filter.
 
+## Public hostname: done (found 2026-11-21)
+
+- `checkin.hortal.me` already had a proxied CNAME to `hortal.me` in Cloudflare
+  and an nginx-proxy-manager host (`proxymanager`, `proxy_host/73.conf`) to
+  `http://eportem-eportem-1:8080` with a Let's Encrypt certificate and Force
+  SSL, added after 2026-11-18. Nothing was written to DNS or the proxy.
+- Checked from outside: `/healthz` 200 (GET and HEAD), `/readyz` ready, `/login`
+  200, `/` and `/admin` redirect to the sign-in, `/metrics` and `/api/v1/me`
+  401. No proxy host points at GlitchTip. `/readyz` answers 503 for about two
+  minutes after the container is recreated, until the new scheduler takes the
+  lock; an uptime monitor should use `/healthz`.
+- `ddclient`'s Cloudflare token (`/home/pi/dockers/ddclient/config/ddclient.conf`,
+  the `zone=hortal.me` block) works: active, and it sees only the `hortal.me`
+  zone. Its value is in single quotes in the file; strip them before use, and
+  never print it. Only read with it so far.
+- Still to do: sign in at `https://checkin.hortal.me` as `roberto`, and an
+  outside uptime monitor on `/healthz`.
+
 ## Where things stood (2026-11-18, night)
 
 - Phases 0-7 done on the branch: the engine (`eportem/core`), the fake, the
@@ -39,7 +57,7 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   from `omv` (18:50), and the shadow runs on `omv` in dry run next to cron
   (below). Nothing on `omv`'s live checkout or crontab was changed.
 - Next, in order: (1) compare the shadow with cron each evening from
-  2026-11-19; (2) make `checkin.hortal.me` public (blocked, see below);
+  2026-11-19; (2) make `checkin.hortal.me` public (done, see above);
   (3) give GlitchTip an alert destination and add an outside uptime monitor;
   (4) after about 3 matching working days, the switch (PLAN.md phase 8).
 - Open questions for the owner: the region for public holidays (only Spain's
@@ -109,7 +127,7 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 - To stop the shadow entirely: `docker compose -p eportem --profile dev
   --profile errors down` in the worktree (add `-v` to delete its data too).
 
-## Making `checkin.hortal.me` public (blocked on the owner's logins)
+## Making `checkin.hortal.me` public (as planned on 2026-11-18; now done, see above)
 
 - What was found on 2026-11-18: the `CLOUDFLARE_*_API_TOKEN` variables in the
   work Mac's environment belong to the Wall Street English account (they see
