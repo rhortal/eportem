@@ -9,12 +9,12 @@ from cryptography.fernet import Fernet
 from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 
-from eportem.core.calendar import resolve
-from eportem.core.clock_http import HttpClock
-from eportem.core.target import Target
-from eportem.db.crypto import SecretBox
-from eportem.db.engine import downgrade, make_engine, make_sessionmaker, migrate
-from eportem.db.models import (
+from checkin.core.calendar import resolve
+from checkin.core.clock_http import HttpClock
+from checkin.core.target import Target
+from checkin.db.crypto import SecretBox
+from checkin.db.engine import downgrade, make_engine, make_sessionmaker, migrate
+from checkin.db.models import (
     DayChangeRow,
     EportemAccount,
     EportemSession,
@@ -24,13 +24,13 @@ from eportem.db.models import (
     ScheduleTemplate,
     UserSchedule,
 )
-from eportem.db.repo import DbCookieStore, activity_ids, load_calendar, new_user
-from eportem.settings import load_settings
+from checkin.db.repo import DbCookieStore, activity_ids, load_calendar, new_user
+from checkin.settings import load_settings
 from fake_eportem import Account, FakeEportem
 from fake_eportem.testing import RequestsLoginDriver, login_with
 
 KEY = Fernet.generate_key().decode()
-SETTINGS = load_settings({"EPORTEM_SECRET_KEY": KEY, "EPORTEM_DEFAULT_JITTER_BEFORE_MINUTES": "3"})
+SETTINGS = load_settings({"CHECKIN_SECRET_KEY": KEY, "CHECKIN_DEFAULT_JITTER_BEFORE_MINUTES": "3"})
 D = datetime.date
 
 
@@ -39,7 +39,7 @@ class DbCase(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        self.url = f"sqlite:///{Path(tmp.name) / 'data' / 'eportem.db'}"
+        self.url = f"sqlite:///{Path(tmp.name) / 'data' / 'checkin.db'}"
         migrate(self.url)
         self.engine = make_engine(self.url)
         self.addCleanup(self.engine.dispose)
@@ -118,7 +118,7 @@ class TestCrypto(unittest.TestCase):
         self.assertNotIn("s3cret", token)
         self.assertEqual(box.decrypt(token), "s3cret")
         self.assertEqual(box.decrypt_json(box.encrypt_json({"a": [1]})), {"a": [1]})
-        with self.assertRaisesRegex(ValueError, "wrong EPORTEM_SECRET_KEY"):
+        with self.assertRaisesRegex(ValueError, "wrong CHECKIN_SECRET_KEY"):
             SecretBox(Fernet.generate_key().decode()).decrypt(token)
 
     def test_rotation(self):

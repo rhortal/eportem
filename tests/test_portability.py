@@ -113,7 +113,7 @@ class FindProblemsTest(unittest.TestCase):
         self.assertIn("URL host 'git.my-home.lan'", " ".join(find_problems("f", "https://key@git.my-home.lan/x")))
 
     def test_allows_known_and_example_hosts(self):
-        text = "https://eportem.es/x https://hooks.slack.com/y https://eportem.example.com http://localhost:8080"
+        text = "https://eportem.es/x https://hooks.slack.com/y https://checkin.example.com http://localhost:8080"
         self.assertEqual(find_problems("f", text), [])
 
     def test_flags_private_ips_but_not_versions(self):

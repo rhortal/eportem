@@ -1,8 +1,8 @@
 """Test helpers for driving the fake ePortem without a browser."""
 import requests
 
-from eportem.core.browser import CAPTCHA_ERROR, LoginRejected
-from eportem.core.target import Target
+from checkin.core.browser import CAPTCHA_ERROR, LoginRejected
+from checkin.core.target import Target
 
 
 class RequestsLoginDriver:

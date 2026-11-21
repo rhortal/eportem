@@ -1,6 +1,7 @@
 # Operations: the live host
 
-Notes about the host that runs ePortem for the owner (`omv`), and its state.
+Notes about the host that runs CheckIn for the owner (`omv`), and its state. The
+legacy cron scripts there predate the rename and still use the old name in paths.
 None of this is visible from the code, but it matters when an automated run
 fails. This file names hosts, paths and accounts, so the portability test skips
 it. General guidance for working on the repository is in `CLAUDE.md`. The
@@ -39,14 +40,14 @@ platform, not a flag/config issue.
 
 On 2026-07-27 the hold was removed and the packages upgraded to
 `150.0.7871.181` after verifying: 20 consecutive headless launches via
-Selenium+chromedriver using the flags ePortem used then (`--headless` only)
+Selenium+chromedriver using the flags the scripts used then (`--headless` only)
 all passed. The flags have changed since: see "Browser flags" below. Note: `--single-process` (not
-used by ePortem) still SIGTRAPs on `150.0.7871.181`, so the upstream bug
-isn't fully fixed — it just doesn't trigger under the flags ePortem uses.
+used by the scripts) still SIGTRAPs on `150.0.7871.181`, so the upstream bug
+isn't fully fixed — it just doesn't trigger under the flags the scripts use.
 No hold is currently in place; the package is on the normal apt-managed
 security-update track again.
 
-If ePortem's automation silently stops firing again, check
+If the automation silently stops firing again, check
 `chromium --version` and try
 `chromium --headless --disable-gpu --no-sandbox --dump-dom about:blank`
 before assuming the ePortem site's HTML/selectors changed. Also check whether
@@ -59,7 +60,7 @@ pushed, since `--single-process` still crashed on this host as of 150.x.
 ## Browser flags and version (checked 2026-11-16)
 
 `omv` now runs Chromium `156.0.8078.79`. The flags come from `start_browser()`
-in `eportem/core/browser.py` (called through `utility/login_and_navigate.py`
+in `checkin/core/browser.py` (called through `utility/login_and_navigate.py`
 on the refactor branch; on `main` before the merge it is `_start_browser()` in
 `utility/login_and_navigate.py` itself), not `eportem_action.py`: `--disable-gpu`,
 `--headless=new` (only when `HEADLESS_BROWSING=YES`), `--window-size=1366,900`,
@@ -69,7 +70,7 @@ on the refactor branch; on `main` before the merge it is `_start_browser()` in
 cover them. The `chromium --headless ...` command above only shows whether
 Chromium starts at all.
 
-The `USER_AGENT` constant (in `eportem/core/browser.py` on the refactor
+The `USER_AGENT` constant (in `checkin/core/browser.py` on the refactor
 branch) says Chrome/156, matching the host. When Chromium's
 major version changes, `create_driver()` notices, restarts the browser once
 with the right version in the UA and prints a line saying so; update the

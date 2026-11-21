@@ -4,11 +4,11 @@ import threading
 import unittest
 from unittest.mock import patch
 
-from eportem.core.actions import ClockAction
-from eportem.core.activities import ActivityIds
-from eportem.core.clock_http import HttpClock, NotRecorded, OutcomeUnknown
-from eportem.core.cookies import MemoryCookieStore
-from eportem.core.target import Target
+from checkin.core.actions import ClockAction
+from checkin.core.activities import ActivityIds
+from checkin.core.clock_http import HttpClock, NotRecorded, OutcomeUnknown
+from checkin.core.cookies import MemoryCookieStore
+from checkin.core.target import Target
 from fake_eportem import Account, FakeEportem, Fault
 from fake_eportem.testing import RequestsLoginDriver, login_with
 

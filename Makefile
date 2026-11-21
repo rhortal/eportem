@@ -21,9 +21,9 @@ CORE_COVERAGE_FLOOR = 85
 
 test: venv
 	$(BIN)/python -m pytest --cov --cov-report=term:skip-covered
-	$(BIN)/python -m coverage report --include='eportem/*' --fail-under=$(CORE_COVERAGE_FLOOR) > /dev/null \
-		|| { echo "eportem/ coverage is below $(CORE_COVERAGE_FLOOR)%:"; \
-		     $(BIN)/python -m coverage report --include='eportem/*'; exit 1; }
+	$(BIN)/python -m coverage report --include='checkin/*' --fail-under=$(CORE_COVERAGE_FLOOR) > /dev/null \
+		|| { echo "checkin/ coverage is below $(CORE_COVERAGE_FLOOR)%:"; \
+		     $(BIN)/python -m coverage report --include='checkin/*'; exit 1; }
 
 # Everything except the real-browser tests (tests/browser/, ~35 s).
 test-fast: venv

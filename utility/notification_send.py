@@ -1,6 +1,6 @@
 """Legacy adapter: the notification channels configured from config/.env.
 
-The channels themselves live in eportem.core.notify; this module fills in
+The channels themselves live in checkin.core.notify; this module fills in
 their credentials from the environment and names the environment variables in
 its messages. Kept until the cutover in docs/refactor/PLAN.md (phase 8).
 """
@@ -9,8 +9,8 @@ import os
 import requests  # noqa: F401  (tests patch utility.notification_send.requests.post)
 from dotenv import load_dotenv
 
-from eportem.core import notify as _core
-from eportem.core.notify import (  # noqa: F401  (re-exported for the legacy scripts and tests)
+from checkin.core import notify as _core
+from checkin.core.notify import (  # noqa: F401  (re-exported for the legacy scripts and tests)
     REDACTED,
     REQUEST_TIMEOUT,
     SLACK_API,
@@ -18,8 +18,8 @@ from eportem.core.notify import (  # noqa: F401  (re-exported for the legacy scr
     NotificationChannel,
     NotificationManager,
 )
-from eportem.core.notify import describe_error as _describe_error
-from eportem.core.notify import scrub as _scrub
+from checkin.core.notify import describe_error as _describe_error
+from checkin.core.notify import scrub as _scrub
 
 ENV_LABELS = {
     "telegram_token": "TELEGRAM_BOT_TOKEN",
@@ -51,7 +51,7 @@ class SlackChannel(_core.SlackChannel):
 
 
 if __name__ == '__main__':
-    # Load environment variables from eportem/config/.env
+    # Load environment variables from checkin/config/.env
     env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "config", ".env")
     load_dotenv(env_path)
 

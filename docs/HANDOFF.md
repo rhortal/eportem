@@ -65,10 +65,10 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 
 ## Where things stood (2026-11-18, night)
 
-- Phases 0-7 done on the branch: the engine (`eportem/core`), the fake, the
+- Phases 0-7 done on the branch: the engine (`checkin/core`), the fake, the
   calendar and templates, settings, the database, the scheduler, auth and API,
   the web UI (English/Spanish) and Docker with GlitchTip. `make check` passes
-  (about 555 tests, coverage floor 85% on `eportem/`). Last commit on the
+  (about 555 tests, coverage floor 85% on `checkin/`). Last commit on the
   branch: see `git log -1 origin/refactor/multiuser-service`.
 - Phase 8 started: the read-only contract check against the real site passed
   from `omv` (18:50), and the shadow runs on `omv` in dry run next to cron
@@ -113,9 +113,9 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   moved out of this project on 2026-11-21 (below), and that profile would start
   a second, empty GlitchTip here.
 - Untracked there: `.env` (`chmod 600`; secrets generated on `omv`;
-  `EPORTEM_DRY_RUN=true`; `EPORTEM_TARGET_URL=http://fake-eportem:8081`;
-  `EPORTEM_PUBLIC_URL=https://checkin.hortal.me`; `EPORTEM_PUBLISH=127.0.0.1:8095`;
-  `EPORTEM_TRUSTED_PROXIES=192.168.32.0/20` (nginx-proxy-manager's network);
+  `CHECKIN_DRY_RUN=true`; `CHECKIN_TARGET_URL=http://fake-eportem:8081`;
+  `CHECKIN_PUBLIC_URL=https://checkin.hortal.me`; `CHECKIN_PUBLISH=127.0.0.1:8095`;
+  `CHECKIN_TRUSTED_PROXIES=192.168.32.0/20` (nginx-proxy-manager's network);
   metrics token; GlitchTip DSN and heartbeat URL on `glitchtip:8000`) and
   `docker-compose.override.yml` (joins `ngingx-proxy-manager_default` and the
   `glitchtip` network; previous version `.bak-20261121`).
@@ -137,7 +137,7 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   `ssh -L 8095:127.0.0.1:8095 -L 8098:127.0.0.1:8098 omv` (or `omve`).
 - Daily comparison with cron (run in the worktree; exit 0 = every day matches):
   `cat /home/pi/Apps/eportem/logs/actions.log | docker compose -p eportem exec -T
-  eportem python -m eportem shadow-report --user roberto --actions-log /dev/stdin
+  eportem python -m checkin shadow-report --user roberto --actions-log /dev/stdin
   --days 3`
 - To re-import the cron set-up (the container's user can't read `pi`'s
   `chmod 600` files, so stream copies in and delete them after):
@@ -147,8 +147,8 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   for f in holiday_override.txt location_override.txt business_trip_override.txt; do test -f $f && FILES="$FILES $f"; done
   cd /home/pi/Apps/eportem-refactor
   tar -C /home/pi/Apps/eportem -cf - $FILES | docker compose -p eportem exec -T eportem sh -c "rm -rf /tmp/legacy && mkdir -m 700 /tmp/legacy && tar -x -C /tmp/legacy"
-  docker compose -p eportem exec -T eportem python -m eportem import-legacy --user roberto --from /tmp/legacy --dry-run
-  docker compose -p eportem exec -T eportem python -m eportem import-legacy --user roberto --from /tmp/legacy
+  docker compose -p eportem exec -T eportem python -m checkin import-legacy --user roberto --from /tmp/legacy --dry-run
+  docker compose -p eportem exec -T eportem python -m checkin import-legacy --user roberto --from /tmp/legacy
   docker compose -p eportem exec -T eportem rm -rf /tmp/legacy
   ```
 - To stop the shadow entirely: `docker compose -p eportem --profile dev

@@ -1,14 +1,14 @@
-# ePortem: copy .env.example to .env, set EPORTEM_SECRET_KEY
-# (`docker compose run --rm eportem python -m eportem config new-key`), then:
+# CheckIn: copy .env.example to .env, set CHECKIN_SECRET_KEY
+# (`docker compose run --rm checkin python -m checkin config new-key`), then:
 #   docker compose up -d
-#   docker compose exec eportem python -m eportem create-admin YOUR_NAME
+#   docker compose exec checkin python -m checkin create-admin YOUR_NAME
 # To try it without a real ePortem account, start the fake too and point the
-# service at it (EPORTEM_TARGET_URL=http://fake-eportem:8081 in .env):
+# service at it (CHECKIN_TARGET_URL=http://fake-eportem:8081 in .env):
 #   docker compose --profile dev up -d      (demo account DEMO / demo-password)
 services:
-  eportem:
+  checkin:
     build: .
-    image: eportem-local:latest   # built here; never pulled
+    image: checkin-local:latest   # built here; never pulled
     restart: unless-stopped
     labels:
       # Auto-updaters (Watchtower) must not replace a locally built image from a registry.
@@ -17,16 +17,16 @@ services:
       - path: .env
         required: false   # so `docker compose config` works before .env exists
     ports:
-      - "${EPORTEM_PUBLISH:-127.0.0.1:8080}:8080"
+      - "${CHECKIN_PUBLISH:-127.0.0.1:8080}:8080"
     volumes:
-      - eportem-data:/data
+      - checkin-data:/data
     # Chromium needs more shared memory than Docker's 64 MB default.
     shm_size: "512m"
     mem_limit: "1g"
 
   fake-eportem:
     profiles: ["dev"]
-    image: eportem-local:latest
+    image: checkin-local:latest
     restart: unless-stopped   # survive a host reboot, like the service
     labels:
       com.centurylinklabs.watchtower.enable: "false"
@@ -41,12 +41,12 @@ services:
   #   docker compose --profile errors up -d
   #   docker compose exec glitchtip ./manage.py createsuperuser
   # Open it (GLITCHTIP_PUBLISH, default http://127.0.0.1:8000), create an
-  # organisation and a project, and set EPORTEM_SENTRY_DSN in .env to the
+  # organisation and a project, and set CHECKIN_SENTRY_DSN in .env to the
   # project's DSN with its host changed to glitchtip:8000, e.g.
-  #   EPORTEM_SENTRY_DSN=http://<key>@glitchtip:8000/1
+  #   CHECKIN_SENTRY_DSN=http://<key>@glitchtip:8000/1
   # so reports stay on the Docker network. GlitchTip also has heartbeat
-  # monitors: create one and put its URL in EPORTEM_HEARTBEAT_URL (it notices a
-  # stopped eportem container; use an outside service to notice a dead host).
+  # monitors: create one and put its URL in CHECKIN_HEARTBEAT_URL (it notices a
+  # stopped checkin container; use an outside service to notice a dead host).
   glitchtip-db:
     profiles: ["errors"]
     image: postgres:18
@@ -78,6 +78,6 @@ services:
     mem_limit: "768m"
 
 volumes:
-  eportem-data:
+  checkin-data:
   glitchtip-db:
   glitchtip-uploads:

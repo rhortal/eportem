@@ -1,10 +1,10 @@
-"""eportem.scheduler.runner: the browser gate, channels from rows, alerts, and
+"""checkin.scheduler.runner: the browser gate, channels from rows, alerts, and
 the scheduler's background thread."""
 import threading
 from unittest.mock import MagicMock, patch
 
-from eportem.db.models import NotificationChannelRow
-from eportem.scheduler.runner import BrowserGate, channels_for, secrets_for, send_alert, status_updater_for
+from checkin.db.models import NotificationChannelRow
+from checkin.scheduler.runner import BrowserGate, channels_for, secrets_for, send_alert, status_updater_for
 from tests.service.test_scheduler import DAY, SchedulerCase, utc
 
 
@@ -59,11 +59,11 @@ class TestChannels(SchedulerCase):
         with self.Session() as db, patch("requests.post", return_value=response) as post:
             self.assertEqual(send_alert(db, self.box, self.uid, "hello"), [])
         self.assertTrue(all("slack.com" in c.args[0] for c in post.call_args_list))
-        with self.Session() as db, patch("eportem.scheduler.runner.channels_for", side_effect=RuntimeError):
+        with self.Session() as db, patch("checkin.scheduler.runner.channels_for", side_effect=RuntimeError):
             self.assertEqual(send_alert(db, self.box, self.uid, "x"), ["alerts"])
 
     def test_notifications_reach_the_run_log_and_secrets_are_scrubbed(self):
-        from eportem.db.models import RunLog
+        from checkin.db.models import RunLog
         response = MagicMock(status_code=500, text="bad tg-token-1")
         with patch("requests.post", return_value=response):
             self.run_day(self.scheduler(), end="09:30")
@@ -100,7 +100,7 @@ class TestBackground(SchedulerCase):
                 raise RuntimeError("database away")
             sched.stop()
         sched.tick = tick
-        with self.assertLogs("eportem.scheduler", "ERROR"):
+        with self.assertLogs("checkin.scheduler", "ERROR"):
             sched.run_forever(interval_seconds=0.01)
         self.assertEqual(len(calls), 2)
 

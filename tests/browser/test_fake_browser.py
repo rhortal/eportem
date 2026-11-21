@@ -5,12 +5,12 @@ import time
 import unittest
 from unittest.mock import patch
 
-from eportem.core import browser
-from eportem.core.actions import ClockAction
-from eportem.core.activities import ActivityIds
-from eportem.core.clock_http import HttpClock
-from eportem.core.cookies import MemoryCookieStore
-from eportem.core.target import Target
+from checkin.core import browser
+from checkin.core.actions import ClockAction
+from checkin.core.activities import ActivityIds
+from checkin.core.clock_http import HttpClock
+from checkin.core.cookies import MemoryCookieStore
+from checkin.core.target import Target
 from fake_eportem import Account, FakeEportem, Fault
 
 IDS = ActivityIds(office="7", home="8", lunch_pause="9")
@@ -93,7 +93,7 @@ class TestClickFlow(BrowserCase):
         self.assertEqual(self.events(), [("_ststart", "8"), ("_stpause", "9"), ("_stini", "8"), ("_ststop", "")])
 
     def test_already_started_office_day_is_not_clicked_again(self):
-        from eportem.core.actions import ActionNotApplicable
+        from checkin.core.actions import ActionNotApplicable
         self.click_action("start_day", "office")
         with self.assertRaises(ActionNotApplicable):
             self.click_action("start_day", "office")

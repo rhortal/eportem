@@ -9,8 +9,8 @@ can check that each account was clocked exactly once.
 
 The markup follows the real pages: the clock button attributes come from the
 2026-11-16 captures (the same ones as tests/test_http_clock.py), and the
-dashboard layout is what the Selenium XPaths in eportem/core/actions.py click.
-`eportem.contract` checks the same structure on the real site.
+dashboard layout is what the Selenium XPaths in checkin/core/actions.py click.
+`checkin.contract` checks the same structure on the real site.
 
     from fake_eportem import FakeEportem, Account
     with FakeEportem([Account("ALICE", "pw")]) as fake:

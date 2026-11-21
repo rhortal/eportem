@@ -1,4 +1,4 @@
-"""eportem.core used directly, the way the service will use it: no
+"""checkin.core used directly, the way the service will use it: no
 environment, no files, another company's activity IDs and another site URL."""
 import datetime
 import json
@@ -10,13 +10,13 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
-from eportem.core.actions import ClockAction, message_for, selectors_for, status_for
-from eportem.core.activities import ActivityIds
-from eportem.core.clock_http import ButtonNotFound, HttpClock, NotRecorded, OutcomeUnknown, select_button
-from eportem.core.cookies import FileCookieStore, MemoryCookieStore
-from eportem.core.target import Target
+from checkin.core.actions import ClockAction, message_for, selectors_for, status_for
+from checkin.core.activities import ActivityIds
+from checkin.core.clock_http import ButtonNotFound, HttpClock, NotRecorded, OutcomeUnknown, select_button
+from checkin.core.cookies import FileCookieStore, MemoryCookieStore
+from checkin.core.target import Target
 
-TARGET = Target("https://eportem.example.test/")
+TARGET = Target("https://checkin.example.test/")
 IDS = ActivityIds(office="7", home="8", lunch_pause="9")
 
 NOT_STARTED = """<div id="buttonsRegBox">
@@ -52,9 +52,9 @@ class Said(list):
 class TestTarget(unittest.TestCase):
 
     def test_urls_follow_the_base_url(self):
-        self.assertEqual(TARGET.base_url, "https://eportem.example.test")
-        self.assertEqual(TARGET.login_url, "https://eportem.example.test/Usuario/Login?ReturnUrl=%2faplicaciones")
-        self.assertEqual(TARGET.dashboard_url, "https://eportem.example.test/aplicaciones/e-portem/registro/")
+        self.assertEqual(TARGET.base_url, "https://checkin.example.test")
+        self.assertEqual(TARGET.login_url, "https://checkin.example.test/Usuario/Login?ReturnUrl=%2faplicaciones")
+        self.assertEqual(TARGET.dashboard_url, "https://checkin.example.test/aplicaciones/e-portem/registro/")
         self.assertEqual(TARGET.clock_url, TARGET.dashboard_url + "reghorario.cshtml")
         self.assertEqual(Target().base_url, "https://eportem.es")
 
@@ -67,19 +67,19 @@ class TestTarget(unittest.TestCase):
 class TestButtonsWithOtherActivityIds(unittest.TestCase):
 
     def test_start_day_uses_this_accounts_ids(self):
-        from eportem.core.clock_http import parse_buttons
+        from checkin.core.clock_http import parse_buttons
         buttons = parse_buttons(NOT_STARTED)
         self.assertEqual(select_button(buttons, "start_day", "office", IDS)["name"], "7")
         self.assertEqual(select_button(buttons, "start_day", "home", IDS)["name"], "8")
 
     def test_the_owners_ids_are_not_assumed(self):
-        from eportem.core.clock_http import parse_buttons
+        from checkin.core.clock_http import parse_buttons
         buttons = parse_buttons('<div id="buttonsRegBox"><a id="_ststart" name="1" name3="T">x</a></div>')
         with self.assertRaises(ButtonNotFound):
             select_button(buttons, "start_day", "office", IDS)
 
     def test_lunch_uses_the_lunch_pause_id(self):
-        from eportem.core.clock_http import parse_buttons
+        from checkin.core.clock_http import parse_buttons
         self.assertEqual(select_button(parse_buttons(WORKING), "lunch_break", "home", IDS)["name3"], "Comida")
 
     def test_selenium_selectors_use_the_ids(self):
@@ -95,7 +95,7 @@ class TestHttpClockCore(unittest.TestCase):
         session.cookies = requests.cookies.RequestsCookieJar()
         session.get.side_effect = list(responses)
         driver = MagicMock()
-        driver.get_cookies.return_value = [{"name": n, "value": v, "domain": "eportem.example.test", "path": "/"}
+        driver.get_cookies.return_value = [{"name": n, "value": v, "domain": "checkin.example.test", "path": "/"}
                                            for n, v in login_cookies]
         driver.execute_script.return_value = "Browser-UA"
         logins = []
@@ -161,7 +161,7 @@ class TestHttpClockCore(unittest.TestCase):
 class TestCookieDomains(unittest.TestCase):
 
     def test_hosts_without_a_dot_are_stored_for_any_host(self):
-        from eportem.core.clock_http import cookie_domain
+        from checkin.core.clock_http import cookie_domain
         self.assertEqual(cookie_domain("fake-eportem"), "")
         self.assertEqual(cookie_domain("localhost"), "")
         self.assertEqual(cookie_domain("eportem.es"), "eportem.es")
@@ -231,7 +231,7 @@ class TestClockActionCore(unittest.TestCase):
     def test_http_success_records_notifies_and_logs(self):
         self.assertTrue(self._action().perform())
         self.assertEqual(self.records, [("lunch_break", "home", "http")])
-        self.channel.send.assert_called_once_with("RePortemed going to lunch break")
+        self.channel.send.assert_called_once_with("Checked out for the lunch break")
         self.updater.set_status.assert_called_once_with("Away for lunch", ":fork_and_knife:", 0)
         (action, location, outcome, output), = self.logs
         self.assertEqual(outcome, "recorded over HTTP")
@@ -322,8 +322,8 @@ class TestMessagesAndStatus(unittest.TestCase):
         self.assertEqual(expiration, int(datetime.datetime(2026, 12, 1, 23, 59).timestamp()))
 
     def test_messages(self):
-        self.assertEqual(message_for("start_day", "home"), "RePortemed at home")
-        self.assertEqual(message_for("stop_day", "home"), "RePortemed done for the day")
+        self.assertEqual(message_for("start_day", "home"), "Checked in at home")
+        self.assertEqual(message_for("stop_day", "home"), "Checked out for the day")
 
 
 if __name__ == "__main__":

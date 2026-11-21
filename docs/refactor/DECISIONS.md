@@ -13,7 +13,7 @@ Format: **D-NNN: title** (status, date): context → decision → consequences.
 The HTTP clock and login code contains hard-won behaviour: the
 `OutcomeUnknown` handling, exact button IDs and a browser that passes
 reCAPTCHA. Rewriting it in another language would throw that away.
-→ The service is Python 3.13. Today's modules move into `eportem.core` and get
+→ The service is Python 3.13. Today's modules move into `checkin.core` and get
 their settings as arguments instead of reading globals.
 → The old test suite keeps guarding that behaviour throughout.
 
@@ -39,13 +39,13 @@ retired.
 **D-004: SQLite by default, Postgres optional** (Proposed, 2026-11-18)
 A homelab install should be one container and one volume. A cloud install may
 need more than one replica.
-→ SQLAlchemy 2 + Alembic. SQLite (WAL) at `/data/eportem.db`, or Postgres
+→ SQLAlchemy 2 + Alembic. SQLite (WAL) at `/data/checkin.db` (`eportem.db` before D-025), or Postgres
 through `DATABASE_URL`. A leader lock means only one replica schedules.
 
 **D-005: Secrets encrypted at rest with an instance key** (Proposed, 2026-11-18)
 The service stores users' ePortem passwords, ePortem session cookies and
 Slack/Telegram tokens.
-→ Fernet/MultiFernet with `EPORTEM_SECRET_KEY` (env or Docker secret).
+→ Fernet/MultiFernet with `CHECKIN_SECRET_KEY` (env or Docker secret).
 User passwords are hashed with argon2id. API tokens are stored as sha256
 hashes, with a visible prefix so they can be identified.
 → Losing the key means re-entering secrets. Key rotation is documented. Secrets
@@ -62,7 +62,7 @@ There's only one ePortem account, and it's in live use. The old mock server
 drifted from the real login form and was deleted (2026-08-10).
 → `fake_eportem/` serves the real field names and the captured dashboard markup
 from shared fixtures. It keeps clock state per account and can inject faults.
-`eportem check-contract` compares the real site with the fixtures and never
+`checkin check-contract` compares the real site with the fixtures and never
 calls the clock endpoint. The base URL is a global setting, never a per-user
 one.
 → Every test except the contract check runs offline, including multi-user
@@ -112,8 +112,8 @@ code. Today the code hard-codes the target URL, activity IDs, the
 User-Agent, the timezone and the Slack status texts, and the docs mention
 the owner's host.
 → One pydantic-settings module, the only reader of the environment.
-`EPORTEM_*` env vars > a TOML config file > neutral defaults, with `*_FILE`
-for secrets. It is checked on start-up, and `eportem config show` prints it.
+`CHECKIN_*` env vars > a TOML config file > neutral defaults, with `*_FILE`
+for secrets. It is checked on start-up, and `checkin config show` prints it.
 `.env.example` and the README settings table are checked against the
 module by a test. A portability test fails CI on personal emails, private IPs
 or unknown hostnames in tracked files. Per-user values (credentials, activity
@@ -170,20 +170,20 @@ object. It also runs on its own for local tries and the dev profile.
 → The fake redirects the login's landing page (`/aplicaciones`) to the
 dashboard. That page on the real site must show the clock box, because the
 click flow finds its button there straight after login, but no capture shows
-it. `eportem.contract` checks it on the real site.
+it. `checkin.contract` checks it on the real site.
 
 **D-016: The random offset (jitter) belongs to each person's profile** (Accepted, 2026-11-18, owner's request)
 How far before or after the set time an action may start is a personal choice,
 like the ePortem credentials. One person may want 9:00 ± a few minutes, another
 a wider spread.
 → `users.jitter_before_minutes` / `jitter_after_minutes`, editable in the
-profile and the API. New users start from `EPORTEM_DEFAULT_JITTER_BEFORE_MINUTES`
-(5) and `EPORTEM_DEFAULT_JITTER_AFTER_MINUTES` (4), the spread of the owner's
+profile and the API. New users start from `CHECKIN_DEFAULT_JITTER_BEFORE_MINUTES`
+(5) and `CHECKIN_DEFAULT_JITTER_AFTER_MINUTES` (4), the spread of the owner's
 cron lines. Templates don't carry a jitter.
-→ The window (`EPORTEM_WINDOW_MINUTES`, 15) stays instance-wide. It is the
+→ The window (`CHECKIN_WINDOW_MINUTES`, 15) stays instance-wide. It is the
 safety rule that an action never runs outside it, and above all never late.
 Every person's offset is checked against it by one function,
-`eportem.core.schedule.jitter_problems()`, which the settings, the profile form
+`checkin.core.schedule.jitter_problems()`, which the settings, the profile form
 and the API all use.
 
 **D-017: The service's packages are pinned apart from the cron path's; the legacy import also brings history** (Accepted, 2026-11-18)
@@ -192,7 +192,7 @@ SQLAlchemy, Alembic, pydantic and cryptography there would change the cron
 path's environment for nothing it uses.
 → `requirements-service.txt` (includes `requirements.txt`) holds the
 service's pins. The Docker image and `make venv` install it. The engine in
-`eportem/core` still needs only the cron path's packages. `holidays` is
+`checkin/core` still needs only the cron path's packages. `holidays` is
 imported only when a calendar asks for public holidays.
 → `import-legacy` maps the cron set-up onto the new tables. The schedule
 becomes a built-in template when the times match exactly, and an `imported`
@@ -256,11 +256,11 @@ unwelcome.
 - Debian's `chromium` + `chromium-driver` in the image, matching the cron host
   and keeping browser and driver in step without Selenium Manager downloads.
 - Chromium runs with `--no-sandbox` only in the container
-  (`EPORTEM_BROWSER_SANDBOX=false` set by the image). Its sandbox needs user
+  (`CHECKIN_BROWSER_SANDBOX=false` set by the image). Its sandbox needs user
   namespaces that a non-root container usually lacks, and the container
   isolates it instead. The setting defaults to on everywhere else.
 - Compose publishes on `127.0.0.1` by default. Exposing the UI is a deliberate
-  choice (`EPORTEM_PUBLISH`), made with a reverse proxy for HTTPS.
+  choice (`CHECKIN_PUBLISH`), made with a reverse proxy for HTTPS.
 - Metrics are computed from the database on each scrape, so there is no
   in-process state to lose on restart and no extra dependency. `/metrics`
   doesn't exist unless a token is set.
@@ -315,3 +315,21 @@ Gitea Actions are still off, so it doesn't run anywhere yet. `make check`
 before each commit remains the check. To revisit: give the mirror's token the
 `workflow` scope and move the file back (GitHub would then run it), or enable
 Gitea Actions with a runner.
+
+**D-025: The project is called CheckIn** (Accepted, 2026-11-21, owner's request)
+"ePortem" is the trademark of the site this project automates, so the project
+can't use it as its own name. → Everything the project calls itself is now
+CheckIn: the Python package and CLI (`checkin`, `python -m checkin`), the
+settings (`CHECKIN_*`), metric names, the session cookie, the Docker image,
+user, service and volume, the web UI and the docs. "ePortem" stays wherever it
+names the site itself (the target URL, "your ePortem account", activity IDs,
+the fake ePortem and `fake_eportem/`, the `EportemAccount`/`EportemSession`
+models and their tables), which is the nominative use a trademark allows. The
+legacy cron path (`main.py`, `eportem_action.py`, `utility/`, `config/.env`
+with `EPORTEM_ENABLED`, `EPORTEM_HTTP`, `EPORTEM_USERNAME`...) keeps its
+names: it is deleted at the cutover, and `main` isn't renamed. The repository
+keeps its name for now. Existing installs keep working: every `EPORTEM_<NAME>`
+(and `_FILE`, and `EPORTEM_CONFIG_FILE`) is still read when the `CHECKIN_` name
+isn't set, with a warning; the default database stays `eportem.db` while no
+`checkin.db` exists. Renaming the Compose service and volume does need a manual
+step on an existing install (copy the old volume's data to the new one).

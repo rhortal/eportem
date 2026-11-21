@@ -1,15 +1,15 @@
-"""eportem.contract: the structure checks pass on the fake in every state, fail
+"""checkin.contract: the structure checks pass on the fake in every state, fail
 on broken pages, and a full run never requests the clock URL."""
 import io
 import unittest
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-from eportem import contract
-from eportem.core.activities import ActivityIds
-from eportem.core.clock_http import HttpClock, parse_buttons
-from eportem.core.cookies import MemoryCookieStore
-from eportem.core.target import Target
+from checkin import contract
+from checkin.core.activities import ActivityIds
+from checkin.core.clock_http import HttpClock, parse_buttons
+from checkin.core.cookies import MemoryCookieStore
+from checkin.core.target import Target
 from fake_eportem import Account, FakeEportem, pages
 from fake_eportem.server import CAPTURED_IDS, CLOCK_PATH
 from fake_eportem.testing import RequestsLoginDriver, login_with

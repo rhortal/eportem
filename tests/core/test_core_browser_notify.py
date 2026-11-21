@@ -1,15 +1,15 @@
-"""eportem.core.browser and eportem.core.notify without any environment."""
+"""checkin.core.browser and checkin.core.notify without any environment."""
 import unittest
 from unittest.mock import MagicMock, patch
 
 from selenium.common.exceptions import TimeoutException
 
-from eportem.core import browser
-from eportem.core.notify import SlackChannel, SlackStatusUpdater, TelegramChannel
-from eportem.core.schedule import actions_due_for_verify, due_task, validate_week_schedule, window_bounds
-from eportem.core.target import Target
+from checkin.core import browser
+from checkin.core.notify import SlackChannel, SlackStatusUpdater, TelegramChannel
+from checkin.core.schedule import actions_due_for_verify, due_task, validate_week_schedule, window_bounds
+from checkin.core.target import Target
 
-TARGET = Target("https://eportem.example.test")
+TARGET = Target("https://checkin.example.test")
 
 
 class FakeWait:

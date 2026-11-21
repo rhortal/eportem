@@ -1,4 +1,4 @@
-"""eportem.legacy_import on a made-up cron checkout."""
+"""checkin.legacy_import on a made-up cron checkout."""
 import contextlib
 import datetime
 import io
@@ -11,9 +11,9 @@ from unittest.mock import patch
 
 from sqlalchemy import select
 
-from eportem import cli
-from eportem.core.calendar import resolve
-from eportem.db.models import (
+from checkin import cli
+from checkin.core.calendar import resolve
+from checkin.db.models import (
     DayChangeRow,
     EportemAccount,
     EportemSession,
@@ -23,8 +23,8 @@ from eportem.db.models import (
     User,
     UserSchedule,
 )
-from eportem.db.repo import load_calendar
-from eportem.legacy_import import ImportError_, import_legacy
+from checkin.db.repo import load_calendar
+from checkin.legacy_import import ImportError_, import_legacy
 from tests.service.test_db import KEY, SETTINGS, DbCase
 
 TODAY = datetime.date(2026, 11, 18)  # a Wednesday
@@ -171,7 +171,7 @@ class TestImport(ImportCase):
 class TestCommand(ImportCase):
 
     def cli(self, *args):
-        env = {"EPORTEM_SECRET_KEY": KEY, "EPORTEM_DATABASE_URL": self.url}
+        env = {"CHECKIN_SECRET_KEY": KEY, "CHECKIN_DATABASE_URL": self.url}
         out, err = io.StringIO(), io.StringIO()
         with patch.dict(os.environ, env), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             code = cli.main(list(args))
@@ -198,7 +198,7 @@ class TestCommand(ImportCase):
         self.assertEqual(self.cli("migrate")[0], 0)
 
     def test_scheduler_command_starts_the_loop(self):
-        with patch("eportem.scheduler.scheduler.Scheduler.run_forever") as loop:
+        with patch("checkin.scheduler.scheduler.Scheduler.run_forever") as loop:
             code, out, _ = self.cli("scheduler")
         self.assertEqual(code, 0)
         loop.assert_called_once()

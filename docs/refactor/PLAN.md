@@ -1,4 +1,4 @@
-# Refactor plan: ePortem as a multi-user service
+# Refactor plan: CheckIn as a multi-user service
 
 Branch: `refactor/multiuser-service` (from `main` at `54477fa`, 2026-11-18).
 Status: **plan only, no code changed yet.** Decisions with their reasons are
@@ -57,7 +57,7 @@ reCAPTCHA other than the real browser login used today (ruled out in
 ## 3. Target architecture
 
 ```
-            ┌───────────────────────── container: eportem ──────────────────────────┐
+            ┌───────────────────────── container: checkin ──────────────────────────┐
  browser ──▶│  FastAPI app (uvicorn)                                                │
  API     ──▶│   /            web UI (Jinja2 + htmx, session cookie + CSRF)           │
             │   /api/v1      JSON API (personal access tokens), OpenAPI at /api/docs │
@@ -73,13 +73,13 @@ reCAPTCHA other than the real browser login used today (ruled out in
             │   └─ notifications / Slack status / alerts / email                     │
             └──────────────┬──────────────────────────────────────┬──────────────────┘
                            │                                      │
-                 SQLite (volume) or Postgres         EPORTEM_TARGET_URL (eportem.es or the fake)
+                 SQLite (volume) or Postgres         CHECKIN_TARGET_URL (eportem.es or the fake)
 ```
 
 ### Package layout
 
 ```
-eportem/                  # new importable package (pyproject.toml)
+checkin/                  # new importable package (pyproject.toml)
   settings.py             # every instance setting, one place (section 6)
   core/                   # no globals, no os.getenv, no files: pure logic + I/O clients
     clock_http.py         # from utility/http_clock.py; target URL, credentials, cookie store injected
@@ -93,13 +93,13 @@ eportem/                  # new importable package (pyproject.toml)
   scheduler/              # planner, dispatcher, leader lock, verify-day job
   web/                    # FastAPI app: auth, UI routes, API routes, admin, templates, i18n
   ops/                    # metrics, Sentry, structured logging, heartbeat
-  cli.py                  # `eportem serve|migrate|create-admin|import-legacy|config|check-contract`
+  cli.py                  # `checkin serve|migrate|create-admin|import-legacy|config|check-contract`
 fake_eportem/             # the test double for eportem.es (section 7)
 legacy/                   # today's scripts, kept working until cutover, then removed
 ```
 
 The scripts at the top of the repo (`main.py`, `eportem_action.py`, ...) become
-thin shims over `eportem.core` in phase 1, so cron on the owner's host keeps
+thin shims over `checkin.core` in phase 1, so cron on the owner's host keeps
 working from the same code until cutover.
 
 ### Data model (first cut)
@@ -111,7 +111,7 @@ working from the same code until cutover.
 | `web_sessions` | id, user_id, created_at, expires_at, ip, user_agent | Server-side sessions; cookie holds only the id |
 | `eportem_accounts` | user_id, username, password_enc, office_activity_id, home_activity_id, lunch_pause_id, use_http, verified_at, last_login_at | Activity IDs are found from the dashboard when the account is verified; no hard-coded defaults |
 | `eportem_sessions` | user_id, data_enc (the whole session record, encrypted), updated_at | Replaces `config/.session_cookies.json` |
-| `schedule_templates` | id, user_id, key, name, description, days (JSON: weekday → start/stop/lunch_out/lunch_back) | A person's own templates. The built-ins live in code (`eportem/core/templates.py`), read-only; people copy and edit (section 5) |
+| `schedule_templates` | id, user_id, key, name, description, days (JSON: weekday → start/stop/lunch_out/lunch_back) | A person's own templates. The built-ins live in code (`checkin/core/templates.py`), read-only; people copy and edit (section 5) |
 | `user_schedules` | user_id, template_key, location_weeks (JSON: one week, or two for an A/B fortnight), pattern_anchor, holiday_country, holiday_region | One per user |
 | `schedule_periods` | id, user_id, template_key, start_date, end_date, yearly, label | e.g. summer hours every 1 Jul–31 Aug |
 | `day_overrides` | id, user_id, start_date, end_date, kind (`time_off`/`location`/`business_trip`/`times`/`work_on_holiday`), location, times (JSON), note | Replaces the three `*_override.txt` files; one row can cover a range |
@@ -170,7 +170,7 @@ code that is named after it.
 
 A template is a named working week: for each weekday, the four times (start,
 lunch out, lunch back, stop), or a day with no lunch break (just start and
-stop), or `off`. Built-ins are shipped as data (`eportem/core/templates.py`) and
+stop), or `off`. Built-ins are shipped as data (`checkin/core/templates.py`) and
 are read-only. A user picks one and, if needed, clicks "customise", which saves
 an editable copy.
 
@@ -227,7 +227,7 @@ disagree.
 
 ### Migration of today's files
 
-`eportem import-legacy` maps `config.json` to a custom template (or to the
+`checkin import-legacy` maps `config.json` to a custom template (or to the
 built-in one it matches exactly) plus a location pattern. It also maps
 `holiday_override.txt` to `time_off`, `location_override.txt` to `location`
 and `business_trip_override.txt` to `business_trip`.
@@ -241,17 +241,17 @@ owner's own, untracked `.env` / config file.
 
 ### How settings are given
 
-- One settings module (`eportem/settings.py`, pydantic-settings) is the only
+- One settings module (`checkin/settings.py`, pydantic-settings) is the only
   place that reads the environment.
-- Priority: environment variables (`EPORTEM_*`) > a mounted config file
-  (`EPORTEM_CONFIG_FILE`, TOML) > defaults that are safe and neutral.
-- Every secret also accepts `*_FILE` (e.g. `EPORTEM_SECRET_KEY_FILE`), so
+- Priority: environment variables (`CHECKIN_*`) > a mounted config file
+  (`CHECKIN_CONFIG_FILE`, TOML) > defaults that are safe and neutral.
+- Every secret also accepts `*_FILE` (e.g. `CHECKIN_SECRET_KEY_FILE`), so
   Docker and Kubernetes secrets work without putting values in the
   environment.
 - Settings are checked on start-up. A missing required value or a bad one stops
   the container with one clear message per problem, as `main.py` does today for
   `config.json`.
-- `eportem config show` prints the effective settings and where each value came
+- `checkin config show` prints the effective settings and where each value came
   from, with secrets hidden. `/admin/settings` shows the same, read-only.
 - `.env.example` lists every setting with a comment. The README has a table
   generated from the settings module, and a test fails if they don't match.
@@ -260,14 +260,14 @@ owner's own, untracked `.env` / config file.
 
 | Group | Settings |
 |---|---|
-| Server | `EPORTEM_PUBLIC_URL` (used in links and emails), `EPORTEM_HOST` (default `0.0.0.0` inside the container), `EPORTEM_PORT` (default `8080`), `EPORTEM_TRUSTED_PROXIES`, `EPORTEM_SECURE_COOKIES` (auto from the public URL), `EPORTEM_ROOT_PATH` (serve under a sub-path) |
-| Storage | `EPORTEM_DATA_DIR` (default `/data`), `EPORTEM_DATABASE_URL` (default SQLite in the data dir), `EPORTEM_SECRET_KEY` (required, plus a list of old keys for rotation) |
-| Target site | `EPORTEM_TARGET_URL` (default `https://eportem.es`; the fake in development), `EPORTEM_BROWSER_USER_AGENT` (optional override), `EPORTEM_CHROMIUM_PATH`, `EPORTEM_CHROMEDRIVER_PATH`, `EPORTEM_BROWSER_CONCURRENCY`, `EPORTEM_HEADLESS` |
-| Defaults for new users | `EPORTEM_DEFAULT_TIMEZONE` (default `Europe/Madrid`), `EPORTEM_DEFAULT_LOCALE`, `EPORTEM_DEFAULT_HOLIDAY_REGION`, `EPORTEM_DEFAULT_TEMPLATE` |
-| Scheduling | `EPORTEM_WINDOW_MINUTES` (15), `EPORTEM_VERIFY_AFTER_MINUTES` (40), `EPORTEM_DRY_RUN` (log, never send). Starting values for each person's random offset are under "Defaults for new users": `EPORTEM_DEFAULT_JITTER_BEFORE_MINUTES` (5), `EPORTEM_DEFAULT_JITTER_AFTER_MINUTES` (4) |
-| Accounts | `EPORTEM_REGISTRATION` (`closed`/`invite`/`open`), `EPORTEM_REQUIRE_EMAIL_VERIFICATION`, `EPORTEM_ADMIN_USERNAME` / `_EMAIL` / `_PASSWORD(_FILE)` (first start only) |
-| Email | `EPORTEM_SMTP_HOST`, `_PORT`, `_SECURITY` (`starttls`/`tls`/`none`), `_USERNAME`, `_PASSWORD(_FILE)`, `_FROM` |
-| Observability | `EPORTEM_LOG_LEVEL`, `EPORTEM_LOG_FORMAT` (`json`/`text`), `EPORTEM_METRICS_TOKEN`, `EPORTEM_SENTRY_DSN`, `EPORTEM_SENTRY_ENVIRONMENT`, `EPORTEM_HEARTBEAT_URL`, `EPORTEM_ADMIN_ALERT_CHANNEL` |
+| Server | `CHECKIN_PUBLIC_URL` (used in links and emails), `CHECKIN_HOST` (default `0.0.0.0` inside the container), `CHECKIN_PORT` (default `8080`), `CHECKIN_TRUSTED_PROXIES`, `CHECKIN_SECURE_COOKIES` (auto from the public URL), `CHECKIN_ROOT_PATH` (serve under a sub-path) |
+| Storage | `CHECKIN_DATA_DIR` (default `/data`), `CHECKIN_DATABASE_URL` (default SQLite in the data dir), `CHECKIN_SECRET_KEY` (required, plus a list of old keys for rotation) |
+| Target site | `CHECKIN_TARGET_URL` (default `https://eportem.es`; the fake in development), `CHECKIN_BROWSER_USER_AGENT` (optional override), `CHECKIN_CHROMIUM_PATH`, `CHECKIN_CHROMEDRIVER_PATH`, `CHECKIN_BROWSER_CONCURRENCY`, `CHECKIN_HEADLESS` |
+| Defaults for new users | `CHECKIN_DEFAULT_TIMEZONE` (default `Europe/Madrid`), `CHECKIN_DEFAULT_LOCALE`, `CHECKIN_DEFAULT_HOLIDAY_REGION`, `CHECKIN_DEFAULT_TEMPLATE` |
+| Scheduling | `CHECKIN_WINDOW_MINUTES` (15), `CHECKIN_VERIFY_AFTER_MINUTES` (40), `CHECKIN_DRY_RUN` (log, never send). Starting values for each person's random offset are under "Defaults for new users": `CHECKIN_DEFAULT_JITTER_BEFORE_MINUTES` (5), `CHECKIN_DEFAULT_JITTER_AFTER_MINUTES` (4) |
+| Accounts | `CHECKIN_REGISTRATION` (`closed`/`invite`/`open`), `CHECKIN_REQUIRE_EMAIL_VERIFICATION`, `CHECKIN_ADMIN_USERNAME` / `_EMAIL` / `_PASSWORD(_FILE)` (first start only) |
+| Email | `CHECKIN_SMTP_HOST`, `_PORT`, `_SECURITY` (`starttls`/`tls`/`none`), `_USERNAME`, `_PASSWORD(_FILE)`, `_FROM` |
+| Observability | `CHECKIN_LOG_LEVEL`, `CHECKIN_LOG_FORMAT` (`json`/`text`), `CHECKIN_METRICS_TOKEN`, `CHECKIN_SENTRY_DSN`, `CHECKIN_SENTRY_ENVIRONMENT`, `CHECKIN_HEARTBEAT_URL`, `CHECKIN_ADMIN_ALERT_CHANNEL` |
 
 Per-user things (ePortem credentials, activity IDs, the random offset, Slack/Telegram tokens,
 status texts, timezone, schedule) are user settings in the database, not
@@ -291,7 +291,7 @@ instance settings.
   domains. The owner's host notes stay in `docs/OPERATIONS.md`, and the
   owner's real values stay in their untracked `.env`.
 - The image has no config baked in. `docker-compose.yml` reads `.env` and
-  works as it is for a local try-out (`EPORTEM_TARGET_URL` pointing at the
+  works as it is for a local try-out (`CHECKIN_TARGET_URL` pointing at the
   fake through the `dev` profile).
 
 ## 7. Working without a second ePortem account
@@ -324,13 +324,13 @@ So the fake can't drift the way the old mock server did:
    with personal data removed. Both the unit tests and the fake read them from
    one place, `fake_eportem/fixtures/`.
 2. **Contract test against the real site, read-only.** A manually-triggered
-   check, `eportem check-contract`, uses the owner's account. It logs in (only
+   check, `checkin check-contract`, uses the owner's account. It logs in (only
    when the saved session is gone), fetches the login page and the dashboard,
    and compares field names, `buttonsRegBox` structure and button
    `id`/`name` attributes with the fixtures. **It never calls
    `reghorario.cshtml`.** It runs at a time no cron line is due, and reuses the
    saved session.
-3. **The target URL is an instance setting** (`EPORTEM_TARGET_URL`), never a
+3. **The target URL is an instance setting** (`CHECKIN_TARGET_URL`), never a
    per-user one, so a user can't point the server at an arbitrary host.
 
 Other ways to cover the gap:
@@ -338,10 +338,10 @@ Other ways to cover the gap:
 - **Time is injected** (a `Clock` interface). Scheduler tests run a simulated
   week for 50 users, with mixed templates, periods, holiday regions and
   timezones, in seconds.
-- **`docker compose --profile dev`** starts `eportem` with `fake-eportem`. The
+- **`docker compose --profile dev`** starts `checkin` with `fake-eportem`. The
   full browser login path then runs against the fake end to end.
 - **Shadow mode before cutover** (phase 8). The new service runs with the
-  owner's real schedule but with `EPORTEM_DRY_RUN=true` and the fake as the
+  owner's real schedule but with `CHECKIN_DRY_RUN=true` and the fake as the
   target, so it never opens a second session on the real account. It plans,
   and at each due time it logs what it *would* send. Afterwards, the live
   cron's `logs/actions.log` is compared with the planned runs.
@@ -373,9 +373,9 @@ earlier in pieces if phase 1 turns out cleanly separable.
       dashboard's main button (which records a clock-in on a not-started
       office day); it only logs in and reports.
 
-### Phase 1: pull out `eportem.core` (no behaviour change)
+### Phase 1: pull out `checkin.core` (no behaviour change)
 Done 2026-11-18 (commits `a2046d5`..`de40deb` plus the closing commit).
-- [x] `eportem/core/`: `notify`, `schedule`, `overrides`, `target`, `browser`,
+- [x] `checkin/core/`: `notify`, `schedule`, `overrides`, `target`, `browser`,
       `activities`, `cookies`, `clock_http`, `actions`. No `os.getenv`, no
       file paths. Progress goes through a `say` callable (D-014).
 - [x] Today's scripts are adapters: `utility/notification_send.py`,
@@ -387,9 +387,9 @@ Done 2026-11-18 (commits `a2046d5`..`de40deb` plus the closing commit).
       --check` and every script's `--help` were run by hand.
 - [x] Direct tests of core (`tests/core/`): another site URL, another
       company's activity IDs, memory and file cookie stores, the fallback rules,
-      and two runs at once keeping separate logs. Coverage of `eportem/` is 96%,
+      and two runs at once keeping separate logs. Coverage of `checkin/` is 96%,
       with a floor of 85% in `make check` and CI.
-- [x] `[project]` metadata in `pyproject.toml` (package `eportem`).
+- [x] `[project]` metadata in `pyproject.toml` (package `checkin`; `eportem` until D-025).
 - [x] Found and fixed on the way: a saved cookie without a `domain` crashed
       `requests` while loading the session (outside the corrupt-file handling).
       Real cookie files always have one, so the cron path never hit it.
@@ -406,7 +406,7 @@ Done 2026-11-18.
       after recording, per account, skipping the first N requests), session
       expiry, a record of events and requested paths, control endpoints and a
       CLI (`python -m fake_eportem`).
-- [x] `eportem.contract`: read-only structure checks (login fields, the clock
+- [x] `checkin.contract`: read-only structure checks (login fields, the clock
       box on the login's landing page, the dashboard layout the Selenium flow
       clicks, button attributes, this account's buttons for the current state)
       and a list of the activities found. Same checks on the fake in tests.
@@ -417,7 +417,7 @@ Done 2026-11-18.
       login, both full days by clicking, the already-started guard, browser
       login then HTTP, fallback to clicking).
 - [x] `make test-fast` leaves out `tests/browser/` (~35 s).
-- [ ] **Run `python -m eportem.contract --activity-ids 1,1293,2` on the
+- [ ] **Run `python -m checkin.contract --activity-ids 1,1293,2` on the
       owner's host once**, at a time no cron line is due (it refreshes the
       saved session). Needs the owner's go-ahead. It confirms the fake's
       structure against the real site, including one assumption the captures
@@ -428,22 +428,22 @@ Done 2026-11-18.
 
 ### Phase 3: settings, persistence and the calendar
 Done 2026-11-18.
-- [x] `eportem/settings.py`: every setting in section 6, environment over a
+- [x] `checkin/settings.py`: every setting in section 6, environment over a
       TOML file over defaults, `*_FILE` for secrets, every problem named by
-      its variable. `python -m eportem config check|show|docs|new-key`.
+      its variable. `python -m checkin config check|show|docs|new-key`.
       `.env.example` and README's table are generated and tested.
 - [x] The random offset is per person (D-016); the instance gives the
       starting values and the window.
-- [x] Templates (`eportem/core/templates.py`, six built-ins) and
-      `eportem/core/calendar.py` `resolve()`, with table tests for every rule
+- [x] Templates (`checkin/core/templates.py`, six built-ins) and
+      `checkin/core/calendar.py` `resolve()`, with table tests for every rule
       and the order between them (holidays from the `holidays` package,
       loaded only when used).
-- [x] `eportem/db/`: SQLAlchemy models, Alembic migration `0001` (tested up
+- [x] `checkin/db/`: SQLAlchemy models, Alembic migration `0001` (tested up
       and down), SQLite in WAL mode with foreign keys, `SecretBox`
       (Fernet/MultiFernet, rotation), `DbCookieStore` (the HTTP clock keeps its
       session encrypted in the database; tested against the fake),
       `load_calendar()` from rows.
-- [x] `python -m eportem migrate` and `import-legacy --user NAME [--dry-run]`
+- [x] `python -m checkin migrate` and `import-legacy --user NAME [--dry-run]`
       (D-017): idempotent, nothing saved on any problem, secrets never
       printed. `logs/actions.log` becomes run history so the cutover day's
       earlier actions aren't clocked again.
@@ -452,11 +452,11 @@ Done 2026-11-18.
 
 ### Phase 4: scheduler and workers
 Done 2026-11-18 (D-018).
-- [x] **Planner** (`eportem/scheduler/planner.py`): each person's day from
+- [x] **Planner** (`checkin/scheduler/planner.py`): each person's day from
       `calendar.resolve()`, with their own random offset. Idempotent: adds
       missing runs, moves runs not yet started when the plan changed, cancels
       runs the plan no longer has, never touches a run that started.
-- [x] **Dispatcher** (`eportem/scheduler/scheduler.py`): claims a run with a
+- [x] **Dispatcher** (`checkin/scheduler/scheduler.py`): claims a run with a
       conditional `planned → running` update; runs it through the engine
       built from the person's rows (`runner.py`: account, activity IDs,
       encrypted session store, channels, Slack status, business trip);
@@ -467,12 +467,12 @@ Done 2026-11-18 (D-018).
       (alerted, never retried); runs the legacy import recorded are not
       redone.
 - [x] Mid-day changes re-plan only what hasn't run (`Scheduler.replan()`).
-- [x] Browser gate (`EPORTEM_BROWSER_CONCURRENCY`), worker pool, leader lock
+- [x] Browser gate (`CHECKIN_BROWSER_CONCURRENCY`), worker pool, leader lock
       (stale after 2 minutes), end-of-day check per person (`day_checks`,
       migration `0002`).
-- [x] `EPORTEM_DRY_RUN`: runs are planned and logged as `dry_run`, nothing is
+- [x] `CHECKIN_DRY_RUN`: runs are planned and logged as `dry_run`, nothing is
       sent (shadow mode).
-- [x] `python -m eportem scheduler` runs it in the foreground, before the web
+- [x] `python -m checkin scheduler` runs it in the foreground, before the web
       app exists.
 - [x] Tests in simulated time against the fake: full days, offsets, weekends
       and pauses, the lock, claiming, late start-up, crash recovery,
@@ -484,23 +484,23 @@ Done 2026-11-18 (D-018).
 
 ### Phase 5: auth and API
 Done 2026-11-18, except the parts that come with the web UI (below).
-- [x] `eportem/auth.py`: argon2id passwords (same timing for unknown users,
+- [x] `checkin/auth.py`: argon2id passwords (same timing for unknown users,
       rehash on login), personal access tokens `ept_<prefix>_<secret>` (only
       sha256 stored, scopes read < write < admin, expiry, revocation,
       last used), a rate limiter, the audit log.
-- [x] `eportem/service.py`: every operation, shared with the UI. It checks
+- [x] `checkin/service.py`: every operation, shared with the UI. It checks
       input and reports every problem, writes audit events, and returns
       secrets only as `(set)`. Verifying an ePortem account logs in (a browser
       only if the saved session expired), reads the dashboard, never clocks,
       and fills in the activity IDs it can work out.
-- [x] `eportem/web/app.py` + `api.py`: `/api/v1` with OpenAPI at `/api/docs`:
+- [x] `checkin/web/app.py` + `api.py`: `/api/v1` with OpenAPI at `/api/docs`:
       me, password, eportem-account (+ verify), templates, schedule, periods,
       days, local-holidays, calendar, channels (+ test), runs (+ log),
       actions (clock now, needs `confirm`), tokens, admin users/runs/stats.
       `/healthz`, `/readyz` (database and scheduler heartbeat). Calendar
       changes re-plan today in the same transaction.
 - [x] Commands: `serve` (web app + API + scheduler), `create-admin`,
-      `create-token`; `EPORTEM_ADMIN_*` creates the first admin on start-up.
+      `create-token`; `CHECKIN_ADMIN_*` creates the first admin on start-up.
 - [x] Tests (20): auth, rate limit, scopes, expiry, suspension, isolation
       (every route that takes an id answers 404 for another person's
       row), validation, audit, verify against the fake, clock now through
@@ -513,7 +513,7 @@ Done 2026-11-18, except the parts that come with the web UI (below).
 
 ### Phase 6: web UI
 Done 2026-11-18 (D-020), with the items below left open.
-- [x] Server-rendered Jinja2 with htmx 2.0.4 bundled in `eportem/web/static/`
+- [x] Server-rendered Jinja2 with htmx 2.0.4 bundled in `checkin/web/static/`
       (no CDN). English and Spanish, per person, falling back to the
       browser's language and then the instance default.
 - [x] Sign-in with server-side sessions (only a hash of the cookie id is
@@ -538,7 +538,7 @@ Done 2026-11-18 (D-020), with the items below left open.
 - [ ] Alternating weeks in the UI (the API and the engine support them).
 - [ ] Registration (`invite`/`open`), email verification and password
       reset: they need SMTP and email templates. Accounts are created by an
-      admin for now (`EPORTEM_REGISTRATION=closed`, the default).
+      admin for now (`CHECKIN_REGISTRATION=closed`, the default).
 - [ ] The iCal feed.
 
 ### Phase 7: packaging and operations
@@ -547,17 +547,17 @@ Done 2026-11-18 (D-021).
       `chromium-driver`, `tini`, non-root user 10001, `/data` volume,
       `HEALTHCHECK` on `/healthz`, no configuration baked in; `.dockerignore`
       keeps local secrets and state out. About 1.4 GB.
-- [x] `docker-compose.yml`: reads `.env`, publishes on `EPORTEM_PUBLISH`
+- [x] `docker-compose.yml`: reads `.env`, publishes on `CHECKIN_PUBLISH`
       (default `127.0.0.1:8080`), 512 MB shared memory for Chromium, 1 GB
       memory limit, and a `dev` profile with the fake ePortem.
-- [x] `eportem/ops.py`: JSON logs (secrets scrubbed), Sentry/GlitchTip error
+- [x] `checkin/ops.py`: JSON logs (secrets scrubbed), Sentry/GlitchTip error
       reports when a DSN is set (no request data, scrubbed), the heartbeat
       (at most once a minute, never blocking), Prometheus `/metrics` with a
       token (users, runs by status, how they were sent, scheduler lag and
-      heartbeat age), `python -m eportem backup` (SQLite online backup,
+      heartbeat age), `python -m checkin backup` (SQLite online backup,
       rotated).
-- [x] `EPORTEM_BROWSER_SANDBOX` (off in the image: Chromium's sandbox can't
-      start as a non-root user there) and `EPORTEM_CHROMEDRIVER_PATH`.
+- [x] `CHECKIN_BROWSER_SANDBOX` (off in the image: Chromium's sandbox can't
+      start as a non-root user there) and `CHECKIN_CHROMEDRIVER_PATH`.
 - [x] Tested end to end in containers on the Mac (arm64) against the fake with
       its stub reCAPTCHA: verify through Chromium in the container, a clock over
       HTTP, a clock through the browser click flow, health, metrics, backup. That
@@ -604,7 +604,7 @@ error tracking, heartbeat) at this point, in their own `.env`.
 1. Deploy the container in **shadow mode** (dry run, fake target) for at least
    3 working days. Compare its planned runs with the live `logs/actions.log`
    each day.
-2. `eportem import-legacy` for the owner. Check the imported template, home
+2. `checkin import-legacy` for the owner. Check the imported template, home
    days, time off and channels in the UI.
 3. Switch over at a quiet time (mid-morning or mid-afternoon). Comment out the
    ePortem crontab lines and back up the crontab first. Then turn off the dry
@@ -658,10 +658,10 @@ are no longer open questions: they are settings the owner fills in at phase 8.
   data through the UI or the API.
 - `docker compose up` on a clean Debian host, with only `.env.example` copied
   to `.env` and a secret key filled in, gives a working instance after
-  `eportem create-admin`. The portability test passes.
+  `checkin create-admin`. The portability test passes.
 - Tests: unit, calendar resolution tables, scheduler simulation, API/auth
   (including authorization checks), end to end against the fake (HTTP and
   browser), migration upgrade and downgrade. All pass in CI. Coverage is
-  reported, with a floor of 85% for `eportem/core` and `eportem/scheduler`.
+  reported, with a floor of 85% for `checkin/core` and `checkin/scheduler`.
 - README describes the service for any install. `docs/OPERATIONS.md`
   describes the owner's container operations. DECISIONS.md is up to date.

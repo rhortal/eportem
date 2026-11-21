@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, urlsplit
 
-from eportem.core.activities import ActivityIds
+from checkin.core.activities import ActivityIds
 from fake_eportem import pages
 
 LOGIN_PATH = "/Usuario/Login"
@@ -282,7 +282,7 @@ def _handler_for(fake):
             elif url.path in ("/aplicaciones", "/aplicaciones/"):
                 # Where the login lands. The real one shows the clock box (the
                 # Selenium flow finds its button there straight after logging in);
-                # eportem.contract checks that on the real site.
+                # checkin.contract checks that on the real site.
                 if self._account_or_login("/aplicaciones"):
                     self._redirect(DASHBOARD_PATH)
             elif url.path == DASHBOARD_PATH:

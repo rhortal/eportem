@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Legacy adapter: browser login with the credentials and flags from config/.env.
 
-The browser set-up and the login form handling live in eportem.core.browser.
+The browser set-up and the login form handling live in checkin.core.browser.
 This module reads EPORTEM_USERNAME / EPORTEM_PASSWORD / HEADLESS_BROWSING and
 passes its own WebDriverWait, so tests that patch names here still apply.
 """
@@ -12,8 +12,8 @@ import time  # noqa: F401  (tests patch utility.login_and_navigate.time.sleep)
 from selenium import webdriver  # noqa: F401  (tests patch utility.login_and_navigate.webdriver.Chrome)
 from selenium.webdriver.support.ui import WebDriverWait
 
-from eportem.core import browser as _core
-from eportem.core.browser import (  # noqa: F401  (re-exported)
+from checkin.core import browser as _core
+from checkin.core.browser import (  # noqa: F401  (re-exported)
     CAPTCHA_ERROR,
     PAGE_LOAD_TIMEOUT_SECONDS,
     USER_AGENT,
@@ -22,11 +22,11 @@ from eportem.core.browser import (  # noqa: F401  (re-exported)
     user_agent_for,
     uses_recaptcha,
 )
-from eportem.core.target import Target
+from checkin.core.target import Target
 
 TARGET = Target()
 LOGIN_URL = TARGET.login_url
-STALE_UA_HINT = "(update USER_AGENT in eportem/core/browser.py to avoid the restart)"
+STALE_UA_HINT = "(update USER_AGENT in checkin/core/browser.py to avoid the restart)"
 
 
 def _start_browser(user_agent):

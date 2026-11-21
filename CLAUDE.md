@@ -1,4 +1,4 @@
-# ePortem: guidance for working on this repository
+# CheckIn: guidance for working on this repository
 
 ## Where things are written down
 
@@ -47,7 +47,7 @@ the code and fix what's gone stale, even if the user didn't ask.
 There is one real ePortem account and it is in live use. Nothing in development
 or tests may call the real clock endpoint. Use the fake ePortem
 (`fake_eportem/`). The only sanctioned contact with the real site from
-development is the read-only contract check (`python -m eportem.contract`),
+development is the read-only contract check (`python -m checkin.contract`),
 run on the host at a time no cron line is due.
 
 ## Archived experiments: web UI, Docker and mock server (removed 2026-08-10)

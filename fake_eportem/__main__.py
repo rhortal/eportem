@@ -10,7 +10,7 @@ Never expose it beyond your machine: it accepts the passwords given here.
 import argparse
 import time
 
-from eportem.core.activities import ActivityIds
+from checkin.core.activities import ActivityIds
 from fake_eportem.server import Account, FakeEportem
 
 

@@ -2,7 +2,7 @@
 """Legacy adapter: one clock action for the account in config/.env.
 
 The action itself (HTTP first, browser fallback, follow-ups) lives in
-eportem.core.actions.ClockAction. EPortemAction fills it in from the
+checkin.core.actions.ClockAction. EPortemAction fills it in from the
 environment and the repository's files: EPORTEM_HTTP, the notification and
 Slack settings, business_trip_override.txt, logs/actions.log,
 logs/http_clock.log and diagnostics/. Settings are looked up when used, so
@@ -15,8 +15,8 @@ import io
 import os
 import sys
 
-from eportem.core import actions as _core
-from eportem.core.actions import (  # noqa: F401  (re-exported for the legacy scripts and tests)
+from checkin.core import actions as _core
+from checkin.core.actions import (  # noqa: F401  (re-exported for the legacy scripts and tests)
     _DIAGNOSTICS_NAME,
     _TOKEN_VALUE,
     BUSINESS_TRIP_STATUS_EMOJI,
@@ -24,8 +24,8 @@ from eportem.core.actions import (  # noqa: F401  (re-exported for the legacy sc
     ActionNotApplicable,
     LoginBudgetExceeded,
 )
-from eportem.core.overrides import parse_strict_date_range, range_state
-from eportem.core.schedule import ACTIONS, LOCATIONS  # noqa: F401  (re-exported)
+from checkin.core.overrides import parse_strict_date_range, range_state
+from checkin.core.schedule import ACTIONS, LOCATIONS  # noqa: F401  (re-exported)
 from utility import logfiles
 from utility.action_log import record_action
 from utility.env_check import check_env_variable

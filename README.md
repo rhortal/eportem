@@ -1,10 +1,12 @@
-# ePortem
+# CheckIn
 
-Scripts that automate clocking in and out on ePortem: start of day, lunch break, return from lunch, and end of day - for both office and home working.
+CheckIn automates clocking in and out on ePortem: start of day, lunch break, return from lunch, and end of day - for both office and home working.
 
 Optionally, it notifies you on Telegram and Slack, and can keep your Slack status in sync with what you're doing.
 
-ePortem is a SaaS solution used in Spain for HR-related tasks. These scripts automate the functionality that enables people to track the time they spend at work every day, as required by Spanish law.
+ePortem is a SaaS solution used in Spain for HR-related tasks. CheckIn automates the functionality that enables people to track the time they spend at work every day, as required by Spanish law.
+
+CheckIn is an independent project, not made, endorsed or supported by ePortem; "ePortem" is a trademark of its owner and is used here only to say which site CheckIn works with. The project was called ePortem until 2026-11-21: the service still reads its old `EPORTEM_*` settings and `eportem.db` database file (see [Running the service](#running-the-service-with-docker-refactor-branch)).
 
 ## Features
 
@@ -469,16 +471,16 @@ The whole file is validated on every run, not just today's entry. Every problem 
 
 The multi-user service runs as one container: web UI, API, scheduler, health
 checks and metrics on one port, data in one volume. It needs nothing else
-(SQLite by default; Postgres through `EPORTEM_DATABASE_URL` for more than one
+(SQLite by default; Postgres through `CHECKIN_DATABASE_URL` for more than one
 replica).
 
 ```bash
 cp .env.example .env
 docker compose build
-# put the output in EPORTEM_SECRET_KEY in .env, and keep a copy somewhere safe
-docker compose run --rm eportem python -m eportem config new-key
+# put the output in CHECKIN_SECRET_KEY in .env, and keep a copy somewhere safe
+docker compose run --rm checkin python -m checkin config new-key
 docker compose up -d
-docker compose exec eportem python -m eportem create-admin YOUR_NAME
+docker compose exec checkin python -m checkin create-admin YOUR_NAME
 ```
 
 Then open `http://127.0.0.1:8080`, sign in, and work through the setup
@@ -486,106 +488,108 @@ checklist: ePortem account (verify it; it logs in and never clocks), working-day
 template, home days, notifications.
 
 - **HTTPS and a hostname:** put any reverse proxy in front (Caddy, Traefik,
-  nginx, nginx-proxy-manager...) pointing at port 8080, set `EPORTEM_PUBLIC_URL`
-  to its address (e.g. `https://eportem.example.com`) and `EPORTEM_TRUSTED_PROXIES`
-  to the proxy's address. `EPORTEM_PUBLISH` controls where Compose publishes the
+  nginx, nginx-proxy-manager...) pointing at port 8080, set `CHECKIN_PUBLIC_URL`
+  to its address (e.g. `https://checkin.example.com`) and `CHECKIN_TRUSTED_PROXIES`
+  to the proxy's address. `CHECKIN_PUBLISH` controls where Compose publishes the
   port (default: `127.0.0.1:8080`, local only).
 - **Monitoring:** `/healthz` (process up), `/readyz` (database and scheduler),
-  `/metrics` (Prometheus, with `EPORTEM_METRICS_TOKEN`), error reports to Sentry or
-  GlitchTip (`EPORTEM_SENTRY_DSN`), and a dead-man switch (`EPORTEM_HEARTBEAT_URL`,
+  `/metrics` (Prometheus, with `CHECKIN_METRICS_TOKEN`), error reports to Sentry or
+  GlitchTip (`CHECKIN_SENTRY_DSN`), and a dead-man switch (`CHECKIN_HEARTBEAT_URL`,
   pinged every minute while the scheduler is healthy).
-- **Backups:** `docker compose exec eportem python -m eportem backup` copies the
+- **Backups:** `docker compose exec checkin python -m checkin backup` copies the
   database to `/data/backups/` (newest 7 kept). Back up that folder and your
-  `EPORTEM_SECRET_KEY`; without the key the stored ePortem passwords can't be read.
-  To restore, stop the service and put a backup back as `/data/eportem.db`.
+  `CHECKIN_SECRET_KEY`; without the key the stored ePortem passwords can't be read.
+  To restore, stop the service and put a backup back as `/data/checkin.db`. (Installs from before the rename keep
+  using `/data/eportem.db` while no `checkin.db` exists; old `EPORTEM_*` settings
+  still work and log a warning naming the new one.)
 - **Upgrades:** `git pull && docker compose build && docker compose up -d`; the
   database is migrated on start.
 - **Sizing:** the image is about 1.4 GB (it includes Chromium). Chromium only
-  starts to log in, one at a time by default (`EPORTEM_BROWSER_CONCURRENCY`).
+  starts to log in, one at a time by default (`CHECKIN_BROWSER_CONCURRENCY`).
   `docker-compose.yml` gives it 512 MB of shared memory and 1 GB in total.
 - **Trying it without a real ePortem account:** `docker compose --profile dev up -d`
   also starts the fake ePortem (account `DEMO` / `demo-password`); set
-  `EPORTEM_TARGET_URL=http://fake-eportem:8081` in `.env` and restart.
+  `CHECKIN_TARGET_URL=http://fake-eportem:8081` in `.env` and restart.
 
 ## Service settings (refactor branch)
 
 The multi-user service being built on the `refactor/multiuser-service` branch
 (`docs/refactor/PLAN.md`) is configured only through these settings; nothing
 install-specific is in the code or the image. Set them as environment variables,
-or in a TOML file named by `EPORTEM_CONFIG_FILE` (keys in lower case, without the
-prefix). Secrets can also be read from a file with `EPORTEM_<NAME>_FILE`.
-`.env.example` lists them all. `python -m eportem migrate` creates the database, and `python -m eportem import-legacy --user NAME --dry-run` shows what moving this checkout's cron set-up into it would do (drop `--dry-run` to do it). `python -m eportem scheduler` runs the scheduler in the foreground (set `EPORTEM_DRY_RUN=true` to plan and log without sending anything). `python -m eportem serve` runs the web app, the JSON API (`/api/v1`, documented at `/api/docs`) and the scheduler together; create the first admin with `python -m eportem create-admin NAME` (or `EPORTEM_ADMIN_USERNAME`/`EPORTEM_ADMIN_PASSWORD`) and an API token with `python -m eportem create-token NAME --scopes read,write`. The web UI (English and Spanish) shows this week and next, where one tap switches a day between home and office; the schedule (built-in templates such as European 9–18, Spanish 9–18 with lunch 14:30–15:30, short Friday, summer hours; or your own week), home days, public holidays by region and periods; a calendar for time off, business trips and one-off changes; notifications; history; your random offset; API tokens; and admin pages. Check the settings with `python -m eportem config check`,
-and see what is in effect with `python -m eportem config show`. The table is
-generated from `eportem/settings.py` by `python -m eportem config docs`.
+or in a TOML file named by `CHECKIN_CONFIG_FILE` (keys in lower case, without the
+prefix). Secrets can also be read from a file with `CHECKIN_<NAME>_FILE`.
+`.env.example` lists them all. `python -m checkin migrate` creates the database, and `python -m checkin import-legacy --user NAME --dry-run` shows what moving this checkout's cron set-up into it would do (drop `--dry-run` to do it). `python -m checkin scheduler` runs the scheduler in the foreground (set `CHECKIN_DRY_RUN=true` to plan and log without sending anything). `python -m checkin serve` runs the web app, the JSON API (`/api/v1`, documented at `/api/docs`) and the scheduler together; create the first admin with `python -m checkin create-admin NAME` (or `CHECKIN_ADMIN_USERNAME`/`CHECKIN_ADMIN_PASSWORD`) and an API token with `python -m checkin create-token NAME --scopes read,write`. The web UI (English and Spanish) shows this week and next, where one tap switches a day between home and office; the schedule (built-in templates such as European 9–18, Spanish 9–18 with lunch 14:30–15:30, short Friday, summer hours; or your own week), home days, public holidays by region and periods; a calendar for time off, business trips and one-off changes; notifications; history; your random offset; API tokens; and admin pages. Check the settings with `python -m checkin config check`,
+and see what is in effect with `python -m checkin config show`. The table is
+generated from `checkin/settings.py` by `python -m checkin config docs`.
 
 <!-- settings-table:start -->
 | Setting | Default | What it does |
 |---|---|---|
 | **Server** | | |
-| `EPORTEM_PUBLIC_URL` |  | The address people use to reach this instance, e.g. https://eportem.example.com. Used in links and emails. Default: http://localhost:<port>. |
-| `EPORTEM_HOST` | `0.0.0.0` | Address to listen on inside the container. |
-| `EPORTEM_PORT` | `8080` | Port to listen on (web UI, API, admin, health, metrics). |
-| `EPORTEM_TRUSTED_PROXIES` |  | Reverse proxies whose X-Forwarded-* headers are believed (comma-separated IPs or CIDRs). |
-| `EPORTEM_SECURE_COOKIES` |  | Send cookies only over HTTPS. Default: on when the public URL is https. |
-| `EPORTEM_ROOT_PATH` |  | Serve under a sub-path, e.g. /eportem, behind a proxy. |
+| `CHECKIN_PUBLIC_URL` |  | The address people use to reach this instance, e.g. https://checkin.example.com. Used in links and emails. Default: http://localhost:<port>. |
+| `CHECKIN_HOST` | `0.0.0.0` | Address to listen on inside the container. |
+| `CHECKIN_PORT` | `8080` | Port to listen on (web UI, API, admin, health, metrics). |
+| `CHECKIN_TRUSTED_PROXIES` |  | Reverse proxies whose X-Forwarded-* headers are believed (comma-separated IPs or CIDRs). |
+| `CHECKIN_SECURE_COOKIES` |  | Send cookies only over HTTPS. Default: on when the public URL is https. |
+| `CHECKIN_ROOT_PATH` |  | Serve under a sub-path, e.g. /checkin, behind a proxy. |
 | **Storage** | | |
-| `EPORTEM_DATA_DIR` | `/data` | Where the database, backups and diagnostics live. |
-| `EPORTEM_DATABASE_URL` |  | SQLAlchemy URL. Default: SQLite in the data dir. Postgres (postgresql+psycopg://...) is needed for more than one replica. |
-| `EPORTEM_SECRET_KEY` |  | Required. Encrypts stored credentials and tokens (a Fernet key: `python -m eportem config new-key`). Losing it means everyone re-enters their credentials. Secret: also `_FILE`. |
-| `EPORTEM_OLD_SECRET_KEYS` |  | Previous secret keys, still accepted for reading while rotating (comma-separated). Secret: also `_FILE`. |
+| `CHECKIN_DATA_DIR` | `/data` | Where the database, backups and diagnostics live. |
+| `CHECKIN_DATABASE_URL` |  | SQLAlchemy URL. Default: SQLite in the data dir. Postgres (postgresql+psycopg://...) is needed for more than one replica. |
+| `CHECKIN_SECRET_KEY` |  | Required. Encrypts stored credentials and tokens (a Fernet key: `python -m checkin config new-key`). Losing it means everyone re-enters their credentials. Secret: also `_FILE`. |
+| `CHECKIN_OLD_SECRET_KEYS` |  | Previous secret keys, still accepted for reading while rotating (comma-separated). Secret: also `_FILE`. |
 | **Target site** | | |
-| `EPORTEM_TARGET_URL` | `https://eportem.es` | The ePortem site to automate. Point it at the fake ePortem for trying things out. |
-| `EPORTEM_BROWSER_USER_AGENT` |  | Override the browser's User-Agent. Default: a desktop Chrome matching the installed version. |
-| `EPORTEM_CHROMIUM_PATH` |  | Chromium binary, if not on the PATH. |
-| `EPORTEM_CHROMEDRIVER_PATH` |  | chromedriver binary, if not on the PATH. |
-| `EPORTEM_BROWSER_CONCURRENCY` | `1` | Browser logins allowed at the same time. |
-| `EPORTEM_HEADLESS` | `true` | Run the browser without a window. |
-| `EPORTEM_BROWSER_SANDBOX` | `true` | Use Chromium's own sandbox. The Docker image turns it off (it can't start as a non-root user there; the container isolates it instead). |
+| `CHECKIN_TARGET_URL` | `https://eportem.es` | The ePortem site to automate. Point it at the fake ePortem for trying things out. |
+| `CHECKIN_BROWSER_USER_AGENT` |  | Override the browser's User-Agent. Default: a desktop Chrome matching the installed version. |
+| `CHECKIN_CHROMIUM_PATH` |  | Chromium binary, if not on the PATH. |
+| `CHECKIN_CHROMEDRIVER_PATH` |  | chromedriver binary, if not on the PATH. |
+| `CHECKIN_BROWSER_CONCURRENCY` | `1` | Browser logins allowed at the same time. |
+| `CHECKIN_HEADLESS` | `true` | Run the browser without a window. |
+| `CHECKIN_BROWSER_SANDBOX` | `true` | Use Chromium's own sandbox. The Docker image turns it off (it can't start as a non-root user there; the container isolates it instead). |
 | **Defaults for new users** | | |
-| `EPORTEM_DEFAULT_TIMEZONE` | `Europe/Madrid` | Time zone for new users. |
-| `EPORTEM_DEFAULT_LOCALE` | `es` | Language for new users. |
-| `EPORTEM_DEFAULT_HOLIDAY_COUNTRY` | `ES` | Country for public holidays (ISO code); empty for none. |
-| `EPORTEM_DEFAULT_HOLIDAY_REGION` |  | Region for public holidays, e.g. MD (Madrid), CT (Catalonia). |
-| `EPORTEM_DEFAULT_TEMPLATE` | `european-9-18` | Working-day template for new users (a built-in key). |
-| `EPORTEM_DEFAULT_JITTER_BEFORE_MINUTES` | `5` | Random offset for new users: start up to this many minutes before an action's time. Each person changes their own in their profile. |
-| `EPORTEM_DEFAULT_JITTER_AFTER_MINUTES` | `4` | Random offset for new users: start up to this many minutes after an action's time. |
+| `CHECKIN_DEFAULT_TIMEZONE` | `Europe/Madrid` | Time zone for new users. |
+| `CHECKIN_DEFAULT_LOCALE` | `es` | Language for new users. |
+| `CHECKIN_DEFAULT_HOLIDAY_COUNTRY` | `ES` | Country for public holidays (ISO code); empty for none. |
+| `CHECKIN_DEFAULT_HOLIDAY_REGION` |  | Region for public holidays, e.g. MD (Madrid), CT (Catalonia). |
+| `CHECKIN_DEFAULT_TEMPLATE` | `european-9-18` | Working-day template for new users (a built-in key). |
+| `CHECKIN_DEFAULT_JITTER_BEFORE_MINUTES` | `5` | Random offset for new users: start up to this many minutes before an action's time. Each person changes their own in their profile. |
+| `CHECKIN_DEFAULT_JITTER_AFTER_MINUTES` | `4` | Random offset for new users: start up to this many minutes after an action's time. |
 | **Scheduling** | | |
-| `EPORTEM_WINDOW_MINUTES` | `15` | An action may run this many minutes either side of its time, never later. Everyone's random offset must fit inside it. |
-| `EPORTEM_VERIFY_AFTER_MINUTES` | `40` | The end-of-day check runs this long after a user's last action. |
-| `EPORTEM_DRY_RUN` | `false` | Plan and log, but never send a clock action. |
+| `CHECKIN_WINDOW_MINUTES` | `15` | An action may run this many minutes either side of its time, never later. Everyone's random offset must fit inside it. |
+| `CHECKIN_VERIFY_AFTER_MINUTES` | `40` | The end-of-day check runs this long after a user's last action. |
+| `CHECKIN_DRY_RUN` | `false` | Plan and log, but never send a clock action. |
 | **Accounts** | | |
-| `EPORTEM_REGISTRATION` | `closed` | Who can create an account: closed (admins only), invite, open. |
-| `EPORTEM_REQUIRE_EMAIL_VERIFICATION` | `true` | New accounts must confirm their email. |
-| `EPORTEM_ADMIN_USERNAME` |  | Creates this admin on first start, if no admin exists. |
-| `EPORTEM_ADMIN_EMAIL` |  | Email of that first admin. |
-| `EPORTEM_ADMIN_PASSWORD` |  | Password of that first admin. Secret: also `_FILE`. |
+| `CHECKIN_REGISTRATION` | `closed` | Who can create an account: closed (admins only), invite, open. |
+| `CHECKIN_REQUIRE_EMAIL_VERIFICATION` | `true` | New accounts must confirm their email. |
+| `CHECKIN_ADMIN_USERNAME` |  | Creates this admin on first start, if no admin exists. |
+| `CHECKIN_ADMIN_EMAIL` |  | Email of that first admin. |
+| `CHECKIN_ADMIN_PASSWORD` |  | Password of that first admin. Secret: also `_FILE`. |
 | **Email** | | |
-| `EPORTEM_SMTP_HOST` |  | SMTP server for verification, password reset and alerts. Empty: no email. |
-| `EPORTEM_SMTP_PORT` | `587` | SMTP port. |
-| `EPORTEM_SMTP_SECURITY` | `starttls` | starttls, tls (implicit, usually port 465) or none. |
-| `EPORTEM_SMTP_USERNAME` |  | SMTP login. |
-| `EPORTEM_SMTP_PASSWORD` |  | SMTP password. Secret: also `_FILE`. |
-| `EPORTEM_SMTP_FROM` |  | From address for the emails this instance sends. |
+| `CHECKIN_SMTP_HOST` |  | SMTP server for verification, password reset and alerts. Empty: no email. |
+| `CHECKIN_SMTP_PORT` | `587` | SMTP port. |
+| `CHECKIN_SMTP_SECURITY` | `starttls` | starttls, tls (implicit, usually port 465) or none. |
+| `CHECKIN_SMTP_USERNAME` |  | SMTP login. |
+| `CHECKIN_SMTP_PASSWORD` |  | SMTP password. Secret: also `_FILE`. |
+| `CHECKIN_SMTP_FROM` |  | From address for the emails this instance sends. |
 | **Observability** | | |
-| `EPORTEM_LOG_LEVEL` | `INFO` | Log level. |
-| `EPORTEM_LOG_FORMAT` | `json` | Log lines as JSON or plain text. |
-| `EPORTEM_METRICS_TOKEN` |  | Bearer token required on /metrics. Empty: /metrics is off. Secret: also `_FILE`. |
-| `EPORTEM_SENTRY_DSN` |  | Report errors to Sentry or GlitchTip. Empty: off. Secret: also `_FILE`. |
-| `EPORTEM_SENTRY_ENVIRONMENT` | `production` | Environment name in error reports. |
-| `EPORTEM_HEARTBEAT_URL` |  | POSTed to every minute while the scheduler is healthy (a GlitchTip heartbeat monitor, healthchecks.io...), so a dead instance gets noticed. |
-| `EPORTEM_ADMIN_ALERT_CHANNEL` |  | Where admin alerts go, e.g. telegram:<chat id> or slack:<channel id>. |
+| `CHECKIN_LOG_LEVEL` | `INFO` | Log level. |
+| `CHECKIN_LOG_FORMAT` | `json` | Log lines as JSON or plain text. |
+| `CHECKIN_METRICS_TOKEN` |  | Bearer token required on /metrics. Empty: /metrics is off. Secret: also `_FILE`. |
+| `CHECKIN_SENTRY_DSN` |  | Report errors to Sentry or GlitchTip. Empty: off. Secret: also `_FILE`. |
+| `CHECKIN_SENTRY_ENVIRONMENT` | `production` | Environment name in error reports. |
+| `CHECKIN_HEARTBEAT_URL` |  | POSTed to every minute while the scheduler is healthy (a GlitchTip heartbeat monitor, healthchecks.io...), so a dead instance gets noticed. |
+| `CHECKIN_ADMIN_ALERT_CHANNEL` |  | Where admin alerts go, e.g. telegram:<chat id> or slack:<channel id>. |
 <!-- settings-table:end -->
 
 ## Development
 
-The clock engine is the `eportem.core` package. It reads no environment variables and no files: the site URL, the account's activity IDs, the credentials, where the session cookies are kept and how to start a browser are all arguments, and progress messages go through a `say` callable instead of `print`. The scripts below are adapters that fill it in from `config/.env` and the repository's files, so their behaviour and output are the same as before. The multi-user service being built on the `refactor/multiuser-service` branch (see `docs/refactor/PLAN.md`) will use the same engine.
+The clock engine is the `checkin.core` package. It reads no environment variables and no files: the site URL, the account's activity IDs, the credentials, where the session cookies are kept and how to start a browser are all arguments, and progress messages go through a `say` callable instead of `print`. The scripts below are adapters that fill it in from `config/.env` and the repository's files, so their behaviour and output are the same as before. The multi-user service being built on the `refactor/multiuser-service` branch (see `docs/refactor/PLAN.md`) will use the same engine.
 
-- `eportem/core/actions.py` - one clock action: HTTP first, browser click flow as the fallback, follow-ups that never fail a recorded action
-- `eportem/core/clock_http.py` - the HTTP clock client; `clock_and_verify()` tells "nothing recorded" (safe to fall back) from "outcome unknown"
-- `eportem/core/browser.py` - starts Chromium so it looks like a desktop browser, and fills in the login form
-- `eportem/core/notify.py` - Telegram, Slack and the Slack status, with secrets scrubbed
-- `eportem/core/schedule.py`, `overrides.py` - schedule validation and windows, holiday/location/business-trip parsing
-- `eportem/core/target.py`, `activities.py`, `cookies.py` - the site URLs, the account's activity IDs, and the session stores (file or memory)
+- `checkin/core/actions.py` - one clock action: HTTP first, browser click flow as the fallback, follow-ups that never fail a recorded action
+- `checkin/core/clock_http.py` - the HTTP clock client; `clock_and_verify()` tells "nothing recorded" (safe to fall back) from "outcome unknown"
+- `checkin/core/browser.py` - starts Chromium so it looks like a desktop browser, and fills in the login form
+- `checkin/core/notify.py` - Telegram, Slack and the Slack status, with secrets scrubbed
+- `checkin/core/schedule.py`, `overrides.py` - schedule validation and windows, holiday/location/business-trip parsing
+- `checkin/core/target.py`, `activities.py`, `cookies.py` - the site URLs, the account's activity IDs, and the session stores (file or memory)
 
 The scripts:
 
@@ -612,7 +616,7 @@ captures; its layout is what the Selenium flow clicks. Run it on its own with
 headless Chromium through the login form and every click path (it skips itself
 when no browser can start).
 
-`python -m eportem.contract --activity-ids 1,1293,2` checks that the real site
+`python -m checkin.contract --activity-ids 1,1293,2` checks that the real site
 still has the structure the engine relies on: the login form's fields, the clock
 box on the page a login lands on, the dashboard layout and its buttons. It is
 read-only and never requests the clock URL, but it reuses and refreshes the saved
@@ -627,7 +631,7 @@ maintainer's own Git server. Open issues and pull requests there.
 ### Checks
 
 `make check` runs the linter (`ruff`), the test suite (`pytest`, with
-coverage, and a floor of 85% for `eportem/`) and the portability test, from a `.venv` that `make venv` builds
+coverage, and a floor of 85% for `checkin/`) and the portability test, from a `.venv` that `make venv` builds
 with Python 3.13 and `requirements-dev.txt`. `make test-fast` skips the real-browser tests. The same checks, plus a build and smoke test of the
 Docker image, are defined for Gitea Actions in `.gitea/workflows/check.yml` (they run once Actions are
 enabled for the repository and a runner is registered).

@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from eportem.db.models import DayChangeRow, EportemAccount, ScheduleTemplate, User, UserSchedule, WebSession
-from eportem.db.repo import local_today
+from checkin.db.models import DayChangeRow, EportemAccount, ScheduleTemplate, User, UserSchedule, WebSession
+from checkin.db.repo import local_today
 from tests.service.test_api import ApiCase
 
 PAGES = ("/", "/schedule", "/calendar", "/notifications", "/account", "/history", "/profile", "/tokens")
@@ -52,7 +52,7 @@ class TestSignIn(UiCase):
         cookie = r.headers["set-cookie"]
         self.assertIn("HttpOnly", cookie)
         self.assertIn("samesite=lax", cookie.lower())
-        value = client.cookies.get("eportem_session")
+        value = client.cookies.get("checkin_session")
         with self.Session() as db:
             self.assertNotIn(value, [s.id_hash for s in db.scalars(select(WebSession))])
 
@@ -190,7 +190,7 @@ class TestForms(UiCase):
         self.assertIn("Telegram notification sent successfully.", r.text)
         self.post(client, "/notifications", {"id": row_id, "chat_id": "8", "notify": "1"})  # token kept
         with self.Session() as db:
-            from eportem.db.models import NotificationChannelRow
+            from checkin.db.models import NotificationChannelRow
             cfg = self.box.decrypt_json(db.get(NotificationChannelRow, int(row_id)).config_enc)
         self.assertEqual((cfg["token"], cfg["chat_id"]), ("tg-secret-9", "8"))
 

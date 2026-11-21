@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block main %}
+<div class="card" style="max-width:24rem;margin:3rem auto">
+  <h1>CheckIn</h1>
+  {% if error %}<div class="problems" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/login">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label for="u">{{ t("Username") }}</label><input id="u" name="username" autocomplete="username" required autofocus>
+    <label for="p">{{ t("Password") }}</label><input id="p" type="password" name="password" autocomplete="current-password" required>
+    <p><button>{{ t("Sign in") }}</button></p>
+  </form>
+</div>
+{% endblock %}

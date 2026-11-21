@@ -1,10 +1,10 @@
 """Legacy adapter: the Slack status updater with its token from SLACK_TOKEN.
-The updater itself lives in eportem.core.notify."""
+The updater itself lives in checkin.core.notify."""
 import os
 
 import requests  # noqa: F401  (kept importable for tests that patch it here)
 
-from eportem.core import notify as _core
+from checkin.core import notify as _core
 
 
 class SlackStatusUpdater(_core.SlackStatusUpdater):

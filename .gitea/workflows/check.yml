@@ -20,19 +20,19 @@ jobs:
         run: ruff check .
       - name: Test
         run: python -m pytest --cov --cov-report=term:skip-covered
-      - name: Coverage floor for eportem/
-        run: python -m coverage report --include='eportem/*' --fail-under=85
+      - name: Coverage floor for checkin/
+        run: python -m coverage report --include='checkin/*' --fail-under=85
 
   image:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build the image
-        run: docker build -t eportem:ci .
+        run: docker build -t checkin:ci .
       - name: Smoke test
         run: |
-          key=$(docker run --rm eportem:ci python -m eportem config new-key)
-          docker run --rm -e EPORTEM_SECRET_KEY="$key" eportem:ci python -m eportem config check
-          docker run -d --name ept -e EPORTEM_SECRET_KEY="$key" -p 8080:8080 eportem:ci
+          key=$(docker run --rm checkin:ci python -m checkin config new-key)
+          docker run --rm -e CHECKIN_SECRET_KEY="$key" checkin:ci python -m checkin config check
+          docker run -d --name ept -e CHECKIN_SECRET_KEY="$key" -p 8080:8080 checkin:ci
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8080/healthz && break; sleep 1; done
           curl -sf http://127.0.0.1:8080/readyz

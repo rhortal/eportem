@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Legacy adapter: the HTTP clock for the account in config/.env.
 
-The client lives in eportem.core.clock_http. This module gives it the owner's
+The client lives in checkin.core.clock_http. This module gives it the owner's
 activity IDs, the cookie file config/.session_cookies.json (chmod 600,
 gitignored) and the browser login from utility/login_and_navigate, all looked
 up when used so tests can patch them here.
@@ -22,9 +22,9 @@ import sys
 import time  # noqa: F401
 from pathlib import Path
 
-from eportem.core import clock_http as _core
-from eportem.core.activities import ActivityIds
-from eportem.core.clock_http import (  # noqa: F401  (re-exported for the legacy scripts and tests)
+from checkin.core import clock_http as _core
+from checkin.core.activities import ActivityIds
+from checkin.core.clock_http import (  # noqa: F401  (re-exported for the legacy scripts and tests)
     CLOCK_IDS,
     DASHBOARD_MARKER,
     RESULT_KEYS,
@@ -37,8 +37,8 @@ from eportem.core.clock_http import (  # noqa: F401  (re-exported for the legacy
     build_params,
     parse_buttons,
 )
-from eportem.core.clock_http import send_never_reached_server as _send_never_reached_server  # noqa: F401
-from eportem.core.cookies import FileCookieStore
+from checkin.core.clock_http import send_never_reached_server as _send_never_reached_server  # noqa: F401
+from checkin.core.cookies import FileCookieStore
 
 # Same browser identity the Selenium login uses, so the session looks consistent.
 from utility.login_and_navigate import (  # noqa: F401  (re-exported)
@@ -58,7 +58,7 @@ COOKIE_FILE = Path(__file__).parent.parent / "config" / ".session_cookies.json"
 VERIFY_ATTEMPTS = _core.VERIFY_ATTEMPTS
 VERIFY_PAUSE_SECONDS = _core.VERIFY_PAUSE_SECONDS
 
-# This account's ePortem activity IDs (see eportem/core/activities.py).
+# This account's ePortem activity IDs (see checkin/core/activities.py).
 SESSION_ID_HOME = "1293"
 SESSION_ID_OFFICE_DEFAULT = "1"
 LUNCH_PAUSE_ID = "2"  # "Comida", the first _stpause entry - what Selenium clicks

@@ -215,8 +215,8 @@ class TestEPortem(IsolatedCase):
              patch('utility.notification_send.SlackChannel.send') as mock_slack_send, \
              patch('utility.slack_status.SlackStatusUpdater.set_status') as mock_set_status:
             action.perform()
-        mock_telegram_send.assert_called_once_with("RePortemed at office")
-        mock_slack_send.assert_called_once_with("RePortemed at office")
+        mock_telegram_send.assert_called_once_with("Checked in at office")
+        mock_slack_send.assert_called_once_with("Checked in at office")
         mock_set_status.assert_called_once_with("Working at office", ":office:", 0)
 
     def test_business_trip_overrides_status_for_every_action_type(self):

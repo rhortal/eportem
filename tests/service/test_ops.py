@@ -1,4 +1,4 @@
-"""eportem.ops: metrics, heartbeat, backups, logs and error-report scrubbing."""
+"""checkin.ops: metrics, heartbeat, backups, logs and error-report scrubbing."""
 import datetime
 import json
 import logging
@@ -7,9 +7,9 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from eportem import ops
-from eportem.db.models import PlannedRun
-from eportem.settings import load_settings
+from checkin import ops
+from checkin.db.models import PlannedRun
+from checkin.settings import load_settings
 from tests.service.test_api import ApiCase
 from tests.service.test_db import KEY
 
@@ -18,11 +18,11 @@ class TestMetrics(ApiCase):
 
     def setUp(self):
         super().setUp()
-        self.settings = load_settings({"EPORTEM_SECRET_KEY": KEY, "EPORTEM_TARGET_URL": self.fake.base_url,
-                                       "EPORTEM_METRICS_TOKEN": "metrics-token-1"})
+        self.settings = load_settings({"CHECKIN_SECRET_KEY": KEY, "CHECKIN_TARGET_URL": self.fake.base_url,
+                                       "CHECKIN_METRICS_TOKEN": "metrics-token-1"})
         from fastapi.testclient import TestClient
 
-        from eportem.web.app import create_app
+        from checkin.web.app import create_app
         self.client = TestClient(create_app(self.settings, self.Session, self.engine, self.sched))
 
     def test_metrics_need_the_token(self):
@@ -34,17 +34,17 @@ class TestMetrics(ApiCase):
                               planned_at=now - datetime.timedelta(minutes=2), location="office", status="planned"))
         r = self.client.get("/metrics", headers={"Authorization": "Bearer metrics-token-1"})
         self.assertEqual(r.status_code, 200)
-        self.assertIn('eportem_users{status="active"} 3', r.text)
-        self.assertIn('eportem_runs_last_24h{status="planned"} 1', r.text)
-        lag = float(next(line for line in r.text.splitlines() if line.startswith("eportem_scheduler_lag")).split()[1])
+        self.assertIn('checkin_users{status="active"} 3', r.text)
+        self.assertIn('checkin_runs_last_24h{status="planned"} 1', r.text)
+        lag = float(next(line for line in r.text.splitlines() if line.startswith("checkin_scheduler_lag")).split()[1])
         self.assertGreaterEqual(lag, 110)
 
     def test_metrics_off_without_a_token(self):
         self.assertEqual(self.client.get("/metrics").status_code, 401)
         from fastapi.testclient import TestClient
 
-        from eportem.web.app import create_app
-        plain = TestClient(create_app(load_settings({"EPORTEM_SECRET_KEY": KEY}), self.Session, self.engine,
+        from checkin.web.app import create_app
+        plain = TestClient(create_app(load_settings({"CHECKIN_SECRET_KEY": KEY}), self.Session, self.engine,
                                       self.sched))
         self.assertEqual(plain.get("/metrics").status_code, 404)
 
@@ -67,7 +67,7 @@ class TestHeartbeat(ApiCase):
         hb = ops.Heartbeat("https://hc.example.com/ping/abc")
         import requests
         with patch("requests.post", side_effect=requests.ConnectionError("down")), \
-                self.assertLogs("eportem.ops", "WARNING"):
+                self.assertLogs("checkin.ops", "WARNING"):
             hb._ping()
 
 
@@ -75,8 +75,8 @@ class TestBackup(ApiCase):
 
     def test_backup_copies_and_rotates(self):
         with tempfile.TemporaryDirectory() as tmp:
-            settings = load_settings({"EPORTEM_SECRET_KEY": KEY, "EPORTEM_DATA_DIR": tmp,
-                                      "EPORTEM_DATABASE_URL": self.url})
+            settings = load_settings({"CHECKIN_SECRET_KEY": KEY, "CHECKIN_DATA_DIR": tmp,
+                                      "CHECKIN_DATABASE_URL": self.url})
             made = [ops.backup(settings, keep=2, now=datetime.datetime(2026, 11, 18, 3, i)) for i in range(3)]
             left = sorted(p.name for p in (Path(tmp) / "backups").iterdir())
             self.assertEqual(left, [made[1].name, made[2].name])
@@ -84,8 +84,8 @@ class TestBackup(ApiCase):
             with sqlite3.connect(made[2]) as db:
                 self.assertEqual(db.execute("select count(*) from users").fetchone()[0], 3)
         with self.assertRaisesRegex(ValueError, "only handles SQLite"):
-            ops.backup(load_settings({"EPORTEM_SECRET_KEY": KEY,
-                                      "EPORTEM_DATABASE_URL": "postgresql+psycopg://u@db.example.com/e"}))
+            ops.backup(load_settings({"CHECKIN_SECRET_KEY": KEY,
+                                      "CHECKIN_DATABASE_URL": "postgresql+psycopg://u@db.example.com/e"}))
 
 
 class TestLogsAndReports(ApiCase):
@@ -104,10 +104,10 @@ class TestLogsAndReports(ApiCase):
         self.assertNotIn("SECRET", out["exception"]["values"][0]["value"])
 
     def test_error_reports_only_with_a_dsn(self):
-        self.assertFalse(ops.init_error_reports(load_settings({"EPORTEM_SECRET_KEY": KEY})))
+        self.assertFalse(ops.init_error_reports(load_settings({"CHECKIN_SECRET_KEY": KEY})))
         with patch("sentry_sdk.init") as init:
-            on = ops.init_error_reports(load_settings({"EPORTEM_SECRET_KEY": KEY,
-                                                       "EPORTEM_SENTRY_DSN": "https://k@errors.example.com/1"}))
+            on = ops.init_error_reports(load_settings({"CHECKIN_SECRET_KEY": KEY,
+                                                       "CHECKIN_SENTRY_DSN": "https://k@errors.example.com/1"}))
         self.assertTrue(on)
         self.assertFalse(init.call_args.kwargs["send_default_pii"])
 
@@ -115,7 +115,7 @@ class TestLogsAndReports(ApiCase):
         root = logging.getLogger()
         saved = root.handlers[:], root.level
         try:
-            ops.setup_logging(load_settings({"EPORTEM_SECRET_KEY": KEY}))
+            ops.setup_logging(load_settings({"CHECKIN_SECRET_KEY": KEY}))
             self.assertIsInstance(root.handlers[0].formatter, ops.JsonFormatter)
         finally:
             root.handlers[:], _ = saved[0], root.setLevel(saved[1])

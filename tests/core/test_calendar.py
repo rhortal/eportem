@@ -1,10 +1,10 @@
-"""eportem.core.calendar and templates: every rule of resolve() and the order
+"""checkin.core.calendar and templates: every rule of resolve() and the order
 between them, as tables of dates."""
 import datetime
 import unittest
 
-from eportem.core.calendar import DayChange, LocationPattern, Period, UserCalendar, resolve, resolve_range
-from eportem.core.templates import (
+from checkin.core.calendar import DayChange, LocationPattern, Period, UserCalendar, resolve, resolve_range
+from checkin.core.templates import (
     BUILTIN_TEMPLATES,
     DayTimes,
     TemplateError,

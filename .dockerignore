@@ -2,7 +2,7 @@
 *
 !requirements.txt
 !requirements-service.txt
-!eportem/
+!checkin/
 !fake_eportem/
 !utility/
 **/__pycache__

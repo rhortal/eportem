@@ -3,7 +3,7 @@ requires = ["setuptools>=75"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "eportem"
+name = "checkin"
 version = "0.1.0.dev0"
 description = "Automates clocking in and out on ePortem (Spanish working-time records)"
 readme = "README.md"
@@ -17,10 +17,10 @@ dependencies = [
 ]
 
 [project.scripts]
-eportem = "eportem.cli:main"
+checkin = "checkin.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["eportem*"]
+include = ["checkin*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

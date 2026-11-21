@@ -17,14 +17,14 @@ import json
 import os
 import sys
 
-from eportem.core import schedule as core_schedule
-from eportem.core.overrides import (
+from checkin.core import schedule as core_schedule
+from checkin.core.overrides import (
     OverrideFormatError,
     parse_date_range,
     parse_location_override,
     range_state,
 )
-from eportem.core.schedule import LOCATIONS, TASK_ACTIONS  # noqa: F401  (re-exported for tests)
+from checkin.core.schedule import LOCATIONS, TASK_ACTIONS  # noqa: F401  (re-exported for tests)
 from eportem_action import execute_action
 from utility import alerts
 from utility.action_log import actions_recorded_on

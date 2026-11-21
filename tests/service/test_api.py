@@ -5,11 +5,11 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from eportem import auth, service
-from eportem.db.models import ApiToken, AuditEvent, EportemAccount, PlannedRun, User
-from eportem.scheduler.scheduler import Scheduler
-from eportem.settings import load_settings
-from eportem.web.app import create_app
+from checkin import auth, service
+from checkin.db.models import ApiToken, AuditEvent, EportemAccount, PlannedRun, User
+from checkin.scheduler.scheduler import Scheduler
+from checkin.settings import load_settings
+from checkin.web.app import create_app
 from tests.service.test_db import KEY
 from tests.service.test_scheduler import SchedulerCase
 
@@ -18,8 +18,8 @@ class ApiCase(SchedulerCase):
 
     def setUp(self):
         super().setUp()
-        self.settings = load_settings({"EPORTEM_SECRET_KEY": KEY, "EPORTEM_TARGET_URL": self.fake.base_url,
-                                       "EPORTEM_ADMIN_USERNAME": "boss", "EPORTEM_ADMIN_PASSWORD": "boss-password-1"})
+        self.settings = load_settings({"CHECKIN_SECRET_KEY": KEY, "CHECKIN_TARGET_URL": self.fake.base_url,
+                                       "CHECKIN_ADMIN_USERNAME": "boss", "CHECKIN_ADMIN_PASSWORD": "boss-password-1"})
         self.sched = Scheduler(self.settings, self.Session, self.box, self.engine)
         self.app = create_app(self.settings, self.Session, self.engine, self.sched)
         self.client = TestClient(self.app)

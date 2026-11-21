@@ -6,11 +6,11 @@ from unittest.mock import patch
 
 from sqlalchemy import select
 
-from eportem.db.models import DayChangeRow, DayCheck, EportemAccount, PlannedRun, RunLog, User, UserSchedule
-from eportem.db.repo import new_user
-from eportem.scheduler.runner import Engine
-from eportem.scheduler.scheduler import Scheduler
-from eportem.settings import load_settings
+from checkin.db.models import DayChangeRow, DayCheck, EportemAccount, PlannedRun, RunLog, User, UserSchedule
+from checkin.db.repo import new_user
+from checkin.scheduler.runner import Engine
+from checkin.scheduler.scheduler import Scheduler
+from checkin.settings import load_settings
 from fake_eportem import Account, FakeEportem, Fault
 from fake_eportem.testing import RequestsLoginDriver, login_with
 from tests.service.test_db import KEY, DbCase
@@ -32,12 +32,12 @@ class SchedulerCase(DbCase):
         super().setUp()
         self.fake = FakeEportem([Account(f"U{i}", f"pw{i}") for i in range(3)]).start()
         self.addCleanup(self.fake.stop)
-        env = {"EPORTEM_SECRET_KEY": KEY, "EPORTEM_TARGET_URL": self.fake.base_url,
-               "EPORTEM_DRY_RUN": "true" if self.dry_run else "false"}
+        env = {"CHECKIN_SECRET_KEY": KEY, "CHECKIN_TARGET_URL": self.fake.base_url,
+               "CHECKIN_DRY_RUN": "true" if self.dry_run else "false"}
         self.settings = load_settings(env)
         self.engine = Engine(self.settings, make_driver=RequestsLoginDriver, login_for=login_with)
         self.alerts = []
-        p = patch("eportem.scheduler.scheduler.send_alert",
+        p = patch("checkin.scheduler.scheduler.send_alert",
                   lambda db, box, user_id, text: self.alerts.append((user_id, text)))
         p.start()
         self.addCleanup(p.stop)
@@ -223,7 +223,7 @@ class TestDryRun(SchedulerCase):
     dry_run = True
 
     def test_never_alerts_either(self):
-        from eportem.scheduler import scheduler as module
+        from checkin.scheduler import scheduler as module
         uid = self.person(0)
         with patch.object(module, "send_alert") as real_alert:
             self.scheduler().tick(utc(DAY, "10:00"))          # start_day missed: would alert
@@ -234,7 +234,7 @@ class TestDryRun(SchedulerCase):
         import tempfile
         from pathlib import Path
 
-        from eportem.shadow import compare
+        from checkin.shadow import compare
         self.person(0, homes=(2,))
         self.run_day(self.scheduler())
         with tempfile.TemporaryDirectory() as tmp:
@@ -267,7 +267,7 @@ class TestAWeekForManyPeople(SchedulerCase):
         super().setUp()
         self.fake.stop()
         self.fake = FakeEportem([Account(f"U{i}", f"pw{i}") for i in range(30)]).start()
-        self.settings = load_settings({"EPORTEM_SECRET_KEY": KEY, "EPORTEM_TARGET_URL": self.fake.base_url})
+        self.settings = load_settings({"CHECKIN_SECRET_KEY": KEY, "CHECKIN_TARGET_URL": self.fake.base_url})
         self.engine = Engine(self.settings, make_driver=RequestsLoginDriver, login_for=login_with)
 
     def test_thirty_people_mixed_templates_one_week(self):
