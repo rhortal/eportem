@@ -7,7 +7,28 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 `docs/OPERATIONS.md`, the plan in
 `docs/refactor/PLAN.md`, the decisions in `docs/refactor/DECISIONS.md`.
 
-## Where things stand (2026-11-18, night)
+## Shadow check (2026-11-21)
+
+- `shadow-report --days 4` exits 0: 2026-11-19 and 2026-11-20 match cron on
+  every action, location and minute (the 18th is imported history). One more
+  working day (Monday 2026-11-23) makes the 3 the plan asks for.
+- `omv` rebooted at 08:02 on 2026-11-19 (unplanned). The service came back
+  (`unless-stopped`) and planned and ran the day. The fake had no restart
+  policy and has been down since (exit 255); a dry run never contacts the
+  target, so it didn't matter. `docker-compose.yml` now restarts it too; it
+  comes back on the next update of the shadow.
+- Watchtower restarts GlitchTip and its Postgres around 04:00 when their pinned
+  major tags get a new image (Postgres 18.7 on 2026-11-21). That gives a few
+  failed heartbeat pings and error-report retries in the service log at that
+  time (seen 2026-11-19 04:05). Harmless; the service's own image has
+  Watchtower disabled.
+- The out-of-memory kill in the host's kernel log on 2026-11-20 11:13 was
+  `immich_machine_learning`, not ePortem.
+- The service logs JSON to `docker logs eportem-eportem-1`;
+  `docker logs --since` returned nothing for it on 2026-11-21, so read the
+  whole log and filter.
+
+## Where things stood (2026-11-18, night)
 
 - Phases 0-7 done on the branch: the engine (`eportem/core`), the fake, the
   calendar and templates, settings, the database, the scheduler, auth and API,

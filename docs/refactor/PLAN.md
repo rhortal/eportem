@@ -585,7 +585,11 @@ hostname, logins) are in `docs/HANDOFF.md`, not here.
 - [x] Error reports and the heartbeat go to GlitchTip over the Compose
       network, both checked.
 - [ ] Daily shadow report (command in `docs/HANDOFF.md`). The first day with the
-      service's own plan is 2026-11-19.
+      service's own plan is 2026-11-19. 2026-11-19 and 2026-11-20 match cron
+      (every action, location and minute within the jitter); the third working
+      day is 2026-11-23. The host rebooted on the morning of 2026-11-19 and the
+      service came back and planned the day by itself. In dry run the service
+      never contacts its target, so the shadow tests the planning, not the send.
 - [ ] Public hostname: a DNS record and a reverse-proxy host. Needs the
       owner's DNS and proxy logins (the step-by-step is in `docs/HANDOFF.md`).
 - [ ] A destination for GlitchTip's alerts, and an outside uptime monitor on
