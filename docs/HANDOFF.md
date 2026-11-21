@@ -106,7 +106,10 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   whether to use `ddclient`'s Cloudflare token (below); where CI should run
   (D-024: the workflow sits in `.gitea/workflows/` and runs nowhere yet; either
   give the Gitea→GitHub mirror token the `workflow` scope and move it back, or
-  enable Gitea Actions with a runner on `omv`).
+  enable Gitea Actions with a runner on `omv`). Found 2026-11-21: a runner
+  already exists, container `gitea-runner` (`gitea/act_runner:0.6`) on `debian` next to
+  Gitea; check whether it's registered and Actions are on, then `.gitea/workflows/check.yml`
+  could run there).
 
 ## Continuing on another machine
 
