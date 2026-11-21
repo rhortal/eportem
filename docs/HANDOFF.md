@@ -7,6 +7,26 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 `docs/OPERATIONS.md`, the plan in
 `docs/refactor/PLAN.md`, the decisions in `docs/refactor/DECISIONS.md`.
 
+## Where things stand (2026-11-21, end of session)
+
+- Shadow on `omv` healthy as Compose project `checkin` (dry run, fake target):
+  2026-11-19 and 2026-11-20 match cron; `https://checkin.hortal.me` shows CheckIn.
+- Pre-switch checklist in PLAN.md phase 8 is complete except the shadow report:
+  public hostname, Telegram alerts from GlitchTip, Montastic on `/healthz`, and
+  the owner signed in. GlitchTip is now the host's own stack (homelab repo,
+  `hosts/omv/services/glitchtip.md`), on a shared Postgres.
+- Next, in order: (1) Monday 2026-11-23 evening, the shadow report (command in
+  "Shadow on `omv`" below; now `-p checkin`); if it matches, (2) the switch
+  (PLAN.md phase 8, steps 3-5) at a quiet time. Before switching, consider a
+  rehearsal with the dry run off against the fake (a separate throwaway stack),
+  since the shadow never exercises the send.
+- Open questions for the owner: the region for public holidays; CI (a Gitea
+  Actions runner already exists on `debian`, see below); the multilingual item
+  in `TODO.md`.
+- Clean-ups due about 2026-11-28, with the owner's OK: the volumes
+  `eportem_eportem-data`, `eportem_glitchtip-db`, `eportem_glitchtip-uploads`;
+  on the homelab side `Dockerdata/paperless/db.MOVED-TO-SSD-20261121`.
+
 ## Renamed to CheckIn (2026-11-21)
 
 - The project is CheckIn (D-025); "ePortem" stays only where it names the site.
