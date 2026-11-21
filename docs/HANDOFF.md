@@ -43,8 +43,11 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   the `zone=hortal.me` block) works: active, and it sees only the `hortal.me`
   zone. Its value is in single quotes in the file; strip them before use, and
   never print it. Only read with it so far.
-- Signed in at `https://checkin.hortal.me` as `roberto` (2026-11-21). Still to do: an
-  outside uptime monitor on `/healthz`.
+- Signed in at `https://checkin.hortal.me` as `roberto` (2026-11-21).
+- Outside uptime monitor: Montastic (the owner's existing account; alerts by email
+  from `no-reply@email.montastic.com` to the owner's Gmail) watches
+  `https://checkin.hortal.me/healthz`, added 2026-11-21. It already watches
+  hortal.com, hortal.me, Home Assistant and Jellyfin.
 
 ## Where things stood (2026-11-18, night)
 
@@ -58,7 +61,7 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   (below). Nothing on `omv`'s live checkout or crontab was changed.
 - Next, in order: (1) compare the shadow with cron each evening from
   2026-11-19; (2) make `checkin.hortal.me` public (done, see above);
-  (3) give GlitchTip an alert destination and add an outside uptime monitor;
+  (3) give GlitchTip an alert destination (the outside uptime monitor is done);
   (4) after about 3 matching working days, the switch (PLAN.md phase 8).
 - Open questions for the owner: the region for public holidays (only Spain's
   national ones now); where GlitchTip alerts should go (it has no email);
@@ -146,6 +149,6 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   the per-address sign-in limit sees Cloudflare's addresses (the per-user limit
   still works); trusting `CF-Connecting-IP` from Cloudflare's ranges would fix
   that (D-022).
-- Then an outside uptime monitor (healthchecks.io or UptimeRobot, free) on
+- Then an outside uptime monitor (done 2026-11-21 with Montastic, see above) on
   `https://checkin.hortal.me/healthz` (GET or HEAD), since GlitchTip on `omv`
   can't notice `omv` itself going down.

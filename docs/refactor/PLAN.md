@@ -593,8 +593,9 @@ hostname, logins) are in `docs/HANDOFF.md`, not here.
 - [x] Public hostname: a DNS record and a reverse-proxy host, with HTTPS.
       Checked from outside on 2026-11-21: health, sign-in and authentication
       on `/metrics` and the API; error tracking is not exposed.
-- [ ] A destination for GlitchTip's alerts, and an outside uptime monitor on
-      `/healthz` (a monitor on the same host can't notice the host going down).
+- [x] An outside uptime monitor on `/healthz` (a monitor on the same host
+      can't notice the host going down), added 2026-11-21.
+- [ ] A destination for GlitchTip's alerts.
 
 The owner picks their production values (public URL, port, proxy, email,
 error tracking, heartbeat) at this point, in their own `.env`.
