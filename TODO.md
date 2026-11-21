@@ -28,9 +28,10 @@ Details for each item are in `docs/HANDOFF.md`.
 - [x] 2026-11-18 evening: shadow deployed on `omv` (dry run, sends nothing).
 - [ ] From 2026-11-19, each evening: the shadow report; after about 3
       matching working days, decide the switch.
-- [ ] `checkin.hortal.me`: a Cloudflare DNS record and an nginx-proxy-manager
-      proxy host. Needs a personal Cloudflare token (or the go-ahead to use
-      `ddclient`'s) and the nginx-proxy-manager login.
-- [ ] A destination for GlitchTip alerts (Slack incoming webhook?), and an
-      outside uptime monitor on `https://checkin.hortal.me/healthz`.
+- [x] `checkin.hortal.me`: a Cloudflare DNS record and an nginx-proxy-manager
+      proxy host (found in place on 2026-11-21, see `docs/HANDOFF.md`).
+- [x] A destination for GlitchTip alerts (Telegram) and an outside uptime
+      monitor on `https://checkin.hortal.me/healthz` (Montastic), 2026-11-21.
+- [x] GlitchTip moved out of the ePortem Compose project into its own stack on
+      a shared Postgres, for every service on the host (2026-11-21).
 - [ ] The owner's region for public holidays (only national ones for now).

@@ -17,7 +17,7 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   policy and has been down since (exit 255); a dry run never contacts the
   target, so it didn't matter. `docker-compose.yml` now restarts it too; it
   comes back on the next update of the shadow.
-- Watchtower restarts GlitchTip and its Postgres around 04:00 when their pinned
+- Watchtower restarts GlitchTip and its Postgres (now the shared `postgres`) around 04:00 when their pinned
   major tags get a new image (Postgres 18.7 on 2026-11-21). That gives a few
   failed heartbeat pings and error-report retries in the service log at that
   time (seen 2026-11-19 04:05). Harmless; the service's own image has
@@ -109,16 +109,26 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   `origin/refactor/multiuser-service`). To update:
   `cd /home/pi/Apps/eportem-refactor && git fetch -q origin && git checkout -q
   --detach origin/refactor/multiuser-service && docker compose -p eportem
-  --profile dev --profile errors up -d --build`.
+  --profile dev up -d --build`. **Not** `--profile errors` any more: GlitchTip
+  moved out of this project on 2026-11-21 (below), and that profile would start
+  a second, empty GlitchTip here.
 - Untracked there: `.env` (`chmod 600`; secrets generated on `omv`;
   `EPORTEM_DRY_RUN=true`; `EPORTEM_TARGET_URL=http://fake-eportem:8081`;
   `EPORTEM_PUBLIC_URL=https://checkin.hortal.me`; `EPORTEM_PUBLISH=127.0.0.1:8095`;
   `EPORTEM_TRUSTED_PROXIES=192.168.32.0/20` (nginx-proxy-manager's network);
   metrics token; GlitchTip DSN and heartbeat URL on `glitchtip:8000`) and
-  `docker-compose.override.yml` (joins `ngingx-proxy-manager_default`).
-- Containers: `eportem-eportem-1` (`127.0.0.1:8095`), `eportem-glitchtip-1`
-  (`127.0.0.1:8098`), `eportem-glitchtip-db-1`, `eportem-fake-eportem-1`.
-  About 350 MB together.
+  `docker-compose.override.yml` (joins `ngingx-proxy-manager_default` and the
+  `glitchtip` network; previous version `.bak-20261121`).
+- Containers: `eportem-eportem-1` (`127.0.0.1:8095`) and
+  `eportem-fake-eportem-1`, about 115 MB together.
+- GlitchTip is its own stack since 2026-11-21: `/home/pi/dockers/glitchtip`,
+  container `glitchtip` (`127.0.0.1:8098`, network `glitchtip`), on the shared
+  Postgres (`/home/pi/dockers/postgres`, database `glitchtip`), for every
+  service on `omv`. Its data (organisation, project, DSN key, heartbeat monitor,
+  the Telegram alert, issues) moved with it, so `.env` didn't change. The old
+  volumes `eportem_glitchtip-db` and `eportem_glitchtip-uploads` are kept for
+  rollback; delete them after about a week. Details in the homelab repo,
+  `hosts/omv/services/glitchtip.md`.
 - Logins: the service user `roberto` (admin), password in
   `/home/pi/.eportem-admin-password`; GlitchTip `admin@hortal.me`, password in
   `/home/pi/.glitchtip-admin-password` (both `chmod 600`, 24 random characters).
@@ -142,7 +152,8 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   docker compose -p eportem exec -T eportem rm -rf /tmp/legacy
   ```
 - To stop the shadow entirely: `docker compose -p eportem --profile dev
-  --profile errors down` in the worktree (add `-v` to delete its data too).
+  down` in the worktree (add `-v` to delete its data too; that would also
+  delete the old GlitchTip volumes). GlitchTip keeps running.
 
 ## Making `checkin.hortal.me` public (as planned on 2026-11-18; now done, see above)
 

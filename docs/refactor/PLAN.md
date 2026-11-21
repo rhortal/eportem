@@ -578,7 +578,9 @@ hostname, logins) are in `docs/HANDOFF.md`, not here.
 - [x] Shadow running on the owner's host from a git worktree of this branch,
       as its own Compose project. The live checkout and crontab are untouched.
       It runs the service in dry run with the fake as its target, GlitchTip with
-      Postgres, and the fake, all published on `127.0.0.1` only. In dry run it
+      Postgres, and the fake, all published on `127.0.0.1` only. Since
+      2026-11-21 GlitchTip runs as the host's own stack (on its shared Postgres)
+      instead of the `errors` profile; the profile stays for other installs. In dry run it
       sends nothing: no ePortem request, no notification, no alert.
 - [x] Owner imported with `import-legacy` (files streamed into the container,
       deleted afterwards), with recorded actions as history.
