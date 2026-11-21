@@ -595,7 +595,7 @@ hostname, logins) are in `docs/HANDOFF.md`, not here.
       on `/metrics` and the API; error tracking is not exposed.
 - [x] An outside uptime monitor on `/healthz` (a monitor on the same host
       can't notice the host going down), added 2026-11-21.
-- [ ] A destination for GlitchTip's alerts.
+- [x] A destination for GlitchTip's alerts (Telegram, 2026-11-21; checked end to end).
 
 The owner picks their production values (public URL, port, proxy, email,
 error tracking, heartbeat) at this point, in their own `.env`.

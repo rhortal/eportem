@@ -48,6 +48,20 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   from `no-reply@email.montastic.com` to the owner's Gmail) watches
   `https://checkin.hortal.me/healthz`, added 2026-11-21. It already watches
   hortal.com, hortal.me, Home Assistant and Jellyfin.
+- GlitchTip alerts go to Telegram (2026-11-21): project alert "Telegram" (any issue
+  with 1 event in 10 minutes, plus uptime monitors) with a generic-webhook recipient
+  `https://api.telegram.org/bot<token>/sendMessage?chat_id=414665210`: the bot and
+  chat Home Assistant and the cron set-up use (`rhmhome_bot`, from `config/.env`).
+  The token is in GlitchTip's database. Telegram takes the webhook's `text` and
+  ignores its `attachments`, so a message only says "GlitchTip Alert" or "GlitchTip
+  Uptime Alert": open GlitchTip for the detail. Checked end to end with a test error
+  (issue 2 in GlitchTip, still open; resolve it in the UI).
+- Fixed the same day: the heartbeat monitor had been created on 2026-11-18 with
+  `monitor_type="heartbeat"`; GlitchTip's value is `"Heartbeat"`. Pings were recorded,
+  but every scheduled check treated it as a URL monitor with no URL and marked it
+  down, so it flapped every minute from 2026-11-18 (unnoticed, no alert existed;
+  four Telegram messages went out before it was found). Set to `"Heartbeat"`; steady
+  up since 09:43 UTC. Create monitors in GlitchTip's UI, not by hand in the shell.
 
 ## Where things stood (2026-11-18, night)
 
@@ -61,7 +75,7 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   (below). Nothing on `omv`'s live checkout or crontab was changed.
 - Next, in order: (1) compare the shadow with cron each evening from
   2026-11-19; (2) make `checkin.hortal.me` public (done, see above);
-  (3) give GlitchTip an alert destination (the outside uptime monitor is done);
+  (3) done: GlitchTip alerts go to Telegram, Montastic watches `/healthz`;
   (4) after about 3 matching working days, the switch (PLAN.md phase 8).
 - Open questions for the owner: the region for public holidays (only Spain's
   national ones now); where GlitchTip alerts should go (it has no email);
