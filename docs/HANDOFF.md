@@ -7,6 +7,20 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 `docs/OPERATIONS.md`, the plan in
 `docs/refactor/PLAN.md`, the decisions in `docs/refactor/DECISIONS.md`.
 
+## Home on Tuesday 2026-11-24 (set 2026-11-23)
+
+- The owner works from home on 2026-11-24 (a normal office day), and plans the
+  switch that morning before 9:00. Both systems know:
+  - Service: a day change (`kind: location`, home, 2026-11-24, id 1) added through
+    the API with a one-off token (revoked); `resolve()` gives home, "changed for
+    this day". Runs for the day are planned at midnight.
+  - Cron: `location_override.txt` only works for the current day, so `pi`'s crontab
+    has a date-guarded line at 00:05 on 2026-11-24 running
+    `override_location.py home` (marker `#eportem-home-oneshot-20261124`, log
+    `logs/home-oneshot-20261124.log`; crontab backup
+    `/home/pi/crontab.bak-20261123-home-oneshot`). Remove those two lines after the day
+    (or at the switch, when the clocking lines are commented out).
+
 ## Shadow verdict (2026-11-23)
 
 - `shadow-report --days 6` exits 0 at 18:08: 2026-11-19, 2026-11-20 and 2026-11-23
