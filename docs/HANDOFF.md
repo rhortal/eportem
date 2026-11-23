@@ -7,6 +7,18 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 `docs/OPERATIONS.md`, the plan in
 `docs/refactor/PLAN.md`, the decisions in `docs/refactor/DECISIONS.md`.
 
+## Shadow verdict (2026-11-23)
+
+- `shadow-report --days 6` exits 0 at 18:08: 2026-11-19, 2026-11-20 and 2026-11-23
+  all match cron on every action, location and minute (today: 08:56/08:55,
+  13:33/13:28, 14:30/14:33, 17:59/17:59, office). `omv` rebooted early on
+  2026-11-22 (weekly) and the service came back by itself. Ready for the switch
+  (PLAN.md phase 8, steps 3-5), at a quiet time chosen by the owner.
+- Same day, homelab: the cloud-drives backup (watched by the new heartbeats) had
+  been failing, probably since 2026-09-24: nginx-proxy-manager's probe rule
+  403'd `.git` folders over Nextcloud WebDAV, and Google Drive had dangling
+  shortcuts. Both fixed; a manual run copied everything with 0 errors.
+
 ## Where things stand (2026-11-21, end of session)
 
 - Shadow on `omv` healthy as Compose project `checkin` (dry run, fake target):

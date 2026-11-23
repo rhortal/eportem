@@ -586,7 +586,8 @@ hostname, logins) are in `docs/HANDOFF.md`, not here.
       deleted afterwards), with recorded actions as history.
 - [x] Error reports and the heartbeat go to GlitchTip over the Compose
       network, both checked.
-- [ ] Daily shadow report (command in `docs/HANDOFF.md`). The first day with the
+- [x] Daily shadow report (command in `docs/HANDOFF.md`). Done 2026-11-23: three
+      full working days match (2026-11-19, 2026-11-20, 2026-11-23). The first day with the
       service's own plan is 2026-11-19. 2026-11-19 and 2026-11-20 match cron
       (every action, location and minute within the jitter); the third working
       day is 2026-11-23. The host rebooted on the morning of 2026-11-19 and the
