@@ -7,33 +7,33 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 `docs/OPERATIONS.md`, the plan in
 `docs/refactor/PLAN.md`, the decisions in `docs/refactor/DECISIONS.md`.
 
-## Start here (end of the 2026-11-24 session on the work Mac, about 16:15)
+## Start here (end of the 2026-11-24 session on the work Mac, about 18:50)
 
-Sequence agreed with the owner: the work Mac finishes today's hand-over on
-`refactor/multiuser-service` (watch the 18:03 clock-out and the day check, then the
-merge to `main` at 18:44). Anything about the public website, including moving the app
-to another hostname, lives only on the branch `website` (its `docs/HANDOFF.md`). State at hand-over:
+The hand-over on the work Mac is done. Anything about the public website, including
+moving the app to another hostname, lives only on the branch `website` (its
+`docs/HANDOFF.md`); that work continues on the other laptop. State:
 
-- **CheckIn clocks for real on `omv` since 09:30 today** (switch below); cron no longer
-  clocks. Today, all at home: start 09:02 (cron, before the switch), lunch 13:32 and
-  back 14:28 (CheckIn, over HTTP, no errors), stop planned for **18:03**, then
-  CheckIn's own day check about 18:43.
-- **D-026 is live** (`4c76e63`, deployed 15:13): the clock-in only ever before the
-  template's start, the clock-out only ever after its stop (08:51-08:59:30 and
-  18:00:30-18:09 with the defaults). Templates still say 9:00 and 18:00.
-- **Branches:**
-  - `refactor/multiuser-service` at `95e7be0` (plus this handoff): what `omv` runs
-    (worktree detached at `4c76e63`; the commits since are docs only).
-  - `website`: the public website and its plans; see that branch.
-  - `main`: still the cron code; not yet fast-forwarded (see "After the switch").
-- **A one-shot job is scheduled in the work Mac's Claude session for 18:44 today**
-  (session-only: it runs only if that session is still open; the owner wants it to run). It checks the day and,
-  if clean, fast-forwards `main` to `refactor/multiuser-service`, pushes, and points
-  `omv`'s worktree at `origin/main`. To see whether it ran: `git log origin/main -1`
-  (it would equal the branch) and `git -C /home/pi/Apps/eportem-refactor log -1` on
-  `omv`. If it didn't run and the day was clean, do those steps by hand (commands in
-  "After the switch", step 2). Never do the restart between 17:45 and 18:15 on a
-  working day.
+- **CheckIn clocks for real on `omv` since 09:30 on 2026-11-24**; cron no longer
+  clocks. The first full day was clean, all at home: start 09:02 (cron, before the
+  switch), lunch 13:32 and back 14:28, stop 18:03:41 (CheckIn, over HTTP, no errors),
+  CheckIn's day check ok at 18:40.
+- **D-026 is live:** the clock-in only ever before the template's start, the
+  clock-out only ever after its stop (08:51-08:59:30 and 18:00:30-18:09 with the
+  defaults; checked for 2026-11-25). Templates still say 9:00 and 18:00.
+- **`main` is now the service** (fast-forwarded to `refactor/multiuser-service` at
+  `96c4d25`, 18:45, pushed to Gitea). `omv`'s worktree
+  `/home/pi/Apps/eportem-refactor` is detached at `origin/main` (it can't check out
+  `main` itself: the cron checkout `/home/pi/Apps/eportem` has it). The commits since
+  `4c76e63` were docs only, so the rebuild kept the same container; `/readyz` 200.
+  The cron checkout was not pulled (it stays at `54477fa`, the rollback).
+- **Branches:** `main` and `refactor/multiuser-service` are the same line; new work
+  can go on `main` (or a branch from it). `website`: the public website and its
+  plans; see that branch.
+- **To update `omv` from now on:** in the worktree, `git fetch -q origin && git
+  checkout -q --detach origin/main && docker compose -p checkin up -d --build`.
+  Never restart between 17:45 and 18:15, or near any clock time, on a working day.
+- **Next:** steps 3 and 4 of "After the switch" (volumes about 2026-11-28; the cron
+  clean-up about 2026-12-08, after two clean weeks).
 
 ## Switched to CheckIn (2026-11-24, 09:20-09:30)
 
@@ -56,7 +56,7 @@ CheckIn on `omv` now clocks for real; cron no longer does (PLAN.md phase 8, step
 - Today as planned by the service, all home: lunch_break 13:31, after_lunch 14:27,
   stop_day 17:55 (local), then its own day check 40 minutes after the last action.
   Telegram and Slack channels are on (imported from `config/.env`).
-- To update from now on: `git fetch -q origin && git checkout -q --detach
+- To update from now on (superseded: see "Start here", now `origin/main`): `git fetch -q origin && git checkout -q --detach
   origin/refactor/multiuser-service && docker compose -p checkin up -d --build`
   (no `--profile dev`).
 - **Rollback** (step 5): `docker compose -p checkin stop` in the worktree, then
@@ -76,9 +76,8 @@ CheckIn on `omv` now clocks for real; cron no longer does (PLAN.md phase 8, step
   after a restart, so re-planning shows up then, not at once). Lunch 13:32 and back
   14:28 were clocked over HTTP before that.
 
-1. Today: check the 13:31 run, then the whole day after the service's day check
-   (about 18:35).
-2. If the day is clean: fast-forward `main` to `refactor/multiuser-service` (no
+1. Done 2026-11-24: the 13:31 run and the whole day checked; clean.
+2. Done 2026-11-24 18:45 (see "Start here"). If the day is clean: fast-forward `main` to `refactor/multiuser-service` (no
    conflicts: `main` has nothing the branch lacks), push, and point the worktree on
    `omv` at `main` instead of the branch. The branch keeps `run.sh` and the cron
    path at the root, so the cron checkout (the rollback) still works after a pull.

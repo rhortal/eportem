@@ -608,6 +608,10 @@ hostname, logins) are in `docs/HANDOFF.md`, not here.
       real site. Next: step 4, watching the first full day.
 - [x] 2026-11-24: the clock-in is planned only before the start time and the
       clock-out only after the stop time (D-026), at the owner's request.
+- [x] First full day (step 4), 2026-11-24: all four actions recorded at home
+      (start by cron before the switch; lunch 13:32, back 14:28, stop 18:03 over
+      HTTP), the day check ok. `main` fast-forwarded to this branch the same
+      evening; the host now runs `main`. Next: two clean weeks, then step 6.
 
 The owner picks their production values (public URL, port, proxy, email,
 error tracking, heartbeat) at this point, in their own `.env`.
