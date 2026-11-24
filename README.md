@@ -551,7 +551,7 @@ generated from `checkin/settings.py` by `python -m checkin config docs`.
 | `CHECKIN_DEFAULT_HOLIDAY_COUNTRY` | `ES` | Country for public holidays (ISO code); empty for none. |
 | `CHECKIN_DEFAULT_HOLIDAY_REGION` |  | Region for public holidays, e.g. MD (Madrid), CT (Catalonia). |
 | `CHECKIN_DEFAULT_TEMPLATE` | `european-9-18` | Working-day template for new users (a built-in key). |
-| `CHECKIN_DEFAULT_JITTER_BEFORE_MINUTES` | `5` | Random offset for new users: start up to this many minutes before an action's time. Each person changes their own in their profile. |
+| `CHECKIN_DEFAULT_JITTER_BEFORE_MINUTES` | `5` | Random offset for new users: start up to this many minutes before an action's time. The clock-in and clock-out never fall inside the working day: they go only before the start or after the stop, spread over before + after minutes. Each person changes their own in their profile. |
 | `CHECKIN_DEFAULT_JITTER_AFTER_MINUTES` | `4` | Random offset for new users: start up to this many minutes after an action's time. |
 | **Scheduling** | | |
 | `CHECKIN_WINDOW_MINUTES` | `15` | An action may run this many minutes either side of its time, never later. Everyone's random offset must fit inside it. |

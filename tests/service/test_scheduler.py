@@ -96,10 +96,43 @@ class TestADay(SchedulerCase):
         uid = self.person(0, jitter_before_minutes=2, jitter_after_minutes=1)
         sched = self.scheduler()
         sched.tick(utc(DAY, "06:00"))
-        for run in self.runs(uid).values():
+        for action in ("lunch_break", "after_lunch"):
+            run = self.runs(uid)[action]
             target = utc(DAY, "00:00") + datetime.timedelta(minutes=run.target_minute)
             self.assertGreaterEqual(run.planned_at, target - datetime.timedelta(minutes=2))
             self.assertLessEqual(run.planned_at, target + datetime.timedelta(minutes=1))
+
+    def test_the_day_starts_before_and_ends_after_the_template_times(self):
+        for seed in range(40):
+            with self.subTest(seed=seed):
+                uid = self.person(seed + 10, jitter_before_minutes=5, jitter_after_minutes=4)
+                sched = Scheduler(self.settings, self.Session, self.box, self.engine, rng=random.Random(seed),
+                                  holder="test")
+                sched.tick(utc(DAY, "06:00"))
+                runs = self.runs(uid)
+                self.assertLess(runs["start_day"].planned_at, utc(DAY, "09:00"))
+                self.assertGreaterEqual(runs["start_day"].planned_at, utc(DAY, "08:51"))
+                self.assertGreater(runs["stop_day"].planned_at, utc(DAY, "18:00"))
+                self.assertLessEqual(runs["stop_day"].planned_at, utc(DAY, "18:09"))
+                with self.Session.begin() as db:
+                    db.query(PlannedRun).delete()
+
+    def test_an_edge_offset_never_exceeds_the_window(self):
+        uid = self.person(0, jitter_before_minutes=15, jitter_after_minutes=15)
+        self.scheduler().tick(utc(DAY, "06:00"))
+        runs = self.runs(uid)
+        self.assertGreaterEqual(runs["start_day"].planned_at, utc(DAY, "08:45"))
+        self.assertLessEqual(runs["stop_day"].planned_at, utc(DAY, "18:15"))
+
+    def test_a_planned_stop_inside_the_day_is_moved_out(self):
+        uid = self.person(0)
+        self.scheduler().tick(utc(DAY, "06:00"))
+        with self.Session.begin() as db:  # planned by the old rule: 17:55
+            db.get(PlannedRun, self.runs(uid)["stop_day"].id).planned_at = utc(DAY, "17:55")
+        self.scheduler().tick(utc(DAY, "15:00"))  # a restart re-plans the day
+        stop = self.runs(uid)["stop_day"]
+        self.assertEqual(stop.status, "planned")
+        self.assertGreater(stop.planned_at, utc(DAY, "18:00"))
 
     def test_weekend_and_paused_plan_nothing(self):
         uid = self.person(0)

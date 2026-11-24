@@ -606,6 +606,8 @@ hostname, logins) are in `docs/HANDOFF.md`, not here.
       lines commented out (crontab backed up), `import-legacy` run again for the
       current session cookies and the morning's clock-in, dry run off, target the
       real site. Next: step 4, watching the first full day.
+- [x] 2026-11-24: the clock-in is planned only before the start time and the
+      clock-out only after the stop time (D-026), at the owner's request.
 
 The owner picks their production values (public URL, port, proxy, email,
 error tracking, heartbeat) at this point, in their own `.env`.

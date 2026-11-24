@@ -99,8 +99,11 @@ class Settings(BaseSettings):
     default_template: str = _f("european-9-18", "Defaults for new users", "Working-day template for new "
                                "users (a built-in key).")
     default_jitter_before_minutes: int = _f(5, "Defaults for new users", "Random offset for new users: "
-                                            "start up to this many minutes before an action's time. Each "
-                                            "person changes their own in their profile.", ge=0, le=60)
+                                            "start up to this many minutes before an action's time. The "
+                                            "clock-in and clock-out never fall inside the working day: "
+                                            "they go only before the start or after the stop, spread over "
+                                            "before + after minutes. Each person changes their own in "
+                                            "their profile.", ge=0, le=60)
     default_jitter_after_minutes: int = _f(4, "Defaults for new users", "Random offset for new users: "
                                            "start up to this many minutes after an action's time.", ge=0, le=60)
 

@@ -333,3 +333,17 @@ keeps its name for now. Existing installs keep working: every `EPORTEM_<NAME>`
 isn't set, with a warning; the default database stays `eportem.db` while no
 `checkin.db` exists. Renaming the Compose service and volume does need a manual
 step on an existing install (copy the old volume's data to the new one).
+
+**D-026: The clock-in is never late and the clock-out never early** (Accepted, 2026-11-24, owner's request)
+The random offset used to apply the same way to every action, so a 9:00 start
+could be clocked at 9:04 and an 18:00 stop at 17:55 (the cron set-up did the
+same). The owner wants the working day never cut short. → The planner puts
+`start_day` only before the template's start and `stop_day` only after its
+stop, at least 30 seconds out, spread over the person's whole offset (before +
+after minutes, capped by the window); with the defaults (5 and 4) that is
+08:51–08:59:30 and 18:00:30–18:09. Lunch out and back keep the symmetric
+offset. Templates keep the real working hours (9:00 and 18:00), so the rule
+holds for every template, built-in or custom, with no new setting. A planned run
+that breaks the rule (planned before this change) is re-planned on the next
+start-up. Catching up after an outage can still clock in late: within the window,
+late beats not at all.

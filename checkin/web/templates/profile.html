@@ -9,7 +9,7 @@
       <option value="en" {{ 'selected' if user.locale == 'en' }}>English</option></select></div>
   </div>
   <h2>{{ t("Random offset") }}</h2>
-  <p class="muted">Each action starts at a random moment between these limits around its time, inside the {{ window }}-minute window.</p>
+  <p class="muted">Lunch out and back start at a random moment between these limits around their time, inside the {{ window }}-minute window. The day never starts late or ends early: the clock-in goes only before the start time and the clock-out only after the stop time, spread over both limits together.</p>
   <div class="row">
     <div><label>{{ t("minutes before") }}</label><input type="number" name="jitter_before_minutes" min="0" max="{{ window }}" value="{{ user.jitter_before_minutes }}"></div>
     <div><label>{{ t("minutes after") }}</label><input type="number" name="jitter_after_minutes" min="0" max="{{ window }}" value="{{ user.jitter_after_minutes }}"></div>
