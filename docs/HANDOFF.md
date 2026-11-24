@@ -40,6 +40,23 @@ CheckIn on `omv` now clocks for real; cron no longer does (PLAN.md phase 8, step
   the day check, Telegram/Slack messages. Then two clean weeks before step 6
   (delete `legacy/` and the cron docs). The shadow-report command no longer applies.
 
+## After the switch: agreed with the owner (2026-11-24)
+
+1. Today: check the 13:31 run, then the whole day after the service's day check
+   (about 18:35).
+2. If the day is clean: fast-forward `main` to `refactor/multiuser-service` (no
+   conflicts: `main` has nothing the branch lacks), push, and point the worktree on
+   `omv` at `main` instead of the branch. The branch keeps `run.sh` and the cron
+   path at the root, so the cron checkout (the rollback) still works after a pull.
+3. About 2026-11-28 (approved): delete the volumes `eportem_eportem-data`,
+   `eportem_glitchtip-db`, `eportem_glitchtip-uploads`, and on the homelab side
+   `Dockerdata/paperless/db.MOVED-TO-SSD-20261121`.
+4. About 2026-12-08, after two clean weeks (PLAN.md phase 8, step 6): delete the
+   cron scripts and their docs, rewrite the operations sections of README and
+   `docs/OPERATIONS.md`; on `omv` remove the cron checkout, the commented crontab
+   lines and their backup, the `.env` and crontab `.bak` files, and consider a
+   tidier home for the service than `/home/pi/Apps/eportem-refactor`.
+
 ## Home on Tuesday 2026-11-24 (set 2026-11-23; done)
 
 - The owner works from home on 2026-11-24 (a normal office day), and plans the
