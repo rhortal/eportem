@@ -7,7 +7,40 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 `docs/OPERATIONS.md`, the plan in
 `docs/refactor/PLAN.md`, the decisions in `docs/refactor/DECISIONS.md`.
 
-## Home on Tuesday 2026-11-24 (set 2026-11-23)
+## Switched to CheckIn (2026-11-24, 09:20-09:30)
+
+CheckIn on `omv` now clocks for real; cron no longer does (PLAN.md phase 8, step 3).
+- Rehearsal first: a throwaway Compose project with the dry run off against the
+  fake (own database, port 8197, no channels). Verify logged in by browser, then
+  `start_day` over HTTP, then after expiring the fake's session `lunch_break` logged
+  in again and clocked; the fake saw exactly one event each. Removed with `down -v`.
+- Crontab: backup `/home/pi/crontab.bak-20261124-switch`. The six clocking lines and
+  the 18:40 `--verify-day` line are commented out with the prefix
+  `#SWITCHED-TO-CHECKIN-20261124`; the home one-shot lines for today were removed
+  (they had already run at 00:05).
+- Worktree moved to `05f8848` (docs only since `625d8b0`, same image). `import-legacy`
+  run again from the cron checkout: fresh session cookies (cron's 09:02 login) and
+  today's `start_day` stored as recorded (`legacy-http`), so it isn't repeated.
+- `.env`: `CHECKIN_DRY_RUN=false`, `CHECKIN_TARGET_URL` removed (default
+  `https://eportem.es`); backup `.env.bak-20261124-switch`. Recreated with
+  `docker compose -p checkin up -d` (no `--profile dev` from now on); the fake
+  container removed. Ready at once; `config show` confirms both settings.
+- Today as planned by the service, all home: lunch_break 13:31, after_lunch 14:27,
+  stop_day 17:55 (local), then its own day check 40 minutes after the last action.
+  Telegram and Slack channels are on (imported from `config/.env`).
+- To update from now on: `git fetch -q origin && git checkout -q --detach
+  origin/refactor/multiuser-service && docker compose -p checkin up -d --build`
+  (no `--profile dev`).
+- **Rollback** (step 5): `docker compose -p checkin stop` in the worktree, then
+  `crontab /home/pi/crontab.bak-20261124-switch` (its one-shot line is date-guarded,
+  harmless). The cron checkout and `config/.env` are unchanged. Note the service
+  holds the newer session cookies only if it had to log in; cron logs in by itself
+  when its own cookies expire.
+- Next: watch the first full day (step 4): each run on the runs page or `/runs`,
+  the day check, Telegram/Slack messages. Then two clean weeks before step 6
+  (delete `legacy/` and the cron docs). The shadow-report command no longer applies.
+
+## Home on Tuesday 2026-11-24 (set 2026-11-23; done)
 
 - The owner works from home on 2026-11-24 (a normal office day), and plans the
   switch that morning before 9:00. Both systems know:

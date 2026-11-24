@@ -79,6 +79,12 @@ purpose: a per-page DevTools override would not reach the reCAPTCHA frames.
 
 ## The crontab
 
+**Since 2026-11-24 cron no longer clocks**: CheckIn (Compose project `checkin`,
+worktree `/home/pi/Apps/eportem-refactor`) does. The clocking and verify-day lines
+are commented out with the prefix `#SWITCHED-TO-CHECKIN-20261124`; the backup is
+`/home/pi/crontab.bak-20261124-switch`. Restoring it is the rollback (stop the
+container first). The notes below describe the cron set-up as it was.
+
 `config/config.json` only defines the target times `main.py` checks against
 (±15 minute window). The actual trigger timing is in the system crontab
 (`crontab -l` as user `pi`), which fires early and sleeps a random amount so

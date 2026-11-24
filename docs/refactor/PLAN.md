@@ -599,6 +599,13 @@ hostname, logins) are in `docs/HANDOFF.md`, not here.
 - [x] An outside uptime monitor on `/healthz` (a monitor on the same host
       can't notice the host going down), added 2026-11-21.
 - [x] A destination for GlitchTip's alerts (Telegram, 2026-11-21; checked end to end).
+- [x] Rehearsal with the dry run off against the fake, in a throwaway project on
+      the owner's host (2026-11-24): a browser login, a clock over HTTP, and a
+      fresh login after the session expired; one event per action.
+- [x] Switch (step 3), 2026-11-24 mid-morning: the cron clocking and verify-day
+      lines commented out (crontab backed up), `import-legacy` run again for the
+      current session cookies and the morning's clock-in, dry run off, target the
+      real site. Next: step 4, watching the first full day.
 
 The owner picks their production values (public URL, port, proxy, email,
 error tracking, heartbeat) at this point, in their own `.env`.
