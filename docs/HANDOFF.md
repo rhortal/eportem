@@ -42,6 +42,12 @@ CheckIn on `omv` now clocks for real; cron no longer does (PLAN.md phase 8, step
 
 ## After the switch: agreed with the owner (2026-11-24)
 
+- 15:13: D-026 deployed (`4c76e63`): the clock-in only before the start time, the
+  clock-out only after the stop time. On start-up the service moved today's
+  stop_day from 17:55 to 18:03 (the new scheduler takes the lock about 2 minutes
+  after a restart, so re-planning shows up then, not at once). Lunch 13:32 and back
+  14:28 were clocked over HTTP before that.
+
 1. Today: check the 13:31 run, then the whole day after the service's day check
    (about 18:35).
 2. If the day is clean: fast-forward `main` to `refactor/multiuser-service` (no
