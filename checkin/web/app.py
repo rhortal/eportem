@@ -131,7 +131,7 @@ def create_app(settings, sessionmaker=None, engine=None, scheduler=None, start_s
             scheduler.stop()
             thread.join(timeout=30)
 
-    app = FastAPI(title="CheckIn", version="0.1.0", root_path=settings.root_path, lifespan=lifespan,
+    app = FastAPI(title="CheckIn", version="2.0.0", root_path=settings.root_path, lifespan=lifespan,
                   docs_url="/api/docs", openapi_url="/api/openapi.json", redoc_url=None)
     app.state.checkin = AppState(settings, sessionmaker, box, engine, scheduler)
 

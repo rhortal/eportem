@@ -644,6 +644,15 @@ host name, a domain, your email), list them one per line in
 `.portability-denylist` at the top of the repository. That file is
 gitignored, so the names never get committed.
 
+## Releases
+
+Releases are annotated Git tags (`git tag -l -n9 'v*'` lists them with their notes; `git checkout v1.0.0` gets one back):
+
+- `v2.0.0` (2026-11-24): the multi-user service (`checkin/`): its own scheduler, web UI and API, Docker. It replaced cron after its first clean live day. The cron scripts are still in the tree as the rollback until they are removed (`docs/refactor/PLAN.md`, phase 8, step 6).
+- `v1.0.0` (2026-11-17): the cron scripts (`run.sh` → `main.py` → `eportem_action.py`), clocking over HTTP with the browser as the fallback, the last state before the refactor.
+
+The version in `pyproject.toml` (also reported by the API and in error reports) matches the latest tag; change all three places together.
+
 ## Acknowledgements
 
 - ChatGPT, Claude, Qwen, Gemma and Gemini

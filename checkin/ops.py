@@ -52,7 +52,7 @@ def _scrub_event(event, hint):
     return event
 
 
-def init_error_reports(settings, version="0.1.0"):
+def init_error_reports(settings, version="2.0.0"):
     """Sentry or GlitchTip when CHECKIN_SENTRY_DSN is set. Returns True if on."""
     if not settings.sentry_dsn:
         return False
