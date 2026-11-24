@@ -580,6 +580,17 @@ generated from `checkin/settings.py` by `python -m checkin config docs`.
 | `CHECKIN_ADMIN_ALERT_CHANNEL` |  | Where admin alerts go, e.g. telegram:<chat id> or slack:<channel id>. |
 <!-- settings-table:end -->
 
+## Public website (branch `website`)
+
+`website/` is a static placeholder that presents CheckIn, in English and Spanish:
+what it does, how it works, terms of use, privacy and a legal notice. No sign-up,
+no cookies, nothing loaded from other sites. Copy `website/site.env.example` to
+`website/site.env` (untracked: your name, contact email and site address), then
+`python3 website/build.py` writes `website/dist/`, ready for any static host
+(`--example` builds a preview with made-up values). Its pictures are drawings of
+the product, never screenshots; `website/VISUALS.md` lists where each comes from.
+Details in `website/README.md`.
+
 ## Development
 
 The clock engine is the `checkin.core` package. It reads no environment variables and no files: the site URL, the account's activity IDs, the credentials, where the session cookies are kept and how to start a browser are all arguments, and progress messages go through a `say` callable instead of `print`. The scripts below are adapters that fill it in from `config/.env` and the repository's files, so their behaviour and output are the same as before. The multi-user service being built on the `refactor/multiuser-service` branch (see `docs/refactor/PLAN.md`) will use the same engine.

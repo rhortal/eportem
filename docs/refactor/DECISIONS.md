@@ -347,3 +347,22 @@ holds for every template, built-in or custom, with no new setting. A planned run
 that breaks the rule (planned before this change) is re-planned on the next
 start-up. Catching up after an outage can still clock in late: within the window,
 late beats not at all.
+
+**D-027: A static public website, built apart from the service** (Accepted, 2026-11-24, owner's request; branch `website`)
+The owner wants a page that presents CheckIn to the world before sign-ups exist,
+with terms that make clear CheckIn isn't responsible for wrong clock events, an
+ePortem trademark disclaimer, and a visual style that shows our product and never
+ePortem's. → `website/`: plain HTML and CSS in English and Spanish, built by a
+standard-library script (`website/build.py`) into `website/dist/`, deployable on
+any static host. Personal values (name, contact email, address, tax ID) live in
+the untracked `website/site.env`, like every personal value (D-012), and the
+build fails while one is missing. The site sets no cookies and loads nothing from
+other sites (system fonts, drawn pictures), so its privacy policy stays short; a
+test enforces that, the disclaimer on every page, and working links. Pictures are
+HTML/CSS drawings of the product's own screens, each catalogued with its source in
+`website/VISUALS.md` for when the UI is redesigned; the one picture of a
+time-recording site is a generic illustration labelled as such. The legal pages
+are a first draft to be reviewed before the service takes users. Not served by
+the service itself: the site has to stay up and simple even when the service is
+down or being changed.
+

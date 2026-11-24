@@ -186,3 +186,7 @@ venv.old.*/
 
 # Local Docker Compose overrides (host-specific networks, ports)
 docker-compose.override.yml
+
+# The public website: build output and personal values
+website/dist/
+website/site.env

@@ -40,6 +40,22 @@ CheckIn on `omv` now clocks for real; cron no longer does (PLAN.md phase 8, step
   the day check, Telegram/Slack messages. Then two clean weeks before step 6
   (delete `legacy/` and the cron docs). The shadow-report command no longer applies.
 
+## Public website: branch `website` (started 2026-11-24)
+
+- A static placeholder in `website/` (D-027): home page with drawings of the product,
+  terms of use, privacy, legal notice, in English and Spanish. Build:
+  `python3 website/build.py --example` for a preview; for real, create the untracked
+  `website/site.env` with the owner's name, contact email and the site's address.
+- Not published anywhere yet, and not merged. Open for the owner: where to host it
+  (the obvious candidate is a page on the domain the service already uses, or its own
+  domain), the contact address to show, and a legal review of the terms and privacy
+  policy before the service takes users. `LOG_RETENTION_DAYS` and `NETWORK_PROVIDER`
+  must match the real host (Cloudflare proxies the current domain).
+- The owner asked for every picture's source to be recorded, because the product UI
+  will be redesigned: `website/VISUALS.md`, plus a comment at the top of each
+  `src/_v-*.html`. Gaps it found in the product: the English UI shows raw action keys
+  (`start_day`...), and notifications are English-only.
+
 ## After the switch: agreed with the owner (2026-11-24)
 
 - 15:13: D-026 deployed (`4c76e63`): the clock-in only before the start time, the

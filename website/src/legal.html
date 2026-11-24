@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal notice · CheckIn</title>
+<link rel="canonical" href="{{SITE_URL}}/legal.html">
+<link rel="icon" href="{{ROOT}}assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="{{ROOT}}assets/site.css">
+</head>
+<body>
+<!--include:_header.en.html-->
+<main id="main" class="wrap doc">
+<h1>Legal notice</h1>
+<p class="updated">Last updated: 24 November 2026</p>
+
+<h2>Who runs this site</h2>
+<p>As required by Spanish Law 34/2002 on information society services (LSSI), article 10:</p>
+<dl>
+  <dt>Owner</dt><dd>{{OWNER_NAME}}, private individual</dd>
+  <!--if:OWNER_TAX_ID--><dt>Tax ID (NIF)</dt><dd>{{OWNER_TAX_ID}}</dd><!--endif:OWNER_TAX_ID-->
+  <!--if:OWNER_ADDRESS--><dt>Address</dt><dd>{{OWNER_ADDRESS}}</dd><!--endif:OWNER_ADDRESS-->
+  <dt>Email</dt><dd><a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a></dd>
+  <dt>Website</dt><dd>{{SITE_URL}}</dd>
+</dl>
+<p>This site presents CheckIn, a project that is not open to the public yet. It sells nothing and takes no sign-ups.</p>
+
+<h2>Trademarks</h2>
+<p>ePortem is a trademark of its owner. CheckIn is an independent project, not affiliated with, endorsed by or
+sponsored by ePortem or its owner. The name ePortem is used only to describe which site CheckIn works with. Pictures of
+ePortem on this site are simplified illustrations made for this site, not screenshots or copies of ePortem's design.
+Telegram and Slack are trademarks of their owners, mentioned only because CheckIn can send messages through them.</p>
+
+<h2>Content</h2>
+<p>The text, drawings and code of this site belong to {{OWNER_NAME}} unless stated otherwise. You may link to any page.
+We try to keep the information here accurate, but it describes a service that is still being built and may change.</p>
+
+<h2>Terms and privacy</h2>
+<p>See the <a href="{{ROOT}}terms.html">terms of use</a> and the <a href="{{ROOT}}privacy.html">privacy policy</a>.
+<a href="{{ALT}}">Versión en español</a>.</p>
+</main>
+<!--include:_footer.en.html-->
+</body>
+</html>
