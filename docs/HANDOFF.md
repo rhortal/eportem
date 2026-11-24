@@ -32,8 +32,9 @@ moving the app to another hostname, lives only on the branch `website` (its
   plans; see that branch.
 - **Releases (tags):** `v1.0.0` = `54477fa`, the cron scripts before the refactor;
   `v2.0.0` = the service as merged, after the first clean day (version 2.0.0 in
-  `pyproject.toml`, the API and error reports). `omv` still reports 0.1.0 until its next
-  rebuild (not done tonight: only the version string changed).
+  `pyproject.toml`, the API and error reports). Deployed on `omv` at 19:15 the same
+  evening (worktree at `ed9bdc6`, `/readyz` 200, the API reports 2.0.0; today's
+  runs and day check intact after the restart).
 - **To update `omv` from now on:** in the worktree, `git fetch -q origin && git
   checkout -q --detach origin/main && docker compose -p checkin up -d --build`.
   Never restart between 17:45 and 18:15, or near any clock time, on a working day.
