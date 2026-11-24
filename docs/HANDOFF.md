@@ -26,8 +26,9 @@ moving the app to another hostname, lives only on the branch `website` (its
   `main` itself: the cron checkout `/home/pi/Apps/eportem` has it). The commits since
   `4c76e63` were docs only, so the rebuild kept the same container; `/readyz` 200.
   The cron checkout was not pulled (it stays at `54477fa`, the rollback).
-- **Branches:** `main` and `refactor/multiuser-service` are the same line; new work
-  can go on `main` (or a branch from it). `website`: the public website and its
+- **Branches:** `main` is the service; work goes on `main` or a branch from it.
+  `refactor/multiuser-service` was deleted (local and Gitea) on 2026-11-24 once
+  merged: every commit of it is in `main`. `website`: the public website and its
   plans; see that branch.
 - **To update `omv` from now on:** in the worktree, `git fetch -q origin && git
   checkout -q --detach origin/main && docker compose -p checkin up -d --build`.
@@ -222,7 +223,7 @@ CheckIn on `omv` now clocks for real; cron no longer does (PLAN.md phase 8, step
   calendar and templates, settings, the database, the scheduler, auth and API,
   the web UI (English/Spanish) and Docker with GlitchTip. `make check` passes
   (about 555 tests, coverage floor 85% on `checkin/`). Last commit on the
-  branch: see `git log -1 origin/refactor/multiuser-service`.
+  branch: now in `main` (the branch was deleted after the 2026-11-24 merge).
 - Phase 8 started: the read-only contract check against the real site passed
   from `omv` (18:50), and the shadow runs on `omv` in dry run next to cron
   (below). Nothing on `omv`'s live checkout or crontab was changed.
@@ -243,8 +244,9 @@ CheckIn on `omv` now clocks for real; cron no longer does (PLAN.md phase 8, step
 ## Continuing on another machine
 
 - Clone from Gitea (HTTPS works from outside the LAN):
-  `git clone https://gitea.tiorob-home.mywire.org/roberto/eportem.git && cd eportem
-  && git switch refactor/multiuser-service`. Commit and push to Gitea only.
+  `git clone https://gitea.tiorob-home.mywire.org/roberto/eportem.git && cd eportem`
+  (`main` is the service; the `website` branch holds the public website). Commit
+  and push to Gitea only.
 - `make venv` needs `python3.13` (`brew install python@3.13`, or
   `make venv PYTHON=/path/to/python3.13`), then `make check`. `make test-fast`
   skips the real-browser tests (those need Chrome; Selenium fetches the driver).
@@ -261,8 +263,9 @@ CheckIn on `omv` now clocks for real; cron no longer does (PLAN.md phase 8, step
 
 ## Shadow on `omv` (since 2026-11-18 evening)
 
-- Worktree `/home/pi/Apps/eportem-refactor` (detached at
-  `origin/refactor/multiuser-service`). To update:
+- Worktree `/home/pi/Apps/eportem-refactor` (then detached at
+  `origin/refactor/multiuser-service`; since 2026-11-24 at `origin/main`, see
+  "Start here"). To update, as it was then:
   `cd /home/pi/Apps/eportem-refactor && git fetch -q origin && git checkout -q
   --detach origin/refactor/multiuser-service && docker compose -p checkin
   --profile dev up -d --build`. **Not** `--profile errors` any more: GlitchTip

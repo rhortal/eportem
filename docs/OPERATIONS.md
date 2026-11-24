@@ -11,7 +11,10 @@ are in `TODO.md`.
 ## The host
 
 `omv`: an OpenMediaVault NAS, Debian 13 trixie, Intel N95, 15 GB RAM, user `pi`.
-The checkout is `/home/pi/Apps/eportem` on `main`, run by `pi`'s crontab. From
+Two checkouts: `/home/pi/Apps/eportem` on `main` at `54477fa` is the old cron
+checkout, frozen as the rollback (its crontab lines are commented out; don't
+pull it); `/home/pi/Apps/eportem-refactor`, a worktree of it, runs CheckIn (see
+"The CheckIn service" below). From
 the home LAN it is `ssh omv`; from outside, `ssh omve` (port 61022). Docker
 and Docker Compose are installed, with nginx-proxy-manager for HTTPS (admin UI
 on port 82).
@@ -24,9 +27,32 @@ isn't reachable from outside the LAN). Gitea pushes on to GitHub
 (`github.com/rhortal/eportem`) by itself. Until 2026-11-17 the Mac checkout's
 `origin` pointed at GitHub, so `dfb9101` went to GitHub first and Gitea, which
 `omv` pulls from, lagged behind; `omv` was deployed by fetching from GitHub that
-once. Deploy `omv` with `git pull --ff-only` from its own `origin` (Gitea), at a
-time no cron line is due (mid-morning or mid-afternoon), then run
-`./run.sh --check`.
+once. Since 2026-11-24 deploy the service as in "The CheckIn service" below; the
+cron checkout is no longer pulled. (Before that, `omv` was deployed with
+`git pull --ff-only` from its own `origin` at a time no cron line was due, then
+`./run.sh --check`.)
+
+## The CheckIn service (since 2026-11-24)
+
+CheckIn clocks for the owner since 2026-11-24 09:30: Compose project `checkin`,
+run from the worktree `/home/pi/Apps/eportem-refactor`, data in its volume, local
+port 8095 (behind nginx-proxy-manager for HTTPS). `main` holds the service since
+the evening of 2026-11-24. The worktree can't check `main` out (the cron
+checkout has it), so it stays detached at `origin/main`. To deploy:
+
+```
+cd /home/pi/Apps/eportem-refactor
+git fetch -q origin && git checkout -q --detach origin/main
+docker compose -p checkin up -d --build
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8095/readyz   # 200
+```
+
+Only at a quiet time: never between 17:45 and 18:15, or within 15 minutes of any
+planned clock, on a working day. After a restart the scheduler takes its lock about
+2 minutes later, so re-planning shows up then. Today's runs are on the web UI's
+runs page or `/api/v1`; the service's own day check runs 40 minutes after the last
+action and alerts on Telegram and Slack. Rollback: `docker compose -p checkin stop`,
+then `crontab /home/pi/crontab.bak-20261124-switch`.
 
 ## Chromium on the host: hold history — was pinned at 149.x, unheld 2026-07-27
 
@@ -61,7 +87,7 @@ pushed, since `--single-process` still crashed on this host as of 150.x.
 
 `omv` now runs Chromium `156.0.8078.79`. The flags come from `start_browser()`
 in `checkin/core/browser.py` (called through `utility/login_and_navigate.py`
-on the refactor branch; on `main` before the merge it is `_start_browser()` in
+on `main` since the 2026-11-24 merge; in the frozen cron checkout it is `_start_browser()` in
 `utility/login_and_navigate.py` itself), not `eportem_action.py`: `--disable-gpu`,
 `--headless=new` (only when `HEADLESS_BROWSING=YES`), `--window-size=1366,900`,
 `--lang=es-ES`, `--disable-blink-features=AutomationControlled`, a desktop
@@ -190,6 +216,9 @@ passed `--verify-day`; the rollout leftovers on the host were cleared that
 evening.
 
 ## Alerts and the daily check on the host (since 2026-11-16)
+
+Cron's half of this stopped on 2026-11-24 (its `--verify-day` line is commented
+out); CheckIn's own day check replaced it. Kept for the rollback.
 
 Every recorded action is appended to `logs/actions.log` (time, date, action,
 location, `http`/`browser`). `./run.sh --verify-day`, from cron at 18:40 on

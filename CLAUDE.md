@@ -79,11 +79,13 @@ If asked to add a web UI, dashboard, or Docker packaging back: this isn't
 starting from scratch, there's a whole prior implementation on that archive
 branch worth looking at first (with known issues to fix, not copy as-is).
 
-## Refactor to a multi-user service (branch `refactor/multiuser-service`)
+## The multi-user service (`checkin/`)
 
-Replaces cron with a built-in scheduler, and adds multiple users, a web UI
-and API, and Docker packaging. Update `docs/refactor/PLAN.md` and
+Replaced cron with a built-in scheduler, and added multiple users, a web UI
+and API, and Docker packaging. Built on `refactor/multiuser-service` and
+merged into `main` after the cutover (PLAN.md phase 8) went clean; the
+service is what clocks now. Update `docs/refactor/PLAN.md` and
 `docs/refactor/DECISIONS.md` in the same commit as the code they describe.
-Until the cutover (PLAN.md phase 8), `main` and the cron path stay live and
-must keep working. Never hold a database write lock across network I/O
+The cron scripts at the root stay, working, as the rollback until phase 8
+step 6 removes them; don't break them before then. Never hold a database write lock across network I/O
 (D-019).

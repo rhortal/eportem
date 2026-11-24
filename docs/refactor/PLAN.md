@@ -1,7 +1,10 @@
 # Refactor plan: CheckIn as a multi-user service
 
-Branch: `refactor/multiuser-service` (from `main` at `54477fa`, 2026-11-18).
-Status: **plan only, no code changed yet.** Decisions with their reasons are
+Branch: `refactor/multiuser-service` (from `main` at `54477fa`, 2026-11-18),
+merged into `main` (fast-forward) on 2026-11-24 after the first clean live day.
+Status: **phase 8 under way**: the service clocks for real since 2026-11-24;
+steps 5-6 (rollback window, then removing the cron path) remain. The status
+lines below each phase are the record. Decisions with their reasons are
 in [`DECISIONS.md`](DECISIONS.md). Update both as work lands, in the same
 commit as the code.
 

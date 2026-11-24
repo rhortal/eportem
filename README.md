@@ -467,7 +467,7 @@ The schedule is in `config/config.json`:
 
 The whole file is validated on every run, not just today's entry. Every problem found is printed with its location in the file (e.g. `schedule["2"]["lunch_break"]: must be a time like "9:00"...`) and the run exits 2 without clocking, so a typo shows up in the next cron mail instead of waiting for that task's time. A missing file or missing `schedule` key is treated the same way. Check by hand with `./run.sh --check`.
 
-## Running the service with Docker (refactor branch)
+## Running the service with Docker
 
 The multi-user service runs as one container: web UI, API, scheduler, health
 checks and metrics on one port, data in one volume. It needs nothing else
@@ -511,10 +511,9 @@ template, home days, notifications.
   also starts the fake ePortem (account `DEMO` / `demo-password`); set
   `CHECKIN_TARGET_URL=http://fake-eportem:8081` in `.env` and restart.
 
-## Service settings (refactor branch)
+## Service settings
 
-The multi-user service being built on the `refactor/multiuser-service` branch
-(`docs/refactor/PLAN.md`) is configured only through these settings; nothing
+The multi-user service (`docs/refactor/PLAN.md`) is configured only through these settings; nothing
 install-specific is in the code or the image. Set them as environment variables,
 or in a TOML file named by `CHECKIN_CONFIG_FILE` (keys in lower case, without the
 prefix). Secrets can also be read from a file with `CHECKIN_<NAME>_FILE`.
@@ -582,7 +581,7 @@ generated from `checkin/settings.py` by `python -m checkin config docs`.
 
 ## Development
 
-The clock engine is the `checkin.core` package. It reads no environment variables and no files: the site URL, the account's activity IDs, the credentials, where the session cookies are kept and how to start a browser are all arguments, and progress messages go through a `say` callable instead of `print`. The scripts below are adapters that fill it in from `config/.env` and the repository's files, so their behaviour and output are the same as before. The multi-user service being built on the `refactor/multiuser-service` branch (see `docs/refactor/PLAN.md`) will use the same engine.
+The clock engine is the `checkin.core` package. It reads no environment variables and no files: the site URL, the account's activity IDs, the credentials, where the session cookies are kept and how to start a browser are all arguments, and progress messages go through a `say` callable instead of `print`. The scripts below are adapters that fill it in from `config/.env` and the repository's files, so their behaviour and output are the same as before. The multi-user service (see `docs/refactor/PLAN.md`) uses the same engine; the scripts stay only until the cron path is removed (PLAN.md phase 8, step 6).
 
 - `checkin/core/actions.py` - one clock action: HTTP first, browser click flow as the fallback, follow-ups that never fail a recorded action
 - `checkin/core/clock_http.py` - the HTTP clock client; `clock_and_verify()` tells "nothing recorded" (safe to fall back) from "outcome unknown"

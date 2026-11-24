@@ -20,14 +20,17 @@ and note anything learnt in `docs/http-api-investigation.md` or `docs/OPERATIONS
       longer-lived session, which would cut the morning browser logins. Add the
       result to the session data points in `docs/http-api-investigation.md`.
 
-## Refactor branch (`refactor/multiuser-service`)
+## The service (refactor merged into `main` 2026-11-24)
 
 Details for each item are in `docs/HANDOFF.md`.
 
 - [x] 2026-11-18 18:50: contract check against the real site: all PASS.
 - [x] 2026-11-18 evening: shadow deployed on `omv` (dry run, sends nothing).
-- [ ] From 2026-11-19, each evening: the shadow report; after about 3
-      matching working days, decide the switch.
+- [x] Shadow reports from 2026-11-19; switched to the service 2026-11-24
+      09:30; first full live day clean; `main` fast-forwarded the same evening.
+- [ ] About 2026-11-28: delete the old volumes (list in `docs/HANDOFF.md`).
+- [ ] About 2026-12-08, after two clean weeks: remove the cron path (PLAN.md
+      phase 8, step 6).
 - [x] `checkin.hortal.me`: a Cloudflare DNS record and an nginx-proxy-manager
       proxy host (found in place on 2026-11-21, see `docs/HANDOFF.md`).
 - [x] A destination for GlitchTip alerts (Telegram) and an outside uptime
