@@ -81,7 +81,7 @@ lock about 2 minutes later.
    CNAME to `hortal.me`).
 2. **Proxy host** in nginx-proxy-manager: `checkin-app.hortal.me` ->
    `http://checkin-checkin-1:8080`, Websockets on, Let's Encrypt certificate, Force SSL,
-   same options as host 73. Keep host 73 for now, so nothing breaks before step 7.
+   same options as host 73. Keep host 73 for now, so nothing breaks before step 5.
 3. **The app's own address**: on `omv`, `cd /home/pi/Apps/eportem-refactor`, back up
    `.env` (`cp -p .env .env.bak-YYYYMMDD-hostname`), set
    `CHECKIN_PUBLIC_URL=https://checkin-app.hortal.me`, then
@@ -92,51 +92,26 @@ lock about 2 minutes later.
    `CHECKIN_TRUSTED_PROXIES` is unchanged (same proxy).
 4. **Montastic**: change the `/healthz` monitor to `https://checkin-app.hortal.me/healthz`.
    Optionally add one for `https://checkin.hortal.me/` once the site is up.
-5. **A contact address that reaches the owner** (do this before publishing the site,
-   since every page shows it). Found 2026-11-24, nothing changed: mail for `hortal.me`
-   is handled by **Mailu on `omv`** (`/home/pi/dockers/mailu`, `DOMAIN=hortal.me`,
-   `HOSTNAMES=mail.hortal.me`, outgoing via the relay `mail-eu.smtp2go.com:587`). Public
-   DNS: MX `hortal.me` -> `mail.hortal.me` (the home IP, not proxied); SPF
-   `v=spf1 mx a:mail.hortal.me ~all`. The work Mac's DNS returns a LAN address for both
-   (a local override), so check records with `dig @1.1.1.1`. Mailu already has
-   forward-only aliases to the owner's Gmail (e.g. `contact@baldinnovator.com`), and an
-   unrelated mailbox `eportem@hortal.me` (don't reuse it; its purpose is unknown).
-   Don't turn on Cloudflare Email Routing for `hortal.me`: it replaces the MX records and
-   would cut Mailu off.
-   - Pick the address with the owner (e.g. `checkin@hortal.me` or `hola@hortal.me`).
-   - Mailu admin (`https://mail.hortal.me/admin`, login needed) -> Aliases -> add it
-     with destination the owner's Gmail, like the existing aliases. CLI alternative:
-     `docker exec mailu-admin-1 flask mailu alias hortal.me <local-part> <destination>`.
-   - Test from outside: send to the new address from a different provider (not from
-     the same Gmail, which can hide its own forwarded copy), check it arrives in the
-     inbox, not spam, and that the headers show SPF pass; send a second test with a
-     link to see that forwarding doesn't break.
-   - Replying as that address (optional): Gmail -> Settings -> Accounts -> "Send mail
-     as", using an SMTP login for it (a Mailu mailbox instead of an alias, or the SMTP2GO
-     relay); otherwise replies go out from the Gmail address.
-   - Put it in `website/site.env` as `CONTACT_EMAIL`, and in the privacy page's
-     wording if the step-6 rewording mentions mail.
-6. **The site**: on the branch `website`, create `website/site.env` (untracked; see
+5. **The site**: on the branch `website`, create `website/site.env` (untracked; see
    `website/site.env.example`) with `SITE_URL=https://checkin.hortal.me`, the owner's
-   name, the contact email from step 5, and
+   name, the contact email to publish (the owner's choice; not decided), and
    `NETWORK_PROVIDER=Cloudflare`. **First reword the privacy page's server-log bullet**:
    it promises our server deletes access logs after `LOG_RETENTION_DAYS` days, but on
    Pages we keep no logs and Cloudflare is the host. `python3 website/build.py`, look at
    `website/dist/`, then `wrangler pages project create checkin` (owner's account) and
    `wrangler pages deploy website/dist --project-name checkin`. Pages can't connect to
    Gitea, so deploys are direct uploads of the built folder.
-7. **The name goes to Pages**: in the Pages project, add the custom domain
+6. **The name goes to Pages**: in the Pages project, add the custom domain
    `checkin.hortal.me`. Cloudflare then wants the `checkin` record to be a CNAME to
    `checkin.pages.dev` (it offers to change it, since the zone is in the same account).
    From then on `checkin.hortal.me` is the site. Delete proxy host 73 in
    nginx-proxy-manager (its certificate can go too).
-8. **Afterwards**: update `docs/OPERATIONS.md` (hostnames, Montastic, Pages, the
-   contact alias), this
+7. **Afterwards**: update `docs/OPERATIONS.md` (hostnames, Montastic, Pages), this
    file, and the GlitchTip/Telegram notes if any link names the old host. Links the
    app sends (emails, alerts) come from `CHECKIN_PUBLIC_URL`, so they follow step 3.
 
-Rollback: until step 7, `checkin.hortal.me` still reaches the app; restoring the
-`.env` backup and `up -d` undoes step 3. After step 7, set the `checkin` record back
+Rollback: until step 6, `checkin.hortal.me` still reaches the app; restoring the
+`.env` backup and `up -d` undoes step 3. After step 6, set the `checkin` record back
 to a proxied CNAME to `hortal.me` and re-enable host 73.
 
 ## Switched to CheckIn (2026-11-24, 09:20-09:30)
@@ -202,10 +177,10 @@ What exists (commit `69d04a4`, decision D-027, details in `website/README.md`):
   with headless Chrome; dark mode follows the system.
 
 Open, for the owner:
-- The contact address to publish (runbook step 5), and the name as it should appear.
+- The contact email to publish, and the name as it should appear.
 - A legal review of the terms and privacy policy before the service takes users.
 - The privacy page's server-log bullet must be reworded for Cloudflare Pages
-  (runbook step 6). `LOG_RETENTION_DAYS` is required by the build today; make it
+  (runbook step 5). `LOG_RETENTION_DAYS` is required by the build today; make it
   optional or drop it when rewording.
 - Merge `website` into the main line when it's published (no conflicts expected:
   it only adds files, plus README, D-027, `.gitignore`, the portability allowance and
