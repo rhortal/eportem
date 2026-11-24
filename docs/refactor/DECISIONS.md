@@ -364,5 +364,9 @@ HTML/CSS drawings of the product's own screens, each catalogued with its source 
 time-recording site is a generic illustration labelled as such. The legal pages
 are a first draft to be reviewed before the service takes users. Not served by
 the service itself: the site has to stay up and simple even when the service is
-down or being changed.
+down or being changed. Hosting, agreed the same day: the site on Cloudflare Pages
+at the address people already have, the app moved to its own hostname one level
+below the zone (Cloudflare's free certificate covers only one level, so not
+`app.<site address>`), rather than under a `/app` sub-path (never run in production,
+and it would share an origin and cookies with the site).
 

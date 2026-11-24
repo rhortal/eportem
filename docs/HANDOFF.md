@@ -7,6 +7,113 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 `docs/OPERATIONS.md`, the plan in
 `docs/refactor/PLAN.md`, the decisions in `docs/refactor/DECISIONS.md`.
 
+## Start here (end of the 2026-11-24 session on the work Mac, about 16:15)
+
+Sequence agreed with the owner: the work Mac finishes today's hand-over on
+`refactor/multiuser-service` (watch the 18:03 clock-out and the day check, then the
+merge to `main` at 18:44); **after that**, the move to the new hostnames is done from
+the other laptop (runbook below), because the work Mac's Cloudflare credentials belong
+to the employer. State at hand-over:
+
+- **CheckIn clocks for real on `omv` since 09:30 today** (switch below); cron no longer
+  clocks. Today, all at home: start 09:02 (cron, before the switch), lunch 13:32 and
+  back 14:28 (CheckIn, over HTTP, no errors), stop planned for **18:03**, then
+  CheckIn's own day check about 18:43.
+- **D-026 is live** (`4c76e63`, deployed 15:13): the clock-in only ever before the
+  template's start, the clock-out only ever after its stop (08:51-08:59:30 and
+  18:00:30-18:09 with the defaults). Templates still say 9:00 and 18:00.
+- **Branches:**
+  - `refactor/multiuser-service` at `95e7be0` (plus this handoff): what `omv` runs
+    (worktree detached at `4c76e63`; the commits since are docs only).
+  - `website` (from `95e7be0`): the public site (`69d04a4`) plus this handoff.
+    Pushed, not merged anywhere.
+  - `main`: still the cron code; not yet fast-forwarded (see "After the switch").
+- **A one-shot job is scheduled in the work Mac's Claude session for 18:44 today**
+  (session-only: it runs only if that session is still open; the owner wants it to run). It checks the day and,
+  if clean, fast-forwards `main` to `refactor/multiuser-service`, pushes, and points
+  `omv`'s worktree at `origin/main`. To see whether it ran: `git log origin/main -1`
+  (it would equal the branch) and `git -C /home/pi/Apps/eportem-refactor log -1` on
+  `omv`. If it didn't run and the day was clean, do those steps by hand (commands in
+  "After the switch", step 2). Never do the restart between 17:45 and 18:15 on a
+  working day.
+- **In progress, nothing changed yet: the move to two hostnames** (next section).
+  Only reads were done: the proxy host's files on `omv` and `wrangler whoami` here.
+
+## Hosting plan agreed 2026-11-24: site on Cloudflare Pages, app on its own hostname
+
+Agreed with the owner: the public website takes `https://checkin.hortal.me/` (what's
+already on cards and in Montastic), served by **Cloudflare Pages**; the app moves to
+**`https://checkin-app.hortal.me`** on `omv`. Why that name: Cloudflare's free
+Universal SSL covers only one level below the zone (`*.hortal.me`), so
+`app.checkin.hortal.me` would get no edge certificate while proxied (it would need
+Advanced Certificate Manager, paid). A `/app` sub-path was rejected: `CHECKIN_ROOT_PATH`
+exists but has never run in production, and the site and app would share an origin
+and cookies. If CheckIn gets its own domain later: `<domain>` for the site,
+`app.<domain>` for the app.
+
+Found while starting (2026-11-24 ~16:10), none of it acted on:
+- **The work Mac is the wrong place for Cloudflare.** `wrangler` there is signed in
+  (OAuth, `~/Library/Preferences/.wrangler/config/default.toml`) to the **Wall Street
+  English** account, and the shell has work tokens `CLOUDFLARE_DOMAINS_API_TOKEN`,
+  `CLOUDFLARE_REDIRECTS_API_TOKEN`, `CLOUDFLARE_ZERO_TRUST_ACCESS_API_TOKEN`,
+  `CLOUDFLARE_PAGES_API_TOKEN`. Never use any of them for `hortal.me`. On the other
+  laptop, check `wrangler whoami` shows the owner's personal account (the one with
+  the `hortal.me` zone) before any deploy.
+- `ddclient`'s token on `omv` (`/home/pi/dockers/ddclient/config/ddclient.conf`, the
+  `zone=hortal.me` block, value in single quotes) can edit `hortal.me` DNS; it can't
+  create Pages projects (zone-scoped). Never print it.
+- nginx-proxy-manager: container `proxymanager`, compose in
+  `/home/pi/dockers/ngingx-proxy-manager` (sic), data in its `/data`
+  (`database.sqlite`, `nginx/proxy_host/73.conf`, `letsencrypt-acme-challenge`).
+  Host 73 is `checkin.hortal.me` -> `http://checkin-checkin-1:8080`, Let's Encrypt,
+  Force SSL. The container has no `sqlite3` binary. Creating a host with a new
+  certificate is easiest in its admin UI (port 82 on `omv`; login needed); editing
+  the database by hand can't issue a certificate.
+
+### Runbook (the order matters: the app moves first, then the name goes to Pages)
+
+Do the app steps outside the clock windows (not 08:45-09:15, 13:15-13:45,
+14:15-14:45, 17:45-18:15 on working days). After a restart the scheduler takes the
+lock about 2 minutes later.
+
+1. **DNS for the app**: in Cloudflare (owner's account, zone `hortal.me`), a CNAME
+   `checkin-app` -> `hortal.me`, proxied, shaped like `checkin` (which is a proxied
+   CNAME to `hortal.me`).
+2. **Proxy host** in nginx-proxy-manager: `checkin-app.hortal.me` ->
+   `http://checkin-checkin-1:8080`, Websockets on, Let's Encrypt certificate, Force SSL,
+   same options as host 73. Keep host 73 for now, so nothing breaks before step 5.
+3. **The app's own address**: on `omv`, `cd /home/pi/Apps/eportem-refactor`, back up
+   `.env` (`cp -p .env .env.bak-YYYYMMDD-hostname`), set
+   `CHECKIN_PUBLIC_URL=https://checkin-app.hortal.me`, then
+   `docker compose -p checkin up -d` (add `--build` only if the code moved). Check
+   `curl -s https://checkin-app.hortal.me/healthz` and `/readyz`, sign in at
+   `https://checkin-app.hortal.me/login` as `roberto` (password in
+   `/home/pi/.eportem-admin-password`), and today's runs on the Today page.
+   `CHECKIN_TRUSTED_PROXIES` is unchanged (same proxy).
+4. **Montastic**: change the `/healthz` monitor to `https://checkin-app.hortal.me/healthz`.
+   Optionally add one for `https://checkin.hortal.me/` once the site is up.
+5. **The site**: on the branch `website`, create `website/site.env` (untracked; see
+   `website/site.env.example`) with `SITE_URL=https://checkin.hortal.me`, the owner's
+   name, the contact email to publish (the owner's choice; not decided), and
+   `NETWORK_PROVIDER=Cloudflare`. **First reword the privacy page's server-log bullet**:
+   it promises our server deletes access logs after `LOG_RETENTION_DAYS` days, but on
+   Pages we keep no logs and Cloudflare is the host. `python3 website/build.py`, look at
+   `website/dist/`, then `wrangler pages project create checkin` (owner's account) and
+   `wrangler pages deploy website/dist --project-name checkin`. Pages can't connect to
+   Gitea, so deploys are direct uploads of the built folder.
+6. **The name goes to Pages**: in the Pages project, add the custom domain
+   `checkin.hortal.me`. Cloudflare then wants the `checkin` record to be a CNAME to
+   `checkin.pages.dev` (it offers to change it, since the zone is in the same account).
+   From then on `checkin.hortal.me` is the site. Delete proxy host 73 in
+   nginx-proxy-manager (its certificate can go too).
+7. **Afterwards**: update `docs/OPERATIONS.md` (hostnames, Montastic, Pages), this
+   file, and the GlitchTip/Telegram notes if any link names the old host. Links the
+   app sends (emails, alerts) come from `CHECKIN_PUBLIC_URL`, so they follow step 3.
+
+Rollback: until step 6, `checkin.hortal.me` still reaches the app; restoring the
+`.env` backup and `up -d` undoes step 3. After step 6, set the `checkin` record back
+to a proxied CNAME to `hortal.me` and re-enable host 73.
+
 ## Switched to CheckIn (2026-11-24, 09:20-09:30)
 
 CheckIn on `omv` now clocks for real; cron no longer does (PLAN.md phase 8, step 3).
@@ -42,19 +149,42 @@ CheckIn on `omv` now clocks for real; cron no longer does (PLAN.md phase 8, step
 
 ## Public website: branch `website` (started 2026-11-24)
 
-- A static placeholder in `website/` (D-027): home page with drawings of the product,
-  terms of use, privacy, legal notice, in English and Spanish. Build:
-  `python3 website/build.py --example` for a preview; for real, create the untracked
-  `website/site.env` with the owner's name, contact email and the site's address.
-- Not published anywhere yet, and not merged. Open for the owner: where to host it
-  (the obvious candidate is a page on the domain the service already uses, or its own
-  domain), the contact address to show, and a legal review of the terms and privacy
-  policy before the service takes users. `LOG_RETENTION_DAYS` and `NETWORK_PROVIDER`
-  must match the real host (Cloudflare proxies the current domain).
-- The owner asked for every picture's source to be recorded, because the product UI
-  will be redesigned: `website/VISUALS.md`, plus a comment at the top of each
-  `src/_v-*.html`. Gaps it found in the product: the English UI shows raw action keys
-  (`start_day`...), and notifications are English-only.
+What exists (commit `69d04a4`, decision D-027, details in `website/README.md`):
+- `website/src/`: `index`, `terms`, `privacy`, `legal` in English (`/`) and Spanish
+  (`/es/`), same file names; partials `_header`, `_footer`, `_logo` and one per
+  picture (`_v-*.{en,es}.html`); `assets/site.css` (the product's palette) and
+  `assets/favicon.svg`.
+- `website/build.py` (standard library): fills `{{KEY}}` placeholders from the untracked
+  `website/site.env`, resolves `<!--include:...-->` and `<!--if:KEY-->` blocks, writes
+  `website/dist/` (gitignored). Fails on a missing value or include.
+  `--example` builds a preview from `site.env.example` (made-up "Alex Example").
+- `tests/test_website.py`: both languages for every page, nothing left unfilled, the
+  ePortem disclaimer on every page, nothing loaded from other sites, internal links
+  resolve, every picture catalogued in `VISUALS.md`, build failures. The portability
+  test now allows `www.aepd.es`.
+- Content decided with the owner: no sign-up (placeholder; "ask about early access"
+  is a mailto); terms say CheckIn isn't responsible for wrong, late, missing or
+  duplicate clock events, the user stays responsible for their *registro de jornada*,
+  must only record time they work and follow their employer's rules; Spanish law,
+  consumers keep their own courts; the Spanish text of the terms prevails. Trademark
+  disclaimer on every page. No screenshots of ePortem: the only picture of a
+  time-recording site is a generic drawing labelled as an illustration.
+- The owner asked that every picture's source be recorded for the coming UI redesign:
+  `website/VISUALS.md` plus a comment at the top of each `_v-*.html`. Gaps it found in
+  the product: the English UI shows raw action keys (`start_day`...); notifications
+  are English-only (the `TODO.md` multilingual item).
+- Checked by eye at 1280 px and on an emulated 390 px phone (no horizontal overflow)
+  with headless Chrome; dark mode follows the system.
+
+Open, for the owner:
+- The contact email to publish, and the name as it should appear.
+- A legal review of the terms and privacy policy before the service takes users.
+- The privacy page's server-log bullet must be reworded for Cloudflare Pages
+  (runbook step 5). `LOG_RETENTION_DAYS` is required by the build today; make it
+  optional or drop it when rewording.
+- Merge `website` into the main line when it's published (no conflicts expected:
+  it only adds files, plus README, D-027, `.gitignore`, the portability allowance and
+  this file).
 
 ## After the switch: agreed with the owner (2026-11-24)
 

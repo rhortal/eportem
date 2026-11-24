@@ -24,6 +24,7 @@ ALLOWED_HOSTS = {
     "slack.com", "hooks.slack.com",            # notification APIs
     "api.telegram.org",
     "www.google.com",                          # reCAPTCHA script, in docs
+    "www.w3.org",                              # the SVG namespace, an identifier rather than a link
     "www.aepd.es",                             # Spain's data protection authority, in the website's privacy policy
     "github.com",                              # the public repository
     "python-poetry.org", "pdm.fming.dev",      # comments in the stock Python .gitignore

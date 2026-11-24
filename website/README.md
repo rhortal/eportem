@@ -20,6 +20,24 @@ while one is missing. Standard library only.
 
 Publish `website/dist/` on any static host or web server.
 
+## Hosting
+
+The site is static, so any static host works. The plan (D-027) is Cloudflare Pages
+for the site at the product's main address, with the app on its own hostname. Pages
+can't pull from Gitea, so publish the built folder directly:
+
+```
+python3 website/build.py
+npx wrangler whoami                      # the account that owns the domain, not another one
+npx wrangler pages project create checkin
+npx wrangler pages deploy website/dist --project-name checkin
+```
+
+Then add the custom domain in the Pages project. Before publishing, make the privacy
+page match the host: it describes server logs kept for `LOG_RETENTION_DAYS` days,
+which fits a server you run, not Pages (where you keep no logs and Cloudflare is
+the host).
+
 ## Source
 
 - `src/*.html` and `src/es/*.html`: the pages (`index`, `terms`, `privacy`, `legal`),
