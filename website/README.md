@@ -1,11 +1,13 @@
 # CheckIn's public website
 
-A static placeholder that presents CheckIn: what it is, how it works, terms of use,
-privacy and a legal notice, in English (`/`) and Spanish (`/es/`). No sign-up, no
-cookies, and nothing loaded from other sites in the source (fonts are the system's,
+A static site that presents CheckIn while it is in final testing: what it is, how it
+works, terms of use, privacy and a legal notice, in English (`/`) and Spanish (`/es/`).
+No public sign-up (early access is asked for by email), no cookies, and nothing loaded from other sites in the source (fonts are the system's,
 pictures are drawn in HTML and CSS). Visits are counted by Cloudflare Web Analytics,
 which Cloudflare injects at its edge (the zone's automatic install), so the source
-stays free of third-party scripts; the privacy page and footer say so.
+stays free of third-party scripts; the privacy page and footer say so. Keep the Pages
+project's own Web Analytics toggle off while the zone injects it, or every visit is
+counted twice.
 
 ## Build
 
@@ -29,18 +31,19 @@ the same two behaviours (`.html` optional, a 404 page).
 
 ## Hosting
 
-The site is static, so any static host works. The plan (D-027) is Cloudflare Pages
-for the site at the product's main address, with the app on its own hostname. Pages
-can't pull from Gitea, so publish the built folder directly:
+The site runs on Cloudflare Pages at the product's main address, with the app on its
+own hostname (D-027). Pages can't pull from Gitea, so each deploy uploads the built
+folder:
 
 ```
 python3 website/build.py
 npx wrangler whoami                      # the account that owns the domain, not another one
-npx wrangler pages project create checkin
-npx wrangler pages deploy website/dist --project-name checkin
+npx wrangler pages deploy website/dist --project-name checkin --branch main
 ```
 
-Then add the custom domain in the Pages project. The privacy page names
+Setting it up again elsewhere: `npx wrangler pages project create checkin`, a first
+deploy, then the custom domain in the Pages project (its DNS record becomes a CNAME to
+the project's `pages.dev` address). The privacy page names
 `HOSTING_PROVIDER` as the host that sees visitors' IP addresses and says we keep no
 access logs of our own, which fits Pages; reword it if the site moves to a server
 you run.
@@ -62,8 +65,8 @@ Every picture is a drawing, not a screenshot. [`VISUALS.md`](VISUALS.md) lists e
 with the product screen and files it is drawn from, so they can be redrawn when the UI
 changes. Pictures of ePortem are generic illustrations, never its real design.
 
-## Before publishing for real
+## Legal pages
 
 The terms of use and privacy policy are a careful first draft, not legal advice. Have
-them reviewed before anyone uses the service, and check `HOSTING_PROVIDER` against the
-host that serves the site.
+them reviewed before the service takes users beyond early access, and check
+`HOSTING_PROVIDER` against the host that serves the site.
