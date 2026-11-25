@@ -16,9 +16,9 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   `.env.bak-20261125-hostname`), container recreated at 09:18 after the clock-in (08:58,
   HTTP); today's runs intact; proxy host 73 and its cert deleted. Montastic watches the
   new `/healthz`; the owner signed in on the new name.
-- The website's contact address `checkin@hortal.me` is a Mailu **mailbox** (not an alias:
-  forwards to Gmail are refused by the SMTP2GO relay; see the homelab repo,
-  `hosts/omv/services/mailu.md`). Password in Bitwarden "mail.hortal.me (checkin@hortal.me)".
+- The website's contact address `checkin@hortal.me` is a Mailu alias to the local mailbox
+  `roberto@hortal.com` (Gmail fetches that over POP). Not straight to Gmail: forwards out of
+  Mailu are refused by the SMTP2GO relay (homelab repo, `hosts/omv/services/mailu.md`).
 - Next is unchanged: volumes about 2026-11-28, cron clean-up about 2026-12-08.
 
 ## Start here (end of the 2026-11-24 session on the work Mac, about 18:50)
