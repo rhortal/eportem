@@ -24,15 +24,15 @@ The hosting runbook below is **done** (all 8 steps, 08:30-09:40):
   outgoing relay, refuses forwarded mail from unverified domains (and the bounce is lost). The
   owner plans an n8n "re-send as the mailbox" workflow; recipe in the homelab repo,
   `hosts/omv/services/mailu.md`. A test from outside arrived in the mailbox.
-- Analytics (owner's request): Cloudflare Web Analytics, turned on in the Pages project; the
+- Analytics (owner's request): Cloudflare Web Analytics, from the `hortal.me` zone (see below); the
   privacy page and footer say so (`e792e49`), and the privacy page now names the host and says we
   keep no access logs (`LOG_RETENTION_DAYS` gone).
 
-Follow-ups, not done:
-- **Two beacons on the page**: the Pages project's Web Analytics *and* the `hortal.me` zone's
-  automatic install both inject `beacon.min.js` (seen in headless Chrome), so each visit is counted
-  in two Web Analytics sites. Keep one: turn off the Pages toggle, or exclude `checkin.hortal.me`
-  from the zone's automatic install (a Web Analytics rule; zone-wide setting, ask first).
+Follow-ups:
+- Done 2026-11-25: **one beacon**. The owner turned off the Pages project's Web Analytics and the
+  site was redeployed; the `hortal.me` zone's automatic install now injects the only beacon (one per
+  page in headless Chrome). Visits count in the zone's `hortal.me` Web Analytics site, not the Pages
+  project's. If the zone's install is ever turned off, turn the Pages toggle back on and redeploy.
 - Done 2026-11-25: `404.html` in each language, and root-absolute, extensionless links and
   canonicals (Pages used to redirect every `.html` link).
 
