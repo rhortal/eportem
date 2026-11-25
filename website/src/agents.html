@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CheckIn for AI agents · CheckIn</title>
+<meta name="description" content="CheckIn has a skill for AI agents: ask in your own words for days off, home or office days, or to clock in now. It signs in with a link you approve, never with your password.">
+<link rel="canonical" href="{{SITE_URL}}/agents">
+<link rel="icon" href="{{ROOT}}assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="{{ROOT}}assets/site.css">
+</head>
+<body>
+<!--include:_header.en.html-->
+<main id="main" class="wrap doc">
+<h1>CheckIn for AI agents</h1>
+
+<div class="box"><strong>In short.</strong> CheckIn comes with a skill for AI agents (Claude Code, or any agent that
+uses skills). Ask it things like "what's my plan for tomorrow?", "I'm off from 24 to 31 December", "I'll work from
+home on Thursday" or "clock me in now", and it does them in your CheckIn account. It signs in with a link you
+approve, and never needs or sees your password.</div>
+
+<h2>What it can do</h2>
+<ul>
+  <li>Tell you today's plan, the coming days, your schedule and the history of clock events, and whether one went
+  through.</li>
+  <li>Change single days (time off, home or office, other hours, business trips), your usual week, periods such as
+  summer hours, and local holidays; pause and resume CheckIn.</li>
+  <li>Clock in, go to lunch, come back or clock out right now, as you would in your time-recording site: only when
+  you ask, after you confirm the action and the place.</li>
+  <li>It leaves your ePortem account, passwords and keys alone unless you ask for exactly that.</li>
+</ul>
+
+<h2>How to get it</h2>
+<p>The skill is part of your CheckIn account. Once you have access, sign in to CheckIn and open the API tokens page.
+Its "For AI agents" box has a text to copy into your agent's chat: the agent installs the skill, signs in and shows
+you a link. Open it, check the code, choose what the agent may do (only look, or also make changes) and approve.</p>
+<p>The agent gets its own key, valid for 90 days, which you can revoke at any time on the same page. The skill keeps
+itself up to date from your CheckIn account.</p>
+<p>No account yet? CheckIn is in final testing with limited early access: write to
+<a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a>.</p>
+
+<h2>You stay in charge</h2>
+<p>Whatever the agent does, you remain responsible for your working-time record, as the
+<a href="{{ROOT}}terms">terms of use</a> say. Check what it changed.</p>
+</main>
+<!--include:_footer.en.html-->
+</body>
+</html>

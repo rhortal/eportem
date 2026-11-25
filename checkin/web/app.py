@@ -25,6 +25,8 @@ class AppState:
             settings, sessionmaker, box, engine, scheduler)
         self.bad_tokens = auth.RateLimiter(*BAD_TOKEN_LIMIT)
         self.logins = auth.RateLimiter(10, 300)  # sign-in attempts per user and per address
+        self.device_starts = auth.RateLimiter(10, 600)  # agent sign-in codes per address
+        self.device_codes = auth.RateLimiter(10, 300)  # wrong codes typed on /device, per user
 
 
 def _state(request: Request) -> AppState:
@@ -169,7 +171,8 @@ def create_app(settings, sessionmaker=None, engine=None, scheduler=None, start_s
     @app.exception_handler(LoginRequired)
     async def login_required(request, exc):
         from urllib.parse import quote
-        return RedirectResponse(f"/login?next={quote(request.url.path)}", status_code=303)
+        target = request.url.path + (f"?{request.url.query}" if request.url.query else "")
+        return RedirectResponse(f"/login?next={quote(target)}", status_code=303)
 
     @app.exception_handler(ServiceError)
     async def service_error(request, exc):

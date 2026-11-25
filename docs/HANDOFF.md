@@ -7,6 +7,24 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 `docs/OPERATIONS.md`, the plan in
 `docs/refactor/PLAN.md`, the decisions in `docs/refactor/DECISIONS.md`.
 
+## Branch `agent-skill` (2026-11-25, personal laptop; not merged, not deployed)
+
+- CheckIn from AI agents (D-028; README "AI agents"; PLAN "After the cutover"):
+  device-flow sign-in (`/device`), `GET /api/v1/status`, `GET /api/v1/eportem/state`
+  (live, read-only), `DELETE /api/v1/tokens/current`, the skill in `skill/checkin/`
+  (clock with `clock ACTION --yes`), served only to account holders from the API
+  tokens page (signed 24-hour install link) and updated through `/api/v1/skill`.
+  The website only presents it (home section, `/agents`, illustration `agent-chat`).
+  `make check` passes (612 tests).
+- On this laptop: `.claude/skills/checkin` is a symlink to `skill/checkin` and
+  `skill/checkin/defaults.json` names `https://checkin-app.hortal.me` (both
+  gitignored). Signing in works only once `omv` runs the branch: the live app has no
+  `/api/v1/device/*` yet.
+- To ship: merge into `main`, deploy on `omv` as usual (migration 0003 runs on
+  start; not between 17:45 and 18:15 or near a clock time), deploy the website
+  (`python3 website/build.py && wrangler pages deploy ...`), then sign in from here
+  and run `checkin.py state` before the first `clock`.
+
 ## Start here (2026-11-25, morning, on the personal laptop)
 
 - **The app is now `https://checkin-app.hortal.me`**; `https://checkin.hortal.me` is the

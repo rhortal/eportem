@@ -21,6 +21,7 @@ RUN pip install --no-cache-dir -r requirements-service.txt
 COPY checkin ./checkin
 COPY fake_eportem ./fake_eportem
 COPY utility ./utility
+COPY skill ./skill
 
 ENV PYTHONUNBUFFERED=1 \
     CHECKIN_DATA_DIR=/data \

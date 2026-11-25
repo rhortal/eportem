@@ -511,6 +511,38 @@ template, home days, notifications.
   also starts the fake ePortem (account `DEMO` / `demo-password`); set
   `CHECKIN_TARGET_URL=http://fake-eportem:8081` in `.env` and restart.
 
+## AI agents (the CheckIn skill)
+
+People with an account can let an AI agent (Claude Code, or any agent that uses
+skills) read and change their CheckIn, and clock in or out now, by asking in their
+own words. The skill is in `skill/checkin/` (`SKILL.md` and `scripts/checkin.py`,
+standard library only, Python 3.9+); decision D-028 has the reasons.
+
+- **Getting it:** only from the app, never from the public website. The API tokens
+  page has a "For AI agents" box with a text to paste into the agent. It holds a
+  personal install link (`/skill/<link>/install.sh`, signed, valid 24 hours) that
+  installs the skill into `${CLAUDE_CONFIG_DIR:-~/.claude}/skills/checkin`, or
+  another folder with `sh -s -- --dir DIR`, and a zip download. The skill updates
+  itself from the app (`checkin.py update`, or a note at most once a day).
+- **Signing in:** `checkin.py login` asks the app for a code (device flow) and
+  prints a link; the person opens `/device`, checks the code, chooses read or
+  read and write, and approves; `checkin.py login --wait` then gets the agent its
+  own token (90 days, listed and revocable on the tokens page). No password is
+  ever typed into the agent, and the token is kept in `~/.config/checkin/agent.json`
+  (mode 600), never printed. `checkin.py logout` revokes it.
+- **Using it:** `status` (today and the next run), `state` (what ePortem shows right
+  now, read-only), `clock start_day|lunch_break|after_lunch|stop_day [--location
+  home|office] --yes` (a real clock event, through the same runs as the schedule),
+  and `get|post|put|patch|delete PATH [JSON] [key=value...]` for the rest of
+  `/api/v1`.
+- **API added for it:** `POST /api/v1/device/code`, `POST /api/v1/device/token`,
+  `GET /api/v1/status`, `GET /api/v1/eportem/state`, `DELETE /api/v1/tokens/current`,
+  `GET /api/v1/skill` and `/api/v1/skill/checkin.zip`.
+- **In this repository:** link the skill into the checkout's own Claude Code skills
+  to manage your account from here: `mkdir -p .claude/skills && ln -s
+  ../../skill/checkin .claude/skills/checkin`, and put `{"app_url":
+  "https://checkin.example.com"}` in `skill/checkin/defaults.json`. Both are gitignored.
+
 ## Service settings
 
 The multi-user service (`docs/refactor/PLAN.md`) is configured only through these settings; nothing

@@ -7,11 +7,11 @@ import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 
-from checkin import auth, service
+from checkin import auth, device, service, skill
 from checkin.core.calendar import resolve
 from checkin.core.schedule import ACTIONS, format_minutes
 from checkin.core.templates import WEEKDAYS
@@ -133,17 +133,6 @@ def logout(request: Request, db=Depends(get_db)):
 
 
 # --- home -----------------------------------------------------------------------
-def _setup_steps(db, user):
-    account = db.get(EportemAccount, user.id)
-    sched = db.get(UserSchedule, user.id)
-    channels = db.scalar(select(func.count()).select_from(NotificationChannelRow)
-                         .where(NotificationChannelRow.user_id == user.id))
-    return [("ePortem account", "/account", bool(account and account.verified_at)),
-            ("Working-day template", "/schedule", bool(sched)),
-            ("Home days", "/schedule#home-days", bool(sched and any(sched.location_weeks or [{}]))),
-            ("Notifications", "/notifications", bool(channels))]
-
-
 def _week(cal, start):
     return [resolve(cal, start + datetime.timedelta(days=i)) for i in range(7)]
 
@@ -155,7 +144,7 @@ def home(request: Request, user=Depends(ui_user), db=Depends(get_db)):
     cal = load_calendar(db, user)
     runs = db.scalars(select(PlannedRun).where(PlannedRun.user_id == user.id, PlannedRun.date == today)
                       .order_by(PlannedRun.target_minute)).all()
-    steps = _setup_steps(db, user)
+    steps = service.setup_steps(db, user)
     return page(request, "home.html", user, today=today, weeks=[("This week", _week(cal, monday)),
                 ("Next week", _week(cal, monday + datetime.timedelta(days=7)))], runs=runs, steps=steps,
                 setup_done=all(done for _, _, done in steps), actions=ACTIONS)
@@ -456,7 +445,14 @@ def run_log(request: Request, run_id: int, user=Depends(ui_user), db=Depends(get
 # --- tokens and profile --------------------------------------------------------------------------
 @router.get("/tokens", response_class=HTMLResponse)
 def tokens(request: Request, user=Depends(ui_user), db=Depends(get_db)):
-    return page(request, "tokens.html", user, tokens=service.list_tokens(db, user))
+    return _tokens_page(request, db, user)
+
+
+def _tokens_page(request, db, user, **ctx):
+    from checkin.web.api import app_url
+    link = skill.make_link(_state(request).settings.secret_key.get_secret_value(), user.id)
+    return page(request, "tokens.html", user, tokens=service.list_tokens(db, user),
+                skill_base=f"{app_url(request)}/skill/{link}", **ctx)
 
 
 @router.post("/tokens", dependencies=[Depends(csrf)])
@@ -467,10 +463,9 @@ async def create_token(request: Request, user=Depends(ui_user), db=Depends(get_d
     try:
         row, token = auth.create_token(db, user, (form.get("name") or "token")[:100], scopes, auth.expires_in(days))
     except ValueError as e:
-        return page(request, "tokens.html", user, status=422, problems=[str(e)],
-                    tokens=service.list_tokens(db, user))
+        return _tokens_page(request, db, user, status=422, problems=[str(e)])
     auth.audit(db, user.id, f"{user.username} (web)", "token.create", prefix=row.prefix, scopes=row.scopes)
-    return page(request, "tokens.html", user, new_token=token, tokens=service.list_tokens(db, user))
+    return _tokens_page(request, db, user, new_token=token)
 
 
 @router.post("/tokens/{token_id}/revoke", dependencies=[Depends(csrf)])
@@ -510,6 +505,84 @@ def change_password(request: Request, current: str = Form(""), new: str = Form(.
         return page(request, "profile.html", user, status=422, problems=problems,
                     window=_state(request).settings.window_minutes)
     return back("/profile")
+
+
+# --- agents signing in (D-028) -------------------------------------------------------
+def _device_page(request, user, code="", grant=None, error=None, status=200, done=None):
+    return page(request, "device.html", user, status=status, code=code, grant=grant, error=error, done=done,
+                shown=device.show_user_code(grant.user_code) if grant else "")
+
+
+@router.get("/device", response_class=HTMLResponse)
+def device_form(request: Request, code: str = "", user=Depends(ui_user), db=Depends(get_db)):
+    """Where an agent sends the person to approve its sign-in."""
+    if not code:
+        return _device_page(request, user)
+    return _device_lookup(request, db, user, code)
+
+
+def _device_lookup(request, db, user, code):
+    limiter = _state(request).device_codes
+    if limiter.blocked(f"user:{user.id}"):
+        return _device_page(request, user, code, error="Too many attempts; wait a few minutes.", status=429)
+    grant = device.pending(db, code)
+    if grant is None:
+        limiter.hit(f"user:{user.id}")
+        return _device_page(request, user, code, status=404,
+                            error="That code is unknown or has expired. Ask the agent for a new one.")
+    return _device_page(request, user, code, grant=grant)
+
+
+@router.post("/device", dependencies=[Depends(csrf)])
+async def device_decide(request: Request, user=Depends(ui_user), db=Depends(get_db)):
+    form = await request.form()
+    code = str(form.get("code") or "")
+    grant = device.pending(db, code)
+    if grant is None:
+        return _device_lookup(request, db, user, code)
+    actor = f"{user.username} (web)"
+    if form.get("decision") != "approve":
+        device.deny(db, grant, user, actor)
+        return _device_page(request, user, done="denied")
+    try:
+        device.approve(db, grant, user, [s for s in auth.SCOPES if form.get(f"scope_{s}")], actor)
+    except device.DeviceError:
+        return _device_page(request, user, code, grant=grant, status=422, error="Choose at least one permission.")
+    return _device_page(request, user, done="approved")
+
+
+# --- the skill for AI agents, by personal link (D-028) -----------------------------------
+def _skill_link_owner(request, db, link):
+    """Only a link made for a person who still has an active account works."""
+    user_id = skill.check_link(_state(request).settings.secret_key.get_secret_value(), link)
+    user = db.get(User, user_id) if user_id else None
+    if user is None or user.status != "active":
+        raise HTTPException(404, "this link is unknown or has expired; copy a new one from the API tokens page")
+    return user
+
+
+@router.get("/skill/{link}/install.sh")
+def skill_install(request: Request, link: str, db=Depends(get_db)):
+    from checkin.web.api import app_url
+    _skill_link_owner(request, db, link)
+    return PlainTextResponse(skill.install_script(f"{app_url(request)}/skill/{link}"),
+                             media_type="text/x-shellscript", headers={"Cache-Control": "no-store"})
+
+
+@router.get("/skill/{link}/version.json")
+def skill_version(request: Request, link: str, db=Depends(get_db)):
+    from checkin.web.api import app_url
+    _skill_link_owner(request, db, link)
+    return skill.info(app_url(request))
+
+
+@router.get("/skill/{link}/checkin.zip")
+def skill_download(request: Request, link: str, db=Depends(get_db)):
+    from checkin.web.api import app_url
+    _skill_link_owner(request, db, link)
+    return Response(skill.zip_bytes(app_url(request)), media_type="application/zip",
+                    headers={"Content-Disposition": 'attachment; filename="checkin-skill.zip"',
+                             "Cache-Control": "no-store"})
 
 
 # --- admin -----------------------------------------------------------------------------------------

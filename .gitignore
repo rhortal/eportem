@@ -190,3 +190,10 @@ docker-compose.override.yml
 # The public website: build output and personal values
 website/dist/
 website/site.env
+
+# The CheckIn skill, linked into this checkout's own Claude Code skills so the
+# maintainer can run their account from here (D-028), and its local defaults
+# (the app's address). Both are per machine; the website build makes the
+# published defaults.json.
+.claude/skills/checkin
+skill/checkin/defaults.json

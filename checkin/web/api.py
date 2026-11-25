@@ -5,10 +5,11 @@ import datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from checkin import auth, service
+from checkin import auth, device, service, skill
 from checkin.db.models import (
     ApiToken,
     DayChangeRow,
@@ -20,7 +21,7 @@ from checkin.db.models import (
     UserSchedule,
 )
 from checkin.db.repo import local_today
-from checkin.web.app import Caller, _state, get_db, needs
+from checkin.web.app import Caller, _state, client_address, get_db, needs
 
 router = APIRouter()
 READ, WRITE, ADMIN = needs("read"), needs("write"), needs("admin")
@@ -50,6 +51,12 @@ class ProfileIn(BaseModel):
 @router.get("/me")
 def me(who: Caller = Depends(READ)):
     return service.profile(who.user)
+
+
+@router.get("/status")
+def status(who: Caller = Depends(READ), db=Depends(get_db)):
+    """Who you are, today's plan and runs, the next run and the setup checklist."""
+    return service.status(db, who.user)
 
 
 @router.patch("/me")
@@ -99,6 +106,16 @@ def verify_account(request: Request, who: Caller = Depends(WRITE), db=Depends(ge
     s = _state(request)
     db.commit()  # nothing written yet; never hold a write lock across the login (D-019)
     return service.verify_account(db, s.Session, s.box, s.engine, who.user, who.actor)
+
+
+@router.get("/eportem/state")
+def eportem_state(request: Request, who: Caller = Depends(READ), db=Depends(get_db)):
+    """What ePortem shows right now: working, on a break or not working, and the
+    actions that can be sent from there. Reads the dashboard (logging in if the
+    saved session expired); never clocks."""
+    s = _state(request)
+    db.commit()  # never hold a write lock across the login (D-019)
+    return service.eportem_state(db, s.Session, s.box, s.engine, who.user)
 
 
 # --- templates and schedule ---------------------------------------------------------
@@ -303,11 +320,87 @@ def create_token(body: TokenIn, who: Caller = Depends(WRITE), db=Depends(get_db)
     return {**service.token_view(row), "token": token}
 
 
+@router.delete("/tokens/current", status_code=204)
+def revoke_current_token(who: Caller = Depends(READ), db=Depends(get_db)):
+    """Revoke the token this request was made with (signing an agent out)."""
+    if not who.via.startswith("token "):
+        raise HTTPException(400, "this request was not made with a token")
+    row = db.scalar(select(ApiToken).where(ApiToken.prefix == who.via.removeprefix("token ")))
+    row.revoked_at = _now()
+    auth.audit(db, who.user.id, who.actor, "token.revoke", prefix=row.prefix)
+
+
 @router.delete("/tokens/{token_id}", status_code=204)
 def revoke_token(token_id: int, who: Caller = Depends(WRITE), db=Depends(get_db)):
     row = service.owned(db, ApiToken, token_id, who.user, "token")
     row.revoked_at = _now()
     auth.audit(db, who.user.id, who.actor, "token.revoke", prefix=row.prefix)
+
+
+# --- agents signing in (device flow, D-028) -------------------------------------------------
+class DeviceCodeIn(BaseModel):
+    client_name: str = Field("An agent", max_length=60, description="Shown to the person who approves.")
+    scopes: list[Literal["read", "write", "admin"]] = ["read", "write"]
+
+
+class DeviceTokenIn(BaseModel):
+    device_code: str = Field(..., max_length=100)
+
+
+def _device_error(e):
+    status = 429 if e.code == "slow_down" else 400
+    return JSONResponse({"error": e.code, "error_description": e.description}, status_code=status)
+
+
+@router.post("/device/code")
+def device_code(request: Request, body: DeviceCodeIn, db=Depends(get_db)):
+    """Start signing an agent in. No authentication: show the person
+    `verification_uri_complete` (or `verification_uri` and `user_code`), then
+    poll `/device/token` every `interval` seconds."""
+    s, address = _state(request), client_address(request)
+    if not s.device_starts.hit(address):
+        raise HTTPException(429, "too many sign-in codes from this address; wait a few minutes")
+    try:
+        row, code = device.start(db, body.client_name, body.scopes, address)
+    except device.DeviceError as e:
+        return _device_error(e)
+    base = app_url(request)
+    shown = device.show_user_code(row.user_code)
+    return {"device_code": code, "user_code": shown, "verification_uri": f"{base}/device",
+            "verification_uri_complete": f"{base}/device?code={shown}",
+            "expires_in": int(device.LIFETIME.total_seconds()), "interval": device.INTERVAL}
+
+
+@router.post("/device/token")
+def device_token(body: DeviceTokenIn, db=Depends(get_db)):
+    """Poll for the token. Until the person approves, a 400 with `error`
+    `authorization_pending` (keep polling), `slow_down` (429: poll less often),
+    `access_denied` or `expired_token` (stop). Then the token, once."""
+    try:
+        user, row, token = device.poll(db, body.device_code)
+    except device.DeviceError as e:
+        db.commit()  # keep last_polled_at, so slow_down works
+        return _device_error(e)
+    return {"access_token": token, "token_type": "Bearer", "scopes": row.scopes.split(","),
+            "expires_at": row.expires_at.isoformat() + "Z", "username": user.username,
+            "token_prefix": row.prefix}
+
+
+# --- the skill for AI agents (D-028) ---------------------------------------------------------
+def app_url(request):
+    return (_state(request).settings.public_url or str(request.base_url)).rstrip("/")
+
+
+@router.get("/skill")
+def skill_info(request: Request, who: Caller = Depends(READ)):
+    """The newest skill: version, sha256 and size of `/skill/checkin.zip`."""
+    return skill.info(app_url(request))
+
+
+@router.get("/skill/checkin.zip")
+def skill_zip(request: Request, who: Caller = Depends(READ)):
+    return Response(skill.zip_bytes(app_url(request)), media_type="application/zip",
+                    headers={"Content-Disposition": 'attachment; filename="checkin-skill.zip"'})
 
 
 # --- admin ----------------------------------------------------------------------------------

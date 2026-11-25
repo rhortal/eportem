@@ -5,7 +5,7 @@ but are never returned."""
 import datetime
 import zoneinfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from checkin import auth
 from checkin.core.calendar import OVERRIDE_KINDS, resolve, resolve_range
@@ -185,9 +185,10 @@ def discover_activity_ids(buttons):
     return found
 
 
-def verify_account(db, sessionmaker, box, engine, user, actor):
-    """Log in (browser only if the saved session expired) and read the dashboard.
-    Never clocks. Fills in activity IDs it can work out and that aren't set."""
+def _dashboard(db, sessionmaker, box, engine, user):
+    """(account, password, the dashboard's clock buttons): saved session first,
+    a browser login only if it expired. Never clocks. Raises ServiceError when
+    there is no account, or returns the exception from a failed login."""
     from checkin.core.clock_http import HttpClock, parse_buttons
     account = db.get(EportemAccount, user.id)
     if account is None:
@@ -205,9 +206,22 @@ def verify_account(db, sessionmaker, box, engine, user, actor):
         if buttons is None:
             buttons = clock.ensure_session()
     except Exception as e:
-        auth.audit(db, user.id, actor, "eportem_account.verify", ok=False, error=type(e).__name__)
-        raise ServiceError(f"could not log in to ePortem: {type(e).__name__}: "
-                           f"{str(e).replace(password, '<redacted>')[:200]}", 502) from None
+        return account, password, e
+    return account, password, buttons
+
+
+def _login_problem(e, password):
+    return ServiceError(f"could not log in to ePortem: {type(e).__name__}: "
+                        f"{str(e).replace(password, '<redacted>')[:200]}", 502)
+
+
+def verify_account(db, sessionmaker, box, engine, user, actor):
+    """Log in (browser only if the saved session expired) and read the dashboard.
+    Never clocks. Fills in activity IDs it can work out and that aren't set."""
+    account, password, buttons = _dashboard(db, sessionmaker, box, engine, user)
+    if isinstance(buttons, Exception):
+        auth.audit(db, user.id, actor, "eportem_account.verify", ok=False, error=type(buttons).__name__)
+        raise _login_problem(buttons, password) from None
     found = discover_activity_ids(buttons)
     for key, value in found.items():
         if not getattr(account, key):
@@ -218,6 +232,37 @@ def verify_account(db, sessionmaker, box, engine, user, actor):
                          for b in buttons})
     return {"account": account_view(account), "found": found,
             "activities": [dict(zip(("button", "id", "kind", "label"), a, strict=True)) for a in activities]}
+
+
+def eportem_state(db, sessionmaker, box, engine, user):
+    """What ePortem shows right now, read from its dashboard (never clocks):
+    `working`, `on_break` or `not_working`, the actions CheckIn can send from
+    here, and every button the dashboard offers (D-028)."""
+    from checkin.core.clock_http import ButtonNotFound, select_button
+    from checkin.db.repo import activity_ids
+    account, password, buttons = _dashboard(db, sessionmaker, box, engine, user)
+    if isinstance(buttons, Exception):
+        raise _login_problem(buttons, password) from None
+    # Not started (or stopped): start buttons. On a break: resume at either place.
+    # Working: only a switch to the other place, which is not "back from lunch".
+    resume_at = {b.get("name") for b in buttons if b.get("id") == "_stini" and b.get("name2") == "W"}
+    state = ("not_working" if any(b.get("id") == "_ststart" for b in buttons) else
+             "on_break" if len(resume_at) >= 2 else "working")
+    fits = {"not_working": ("start_day",), "working": ("lunch_break", "stop_day"),
+            "on_break": ("after_lunch", "stop_day")}[state]
+    ids, available = activity_ids(account), []
+    for action in fits:
+        for location in (("home", "office") if action in ("start_day", "after_lunch") else ("office",)):
+            try:
+                select_button(buttons, action, location, ids)
+            except (ButtonNotFound, ValueError, AttributeError):  # AttributeError: activity IDs not known yet
+                continue
+            available.append({"action": action, "location": location if action in ("start_day", "after_lunch")
+                              else None})
+    return {"state": state, "available_actions": available, "activity_ids_known": ids is not None,
+            "buttons": [{"button": b.get("id"), "id": b.get("name"), "kind": b.get("name2"),
+                         "label": b.get("name3")} for b in buttons],
+            "read_at": utcnow().isoformat() + "Z"}
 
 
 # --- templates and schedule --------------------------------------------------------
@@ -381,6 +426,32 @@ def calendar(db, user, start, days):
                     "business_trip_end": plan.business_trip_end.isoformat() if plan.business_trip_end else None,
                     "actions": [{"action": a, "time": format_minutes(m)} for a, m in plan.actions()]})
     return out
+
+
+def setup_steps(db, user):
+    """The setup checklist: (label, page, done)."""
+    account = db.get(EportemAccount, user.id)
+    sched = db.get(UserSchedule, user.id)
+    channels = db.scalar(select(func.count()).select_from(NotificationChannelRow)
+                         .where(NotificationChannelRow.user_id == user.id))
+    return [("ePortem account", "/account", bool(account and account.verified_at)),
+            ("Working-day template", "/schedule", bool(sched)),
+            ("Home days", "/schedule#home-days", bool(sched and any(sched.location_weeks or [{}]))),
+            ("Notifications", "/notifications", bool(channels))]
+
+
+def status(db, user, now_utc=None):
+    """One answer to "how do things stand?": who, today's plan and runs, the
+    next run, the setup checklist. Made for agents and scripts (D-028)."""
+    now_utc = now_utc or utcnow()
+    today = local_today(user, now_utc.replace(tzinfo=datetime.UTC))
+    runs = db.scalars(select(PlannedRun).where(PlannedRun.user_id == user.id, PlannedRun.date >= today)
+                      .order_by(PlannedRun.planned_at)).all()
+    upcoming = [r for r in runs if r.status == "planned" and r.planned_at >= now_utc]
+    return {"user": profile(user), "today": calendar(db, user, today, 1)[0],
+            "runs_today": [run_view(r) for r in runs if r.date == today],
+            "next_run": run_view(upcoming[0]) if upcoming else None,
+            "setup": [{"step": label, "page": page, "done": done} for label, page, done in setup_steps(db, user)]}
 
 
 # --- channels ----------------------------------------------------------------------

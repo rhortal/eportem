@@ -50,7 +50,7 @@ you run.
 
 ## Source
 
-- `src/*.html` and `src/es/*.html`: the pages (`index`, `terms`, `privacy`, `legal`),
+- `src/*.html` and `src/es/*.html`: the pages (`index`, `terms`, `privacy`, `legal`, `agents`),
   the same names in both languages.
 - `src/_*.html`: partials (header, footer, logo, and one per picture, `_v-*.html`),
   pulled in with `<!--include:_name.html-->`.
@@ -70,3 +70,11 @@ changes. Pictures of ePortem are generic illustrations, never its real design.
 The terms of use and privacy policy are a careful first draft, not legal advice. Have
 them reviewed before the service takes users beyond early access, and check
 `HOSTING_PROVIDER` against the host that serves the site.
+
+## The skill for AI agents
+
+The home page's "Or just ask your AI agent" section and `/agents` say the skill exists,
+what it does and how to get it, but the site never publishes the skill itself: it is
+only for people with an account, who get it from the app's API tokens page (D-028).
+A test checks that no installer, zip or `/skill/` link reaches `dist/`.
+

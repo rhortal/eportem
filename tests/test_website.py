@@ -32,7 +32,7 @@ class TestWebsite(unittest.TestCase):
         return (self.dist / name).read_text(encoding="utf-8")
 
     def test_every_page_in_both_languages(self):
-        for name in ("index.html", "terms.html", "privacy.html", "legal.html"):
+        for name in ("index.html", "terms.html", "privacy.html", "legal.html", "agents.html"):
             self.assertIn(name, self.pages)
             self.assertIn(f"es/{name}", self.pages)
             self.assertIn('lang="en"', self.html(name))
@@ -123,3 +123,14 @@ class TestWebsite(unittest.TestCase):
 
     def test_main_builds_the_example(self):
         self.assertEqual(build.main(["--example", "--out", str(self.tmp / "z")]), 0)
+
+    def test_the_skill_for_agents_is_presented_but_never_published(self):
+        # The skill is only for people with an account: the app serves it (D-028).
+        self.assertFalse((self.dist / "skill").exists())
+        for page, home, link in (("agents.html", "index.html", 'href="/agents"'),
+                                 ("es/agents.html", "es/index.html", 'href="/es/agents"')):
+            html = self.html(page)
+            for leak in ("install.sh", "checkin.zip", "curl ", "/skill/"):
+                self.assertNotIn(leak, html, f"{page}: {leak}")
+            self.assertIn('id="agents"', self.html(home))
+            self.assertIn(link, self.html(home))

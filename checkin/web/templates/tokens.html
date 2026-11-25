@@ -1,6 +1,24 @@
 {% extends "base.html" %}
 {% block main %}
 <h1>{{ t("API tokens") }}</h1>
+<div class="card" id="agents">
+  <h2>{{ t("For AI agents") }}</h2>
+  <p>{{ t("Paste this into your AI agent's chat (Claude Code, or any agent that uses skills). It installs CheckIn's skill and signs in with a link you approve here; it never needs your password.") }}</p>
+  <div class="prompt"><button type="button" class="quiet" data-copy="for-agents" data-done="{{ t('Copied') }}" hidden>{{ t("Copy") }}</button>
+<pre id="for-agents">{% if locale == "es" %}Configura CheckIn para mí. Instala su skill con
+curl -fsSL {{ skill_base }}/install.sh | sh
+(si no eres Claude Code, añade: -s -- --dir TU_CARPETA_DE_SKILLS). Luego lee el SKILL.md de la skill y conéctame con
+python3 ~/.claude/skills/checkin/scripts/checkin.py login
+(esa carpeta, o donde la hayas instalado). Enséñame el enlace y el código que muestra, espera mientras lo apruebo con
+login --wait, y después ejecuta status y dime el plan de hoy. Nunca me pidas una contraseña.{% else %}Set up CheckIn for me. Install its skill with
+curl -fsSL {{ skill_base }}/install.sh | sh
+(if you aren't Claude Code, add: -s -- --dir YOUR_SKILLS_FOLDER). Then read the skill's SKILL.md and sign me in with
+python3 ~/.claude/skills/checkin/scripts/checkin.py login
+(that folder, or wherever you installed it). Show me the link and the code it prints, wait while I approve with
+login --wait, then run status and tell me today's plan. Never ask me for a password.{% endif %}</pre></div>
+  <p class="muted">{{ t("The link in this text is yours and works for 24 hours; it only downloads the skill. Don't share it.") }}
+    <a href="{{ skill_base }}/checkin.zip">{{ t("Download the skill as a zip") }}</a></p>
+</div>
 {% if new_token %}<div class="card"><strong>{{ t("Copy it now: it is not shown again.") }}</strong><code class="token">{{ new_token }}</code></div>{% endif %}
 <div class="card"><table>{% for tk in tokens %}
   <tr><td>{{ tk.name }}</td><td><code>ept_{{ tk.prefix }}_…</code></td><td>{{ tk.scopes|join(", ") }}</td>
@@ -16,4 +34,5 @@
   <button>{{ t("Create token") }}</button>
 </form>
 <p class="muted">API documentation: <a href="/api/docs">/api/docs</a></p>
+<script src="{{ url_for('static', path='copy.js') }}" defer></script>
 {% endblock %}

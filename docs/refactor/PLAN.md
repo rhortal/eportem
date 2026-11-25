@@ -647,6 +647,17 @@ error tracking, heartbeat) at this point, in their own `.env`.
   record of where data is processed, and a decision on whether it can be
   offered at all (see the risks below).
 
+### After the cutover: CheckIn from AI agents (D-028, branch `agent-skill`)
+- Done on the branch: device-flow sign-in (`/device`, `/api/v1/device/*`), `GET
+  /status`, `GET /eportem/state`, `DELETE /tokens/current`, the skill in `skill/`,
+  served to signed-in people from the API tokens page and updated through
+  `/api/v1/skill`; the website presents it without publishing it.
+- To deploy: merge, rebuild the image on the host (migration 0003 runs on start),
+  then paste the tokens page's text into an agent and approve; check
+  `checkin.py state` against ePortem before the first `clock`.
+- Later, if asked: ePortem's other pauses (absence, medical), and switching between
+  home and office while working, which need actions beyond the four.
+
 ## 9. Risks and open questions
 
 | # | Risk / question | Plan |

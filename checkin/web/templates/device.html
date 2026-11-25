@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block main %}
+<h1>{{ t("Sign in an agent") }}</h1>
+{% if error %}<div class="problems" role="alert">{{ t(error) }}</div>{% endif %}
+{% if done == "approved" %}
+<div class="notice" role="status">{{ t("Done. Go back to your agent: it is signed in.") }}</div>
+{% elif done == "denied" %}
+<div class="notice" role="status">{{ t("Denied. The agent was not signed in.") }}</div>
+{% elif grant %}
+<div class="card">
+  <p>{{ t("An AI agent or script is asking to use CheckIn for you. Approve it only if you started this yourself, just now.") }}</p>
+  <p>{{ t("Check that this code is the one your agent shows:") }} <code class="token">{{ shown }}</code></p>
+  <table>
+    <tr><th>{{ t("Agent") }}</th><td>{{ grant.client_name }}</td></tr>
+    <tr><th>{{ t("Asked from") }}</th><td>{{ grant.client_ip or "—" }}, {{ grant.created_at.strftime("%H:%M") }} UTC</td></tr>
+  </table>
+  <form method="post" action="/device"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="code" value="{{ shown }}">
+    <p>{{ t("It may:") }}</p>
+    {% set asked = grant.scopes.split(",") %}
+    {% if "read" in asked %}<label><input type="checkbox" name="scope_read" value="1" checked> {{ t("see your schedule, calendar and history") }}</label>{% endif %}
+    {% if "write" in asked %}<label><input type="checkbox" name="scope_write" value="1" checked> {{ t("change your schedule, days and settings, and clock now when you ask") }}</label>{% endif %}
+    {% if "admin" in asked and user.role == "admin" %}<label><input type="checkbox" name="scope_admin" value="1"> {{ t("manage users (admin)") }}</label>{% endif %}
+    <p class="muted">{{ t("The agent gets its own token, valid for 90 days. You can revoke it at any time on the API tokens page.") }}</p>
+    <p><button name="decision" value="approve">{{ t("Approve") }}</button>
+       <button name="decision" value="deny" class="danger">{{ t("Deny") }}</button></p>
+  </form>
+</div>
+{% else %}
+<form class="card" method="get" action="/device">
+  <label for="code">{{ t("Code") }}</label>
+  <input id="code" name="code" value="{{ code }}" autocomplete="off" autocapitalize="characters" placeholder="BCDF-GHJK" required autofocus>
+  <p><button>{{ t("Continue") }}</button></p>
+</form>
+{% endif %}
+{% endblock %}

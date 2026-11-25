@@ -5,5 +5,7 @@
 !checkin/
 !fake_eportem/
 !utility/
+!skill/
+skill/checkin/defaults.json
 **/__pycache__
 **/*.pyc

@@ -49,3 +49,9 @@ th, td { text-align:left; padding:.4rem .3rem; border-bottom:1px solid var(--lin
 pre { white-space:pre-wrap; word-break:break-word; background:var(--off); padding:.75rem; border-radius:8px; font-size:.82rem; }
 code.token { display:block; padding:.6rem; background:var(--off); border-radius:6px; word-break:break-all; }
 @media (max-width: 40rem) { .week { grid-template-columns:repeat(4, minmax(0,1fr)); } main { padding:.75rem; } }
+
+/* The text for AI agents on the tokens page, with its Copy button (static/copy.js). */
+.prompt { position:relative; }
+.prompt pre { white-space:pre-wrap; word-break:break-word; padding:.8rem 1rem; border-radius:8px; background:var(--bg, #f7f7f5);
+  border:1px solid var(--line, #e3e2dc); font-size:.85rem; }
+.prompt button { position:absolute; top:.4rem; right:.4rem; }

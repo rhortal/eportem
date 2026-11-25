@@ -210,3 +210,25 @@ class SchedulerLock(Base):
     name: Mapped[str] = mapped_column(String(32), primary_key=True)
     holder: Mapped[str] = mapped_column(String(100))
     heartbeat_at: Mapped[datetime.datetime] = mapped_column(DateTime)
+
+
+class DeviceGrant(Base):
+    """An agent asking to be signed in (OAuth device flow, RFC 8628; D-028).
+    The agent holds the device code (only its sha256 is kept) and polls; the
+    person types or follows the short user code in a signed-in browser and
+    approves. The token is made when the agent next polls, so it is never
+    stored in clear."""
+    __tablename__ = "device_grants"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    device_code_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    user_code: Mapped[str] = mapped_column(String(16), unique=True)           # no dash, upper case
+    client_name: Mapped[str] = mapped_column(String(60))
+    scopes: Mapped[str] = mapped_column(String(100))                          # asked for, comma-separated
+    client_ip: Mapped[str | None] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(16), default="pending")        # pending, approved, denied, issued
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    granted_scopes: Mapped[str | None] = mapped_column(String(100))
+    token_id: Mapped[int | None] = mapped_column(ForeignKey("api_tokens.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=utcnow)
+    expires_at: Mapped[datetime.datetime] = mapped_column(DateTime)
+    last_polled_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)

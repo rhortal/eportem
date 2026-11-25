@@ -2,6 +2,33 @@
 Spanish entry falls back to English, so nothing ever shows a raw key."""
 
 ES = {
+    "Sign in an agent": "Conectar un agente", "For AI agents": "Para agentes de IA",
+    ("Paste this into your AI agent's chat (Claude Code, or any agent that uses skills). It installs CheckIn's "
+     "skill and signs in with a link you approve here; it never needs your password."):
+        "Pega esto en el chat de tu agente de IA (Claude Code, o cualquier agente que use skills). Instala la skill de "
+        "CheckIn y se conecta con un enlace que apruebas aquí; nunca necesita tu contraseña.",
+    "Copy": "Copiar", "Copied": "Copiado", "Download the skill as a zip": "Descargar la skill en un zip",
+    "The link in this text is yours and works for 24 hours; it only downloads the skill. Don't share it.":
+        "El enlace de este texto es tuyo y funciona 24 horas; solo descarga la skill. No lo compartas.",
+    ("An AI agent or script is asking to use CheckIn for you. "
+     "Approve it only if you started this yourself, just now."):
+        ("Un agente de IA o un script pide usar CheckIn en tu nombre. "
+         "Apruébalo solo si lo has iniciado tú, ahora mismo."),
+    "Code": "Código", "Continue": "Continuar", "Agent": "Agente", "Asked from": "Pedido desde",
+    "Check that this code is the one your agent shows:": "Comprueba que este código es el que muestra tu agente:",
+    "It may:": "Podrá:", "see your schedule, calendar and history": "ver tu horario, calendario e historial",
+    "change your schedule, days and settings, and clock now when you ask":
+        "cambiar tu horario, tus días y tus ajustes, y fichar al momento si se lo pides",
+    "manage users (admin)": "gestionar usuarios (administración)",
+    "Approve": "Aprobar", "Deny": "Denegar",
+    ("The agent gets its own token, valid for 90 days. "
+     "You can revoke it at any time on the API tokens page."):
+        "El agente recibe su propio token, válido 90 días. Puedes revocarlo cuando quieras en la página Tokens de API.",
+    "Done. Go back to your agent: it is signed in.": "Listo. Vuelve a tu agente: ya está conectado.",
+    "Denied. The agent was not signed in.": "Denegado. El agente no se ha conectado.",
+    "That code is unknown or has expired. Ask the agent for a new one.":
+        "Ese código no existe o ha caducado. Pide uno nuevo al agente.",
+    "Choose at least one permission.": "Elige al menos un permiso.",
     "Today": "Hoy", "Schedule": "Horario", "Calendar": "Calendario", "Notifications": "Avisos",
     "ePortem account": "Cuenta de ePortem", "History": "Historial", "API tokens": "Tokens de API",
     "Profile": "Perfil", "Admin": "Administración", "Sign out": "Salir", "Sign in": "Entrar",

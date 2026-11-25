@@ -380,3 +380,42 @@ logs of our own, which replaces the self-hosted wording (`LOG_RETENTION_DAYS`). 
 app's `script-src 'self'` blocks the injected script, so signed-in pages aren't counted. Also on 2026-11-25: links and canonicals became root-absolute and extensionless (Pages
 redirected every `.html` link with a 308), and each language got a `404.html` (Pages answered
 unknown paths with the home page and a 200).
+
+**D-028: Managing CheckIn from an AI agent: a skill, signed in by device flow, only for account holders** (Accepted, 2026-11-25, owner's request; built on the branch `agent-skill`)
+The owner wants to run their CheckIn (and clock in and out, as in ePortem) by
+asking an AI agent, and to offer the same to other users. → Four parts:
+(1) **Sign-in without a password:** the OAuth device authorization grant (RFC 8628),
+cut down (`checkin/device.py`, table `device_grants`, migration 0003). The agent
+asks `POST /api/v1/device/code` (no authentication, 10 per address per 10
+minutes) and shows the person a link and an 8-letter code (no vowels, 10 minutes);
+the person approves on `/device` in a signed-in browser, choosing read and/or write
+(never more than asked, admin only for admins, 10 wrong codes per 5 minutes); the
+agent polls `POST /api/v1/device/token` (`authorization_pending`, `slow_down`,
+`access_denied`, `expired_token`) and gets an ordinary `ept_` token named "Agent:
+<name>", valid 90 days, created at that poll so it is never stored in clear. Chosen
+over pasting a token (people copy secrets into chats) and over a callback to a
+local port (agents often run where no browser can reach them).
+(2) **API for agents:** `GET /status` (who, today's plan and runs, next run, setup),
+`GET /eportem/state` (reads ePortem's dashboard, never clocks: `working`,
+`on_break` or `not_working`, from the buttons offered, and the actions that fit;
+a switch between home and office while working is not offered as "back from
+lunch"), `DELETE /tokens/current` (sign out), and the existing
+`POST /actions/{action}` for clocking now. Clocking stays the four actions through
+the run system, so a manual clock shows in history, notifies, and replaces that
+day's planned run; ePortem's other pauses (absence, medical...) are not offered.
+(3) **The skill:** `skill/checkin/` (`SKILL.md` and a standard-library script for
+Python 3.9+, `scripts/checkin.py`: `login`, `login --wait`, `status`, `state`,
+`clock ACTION --yes`, `get|post|put|patch|delete`, `update`). The token lives in
+`~/.config/checkin/agent.json` (mode 600) and is never printed; clocking refuses
+without `--yes`, and SKILL.md has the agent confirm the action and place first.
+(4) **Distribution only to account holders:** the public website says the skill
+exists and what it does (home section, `/agents`, illustration `agent-chat`) but
+publishes no file. The app serves it: the API tokens page shows a text to paste
+into an agent with a personal install link, `/skill/<user>.<expiry>.<HMAC>/install.sh`
+(signed with the instance key, 24 hours, dead once the account isn't active), and
+the skill updates itself from `/api/v1/skill` with its own token, checking the
+zip's sha256 and swapping folders only once the new one is complete. The zip is
+built in memory with a `defaults.json` naming the instance, and is byte-for-byte
+stable. The Docker image now copies `skill/`. In this repository,
+`.claude/skills/checkin` is an untracked symlink to `skill/checkin`, with an
+untracked `defaults.json`, so the maintainer runs their own account from here.
