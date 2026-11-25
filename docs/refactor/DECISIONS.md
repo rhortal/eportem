@@ -347,3 +347,36 @@ holds for every template, built-in or custom, with no new setting. A planned run
 that breaks the rule (planned before this change) is re-planned on the next
 start-up. Catching up after an outage can still clock in late: within the window,
 late beats not at all.
+
+**D-027: A static public website, built apart from the service** (Accepted, 2026-11-24, owner's request; built on the branch `website`, merged 2026-11-25)
+The owner wants a page that presents CheckIn to the world before sign-ups exist,
+with terms that make clear CheckIn isn't responsible for wrong clock events, an
+ePortem trademark disclaimer, and a visual style that shows our product and never
+ePortem's. → `website/`: plain HTML and CSS in English and Spanish, built by a
+standard-library script (`website/build.py`) into `website/dist/`, deployable on
+any static host. Personal values (name, contact email, address, tax ID) live in
+the untracked `website/site.env`, like every personal value (D-012), and the
+build fails while one is missing. The site sets no cookies and loads nothing from
+other sites (system fonts, drawn pictures), so its privacy policy stays short; a
+test enforces that, the disclaimer on every page, and working links. Pictures are
+HTML/CSS drawings of the product's own screens, each catalogued with its source in
+`website/VISUALS.md` for when the UI is redesigned; the one picture of a
+time-recording site is a generic illustration labelled as such. The legal pages
+are a first draft to be reviewed before the service takes users. Not served by
+the service itself: the site has to stay up and simple even when the service is
+down or being changed. Hosting, agreed the same day: the site on Cloudflare Pages
+at the address people already have, the app moved to its own hostname one level
+below the zone (Cloudflare's free certificate covers only one level, so not
+`app.<site address>`), rather than under a `/app` sub-path (never run in production,
+and it would share an origin and cookies with the site).
+
+
+Amended 2026-11-25 (owner's request): the site counts visits with Cloudflare Web
+Analytics. It sets no cookies and Cloudflare injects its script at the edge (the
+zone's automatic install, EU visitors included), so the source still loads nothing
+from other sites and the test still holds; the privacy page and footer now say so.
+The privacy page also names the host (`HOSTING_PROVIDER`) and says we keep no access
+logs of our own, which replaces the self-hosted wording (`LOG_RETENTION_DAYS`). The
+app's `script-src 'self'` blocks the injected script, so signed-in pages aren't counted. Also on 2026-11-25: links and canonicals became root-absolute and extensionless (Pages
+redirected every `.html` link with a 308), and each language got a `404.html` (Pages answered
+unknown paths with the home page and a 200).

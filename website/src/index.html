@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CheckIn: your ePortem clock-ins, on time</title>
+<meta name="description" content="CheckIn follows your working week and clocks you in and out on ePortem: home or office, holidays and time off included. In final testing, with limited early access.">
+<link rel="canonical" href="{{SITE_URL}}/">
+<link rel="alternate" hreflang="en" href="{{SITE_URL}}/">
+<link rel="alternate" hreflang="es" href="{{SITE_URL}}/es/">
+<link rel="icon" href="{{ROOT}}assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="{{ROOT}}assets/site.css">
+</head>
+<body>
+<!--include:_header.en.html-->
+<main id="main">
+
+<div class="hero"><div class="wrap">
+  <div>
+    <span class="eyebrow">For people who clock in on ePortem</span>
+    <h1>Clock in on time. Every day. Without thinking about it.</h1>
+    <p class="lead">CheckIn follows your working week and records your start, lunch and finish on ePortem for you:
+    home or office, public holidays and time off included. You get a message when it's done, and an alert if
+    anything goes wrong.</p>
+    <div class="status"><i></i>In final testing. Early-access places are limited.</div>
+    <div class="cta">
+      <a class="btn" href="mailto:{{CONTACT_EMAIL}}?subject=CheckIn%20early%20access">Ask about early access</a>
+      <a class="btn quiet" href="#how">How it works</a>
+    </div>
+  </div>
+  <!--include:_v-today.en.html-->
+</div></div>
+
+<section id="how"><div class="wrap">
+  <h2>How it works</h2>
+  <p class="intro">Set it up once. After that, the only time you think about clocking in is when you take a day off.</p>
+  <ol class="steps">
+    <li><h3>Pick your week</h3><p>Choose a working-day template, or set your own times for each day, and mark which days you work from home.</p></li>
+    <li><h3>Connect your account</h3><p>Give CheckIn your ePortem login. It's stored encrypted and used only to record your clock events.</p></li>
+    <li><h3>Get on with your day</h3><p>CheckIn clocks you in, out for lunch, back and out at the end of the day, and tells you each time.</p></li>
+  </ol>
+</div></section>
+
+<section id="day"><div class="wrap split">
+  <div>
+    <h2>Never late in. Never early out.</h2>
+    <p class="intro">Each clock event lands at a slightly different moment every day, like a person's would. But the
+    day never shrinks: the clock-in always comes before your start time and the clock-out always after your stop time.</p>
+  </div>
+  <!--include:_v-day.en.html-->
+</div></section>
+
+<section id="week"><div class="wrap">
+  <h2>Your week, the way you work it</h2>
+  <p class="intro">Start from a common working day and adjust it. Lunch breaks, short Fridays and summer hours are all covered.</p>
+  <!--include:_v-templates.en.html-->
+</div></section>
+
+<section id="features"><div class="wrap">
+  <h2>Everything a working week throws at you</h2>
+  <p class="intro">The days that aren't ordinary are where clocking in goes wrong. CheckIn handles them.</p>
+  <div class="features">
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+      <h3>Home or office in one tap</h3><p>Set your usual home days, then tap any day to switch it. Each is clocked with the right activity.</p></div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/></svg>
+      <h3>Holidays and time off</h3><p>Public holidays for your region are skipped. Add time off, business trips and one-off changes on a calendar.</p></div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      <h3>A message every time</h3><p>Hear about each clock event on Telegram or Slack, and keep your Slack status showing where you're working.</p></div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>
+      <h3>A check at the end of the day</h3><p>After your last clock event, CheckIn checks the whole day and alerts you if anything is missing.</p></div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <h3>Your login, locked away</h3><p>Your ePortem password is encrypted at rest and only ever sent to ePortem. No tracking, no ads.</p></div>
+    <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+      <h3>English and Spanish</h3><p>Use CheckIn in either language, on your phone or your computer. Nothing to install.</p></div>
+  </div>
+</div></section>
+
+<section id="calendar"><div class="wrap split">
+  <!--include:_v-month.en.html-->
+  <div>
+    <h2>A calendar that knows your plans</h2>
+    <p class="intro">See the month ahead: home days, public holidays, time off and trips. Change a day before it
+    happens and CheckIn plans around it. Days off are never clocked.</p>
+  </div>
+</div></section>
+
+<section id="notify"><div class="wrap split">
+  <div>
+    <h2>Know it's done, without checking</h2>
+    <p class="intro">A short message after each clock event, and a clear alert when something needs you, such as an
+    action that couldn't be recorded. You only open ePortem when CheckIn asks you to.</p>
+  </div>
+  <!--include:_v-phone.en.html-->
+</div></section>
+
+<section id="record"><div class="wrap">
+  <h2>From your schedule to your record</h2>
+  <p class="intro">CheckIn signs in to your own ePortem account and records the same clock events you would, at the
+  times your schedule says, with the right activity for home or office.</p>
+  <!--include:_v-flow.en.html-->
+</div></section>
+
+<section id="faq" class="faq"><div class="wrap">
+  <h2>Questions</h2>
+  <details><summary>Is CheckIn part of ePortem?</summary>
+    <p>No. CheckIn is an independent project, not affiliated with or endorsed by ePortem or its owner. It works with
+    your own ePortem account, the way you would through your browser.</p></details>
+  <details><summary>Can I use it at my company?</summary>
+    <p>Check your company's rules first. Some companies don't allow automated tools, and it's your responsibility to
+    follow their policies. In Spain the working-time record is a legal obligation, and it must show the hours you
+    actually work.</p></details>
+  <details><summary>Will it record hours I didn't work?</summary>
+    <p>It records what your schedule says, so keep your schedule true: mark time off, sick days and changes. CheckIn
+    is for people who work their hours and don't want to forget to clock them, not for recording hours that weren't worked.</p></details>
+  <details><summary>What if a clock event fails?</summary>
+    <p>You get an alert straight away, and the end-of-day check lists anything missing. Then you fix it on ePortem by
+    hand. CheckIn never guesses: if it isn't sure an action was recorded, it says so rather than trying again.</p></details>
+  <details><summary>What if my company uses a different system?</summary>
+    <p>CheckIn works with ePortem today. If your company records working time on another system,
+    <a href="mailto:{{CONTACT_EMAIL}}?subject=CheckIn%20and%20another%20system">tell us which one</a>: it helps us decide what to support next.</p></details>
+  <details><summary>When can I use it, and what will it cost?</summary>
+    <p>CheckIn is in its final testing, and a small number of people can join early. Places are limited, so if you'd
+    like one, <a href="mailto:{{CONTACT_EMAIL}}?subject=CheckIn%20early%20access">send us a message</a>. Pricing isn't decided yet.</p></details>
+</div></section>
+
+</main>
+<!--include:_footer.en.html-->
+</body>
+</html>

@@ -10,8 +10,7 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 ## Start here (2026-11-25, morning, on the personal laptop)
 
 - **The app is now `https://checkin-app.hortal.me`**; `https://checkin.hortal.me` is the
-  public website on Cloudflare Pages (the hosting runbook on the `website` branch, all
-  steps done; details in that branch's `docs/HANDOFF.md`). On `omv`: DNS record and proxy
+  public website on Cloudflare Pages (see "Public website" below). On `omv`: DNS record and proxy
   host 74 (cert 94) for the app, `CHECKIN_PUBLIC_URL` changed (backup
   `.env.bak-20261125-hostname`), container recreated at 09:18 after the clock-in (08:58,
   HTTP); today's runs intact; proxy host 73 and its cert deleted. Montastic watches the
@@ -19,13 +18,43 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 - The website's contact address `checkin@hortal.me` is a Mailu alias to the local mailbox
   `roberto@hortal.com` (Gmail fetches that over POP). Not straight to Gmail: forwards out of
   Mailu are refused by the SMTP2GO relay (homelab repo, `hosts/omv/services/mailu.md`).
+- The `website` branch was merged into `main` on 2026-11-25 and deleted; the site's source
+  is `website/` on `main`.
 - Next is unchanged: volumes about 2026-11-28, cron clean-up about 2026-12-08.
+
+## Public website (live since 2026-11-25)
+
+- `https://checkin.hortal.me` is the site in `website/` (D-027; `website/README.md`), on
+  **Cloudflare Pages**: project `checkin` on the owner's personal Cloudflare account
+  (`checkin.pages.dev` was taken, so its address is `checkin-api.pages.dev`; the `checkin`
+  CNAME, proxied, points there). Pages can't pull from Gitea; deploys are direct uploads:
+  `python3 website/build.py && wrangler pages deploy website/dist --project-name checkin --branch main`.
+  Check `wrangler whoami` first: the personal account, never the work Mac's (its wrangler and
+  `CLOUDFLARE_*` tokens belong to the employer).
+- `website/site.env` (untracked, on the personal laptop): `SITE_URL=https://checkin.hortal.me`,
+  the owner's name, `CONTACT_EMAIL=checkin@hortal.me`, `HOSTING_PROVIDER=Cloudflare`.
+- Content as of 2026-11-25: "in final testing, early-access places are limited" (home status
+  line, FAQ, legal notice, terms, privacy); a FAQ inviting people on other time-recording
+  systems to write; no claim about pictures of ePortem in the footer (the one generic
+  illustration is named in the legal notice). The legal pages are a first draft to review
+  before the service takes users.
+- Analytics: Cloudflare Web Analytics from the `hortal.me` zone's automatic install (one beacon
+  per page, checked in headless Chrome); the Pages project's own toggle is off on purpose, so
+  visits count once, in the zone's site. If the zone's install is ever turned off, turn the
+  Pages toggle on and redeploy. The app's CSP blocks the injected script, so signed-in pages
+  aren't counted.
+- 404 pages per language and root-absolute, extensionless links (`/privacy`, `/es/`), the way
+  Pages serves them; preview with `npx wrangler pages dev website/dist`.
+- Hosting history: agreed 2026-11-24 on the work Mac (site on Pages at the address people
+  already have, app on its own name one level below the zone, since Cloudflare's free
+  certificate covers only one level); done 2026-11-25 from the personal laptop (see "Start
+  here"). Rollback: set the `checkin` CNAME back to `hortal.me` (proxied), recreate a proxy host
+  for it, restore `.env.bak-20261125-hostname` on `omv`.
 
 ## Start here (end of the 2026-11-24 session on the work Mac, about 18:50)
 
-The hand-over on the work Mac is done. Anything about the public website, including
-moving the app to another hostname, lives only on the branch `website` (its
-`docs/HANDOFF.md`); that work continues on the other laptop. State:
+The hand-over on the work Mac is done. (The public website then lived on the branch
+`website`, merged into `main` on 2026-11-25.) State:
 
 - **CheckIn clocks for real on `omv` since 09:30 on 2026-11-24**; cron no longer
   clocks. The first full day was clean, all at home: start 09:02 (cron, before the
@@ -42,8 +71,8 @@ moving the app to another hostname, lives only on the branch `website` (its
   The cron checkout was not pulled (it stays at `54477fa`, the rollback).
 - **Branches:** `main` is the service; work goes on `main` or a branch from it.
   `refactor/multiuser-service` was deleted (local and Gitea) on 2026-11-24 once
-  merged: every commit of it is in `main`. `website`: the public website and its
-  plans; see that branch.
+  merged: every commit of it is in `main`. `website` (the public website) was merged
+  on 2026-11-25 and deleted.
 - **Releases (tags):** `v1.0.0` = `54477fa`, the cron scripts before the refactor;
   `v2.0.0` = the service as merged, after the first clean day (version 2.0.0 in
   `pyproject.toml`, the API and error reports). Deployed on `omv` at 19:15 the same
@@ -264,7 +293,7 @@ CheckIn on `omv` now clocks for real; cron no longer does (PLAN.md phase 8, step
 
 - Clone from Gitea (HTTPS works from outside the LAN):
   `git clone https://gitea.tiorob-home.mywire.org/roberto/eportem.git && cd eportem`
-  (`main` is the service; the `website` branch holds the public website). Commit
+  (`main` holds the service and the public website, `website/`). Commit
   and push to Gitea only.
 - `make venv` needs `python3.13` (`brew install python@3.13`, or
   `make venv PYTHON=/path/to/python3.13`), then `make check`. `make test-fast`

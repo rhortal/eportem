@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aviso legal · CheckIn</title>
+<link rel="canonical" href="{{SITE_URL}}/es/legal">
+<link rel="icon" href="{{ROOT}}assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="{{ROOT}}assets/site.css">
+</head>
+<body>
+<!--include:_header.es.html-->
+<main id="main" class="wrap doc">
+<h1>Aviso legal</h1>
+<p class="updated">Última actualización: 25 de noviembre de 2026</p>
+
+<h2>Titular del sitio</h2>
+<p>En cumplimiento del artículo 10 de la Ley 34/2002, de servicios de la sociedad de la información y de comercio
+electrónico (LSSI):</p>
+<dl>
+  <dt>Titular</dt><dd>{{OWNER_NAME}}, persona física</dd>
+  <!--if:OWNER_TAX_ID--><dt>NIF</dt><dd>{{OWNER_TAX_ID}}</dd><!--endif:OWNER_TAX_ID-->
+  <!--if:OWNER_ADDRESS--><dt>Domicilio</dt><dd>{{OWNER_ADDRESS}}</dd><!--endif:OWNER_ADDRESS-->
+  <dt>Correo</dt><dd><a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a></dd>
+  <dt>Sitio web</dt><dd>{{SITE_URL}}</dd>
+</dl>
+<p>Este sitio presenta CheckIn, un proyecto en pruebas finales, con acceso anticipado para un número limitado de personas. Aún no vende nada ni tiene registro público.</p>
+
+<h2>Marcas</h2>
+<p>ePortem es una marca de su titular. CheckIn es un proyecto independiente: no está afiliado a ePortem ni a su
+titular, ni cuenta con su respaldo o patrocinio. El nombre ePortem se usa solo para indicar con qué sitio funciona
+CheckIn. El dibujo de una página de
+registro horario de la portada es una ilustración genérica, no el diseño de ePortem. Telegram y Slack son marcas de sus titulares, citadas solo porque CheckIn puede enviar avisos a
+través de ellas.</p>
+
+<h2>Contenido</h2>
+<p>Los textos, dibujos y código de este sitio pertenecen a {{OWNER_NAME}} salvo que se indique otra cosa. Puedes
+enlazar a cualquier página. Intentamos que la información sea exacta, pero describe un servicio que aún se está
+construyendo y puede cambiar.</p>
+
+<h2>Condiciones y privacidad</h2>
+<p>Consulta las <a href="{{ROOT}}es/terms">condiciones de uso</a> y la <a href="{{ROOT}}es/privacy">política
+de privacidad</a>. <a href="{{ALT}}">English version</a>.</p>
+</main>
+<!--include:_footer.es.html-->
+</body>
+</html>
