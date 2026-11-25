@@ -41,6 +41,13 @@ npx wrangler whoami                      # the account that owns the domain, not
 npx wrangler pages deploy website/dist --project-name checkin --branch main
 ```
 
+Or, on a machine with other Cloudflare credentials (another account's `wrangler login`,
+`CLOUDFLARE_*` variables), use `website/deploy.sh`: it reads a Pages-only token from the
+untracked `website/deploy.env` (copy `deploy.env.example`, `chmod 600`), runs wrangler
+with an empty environment and a throwaway home folder so nothing else can be picked up,
+checks that the token reaches the account's Pages project, then builds and deploys.
+`website/deploy.sh --check` only does the check.
+
 Setting it up again elsewhere: `npx wrangler pages project create checkin`, a first
 deploy, then the custom domain in the Pages project (its DNS record becomes a CNAME to
 the project's `pages.dev` address). The privacy page names
@@ -58,6 +65,9 @@ you run.
 - Placeholders: `{{OWNER_NAME}}` and the others from `site.env`; `<!--if:KEY-->...
   <!--endif:KEY-->` for optional ones; `{{ROOT}}` and `{{ALT}}` (the same page in the
   other language) are set by the build.
+- Comments (`<!-- ... -->`, such as each picture's note naming the repository files it
+  is drawn from) are for the source only: the build leaves them out of `dist/`, and a
+  test checks no comment reaches a built page.
 
 ## Pictures
 

@@ -44,6 +44,7 @@ class TestWebsite(unittest.TestCase):
             self.assertNotIn("{{", html, name)
             self.assertNotIn("<!--include:", html, name)
             self.assertNotIn("<!--if:", html, name)
+            self.assertNotIn("<!--", html, f"{name}: source comments (they name repository files) must not ship")
             self.assertIn(self.values["CONTACT_EMAIL"], html, name)
 
     def test_the_eportem_disclaimer_is_on_every_page(self):

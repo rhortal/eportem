@@ -190,6 +190,10 @@ docker-compose.override.yml
 # The public website: build output and personal values
 website/dist/
 website/site.env
+# The Cloudflare token website/deploy.sh uses (personal; never committed).
+website/deploy.env
+# wrangler's local cache (account and project ids), made by website/deploy.sh.
+.wrangler/
 
 # The CheckIn skill, linked into this checkout's own Claude Code skills so the
 # maintainer can run their account from here (D-028), and its local defaults

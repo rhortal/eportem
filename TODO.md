@@ -35,6 +35,10 @@ Details for each item are in `docs/HANDOFF.md`.
       proxy host (found in place on 2026-11-21, see `docs/HANDOFF.md`). Since
       2026-11-25 the app is `checkin-app.hortal.me` and `checkin.hortal.me` is the
       website on Cloudflare Pages.
+- [x] 2026-11-25: CheckIn from AI agents (D-028) merged and live on `omv`; the website
+      presents it (deployed with `website/deploy.sh`, now possible from the work Mac).
+- [ ] Rename the agent token "Agent: Claude Code on personal laptop (eportem repo)": it
+      is on the work Mac (`checkin.py logout`, then `login --name ...`).
 - [x] A destination for GlitchTip alerts (Telegram) and an outside uptime
       monitor (Montastic), 2026-11-21; now on `https://checkin-app.hortal.me/healthz`.
 - [x] GlitchTip moved out of this project's Compose project into its own stack on

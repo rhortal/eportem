@@ -40,7 +40,10 @@ port 8095 (behind nginx-proxy-manager for HTTPS). Its address is
 `https://checkin-app.hortal.me` since 2026-11-25 (`CHECKIN_PUBLIC_URL` in `.env`;
 proxy host 74, Let's Encrypt, Force SSL), watched by Montastic on `/healthz`.
 `https://checkin.hortal.me` is the public website on Cloudflare Pages (project
-`checkin`, built from `website/`; see `docs/HANDOFF.md`), no longer the app. `main` holds the service since
+`checkin`, built from `website/`; see `docs/HANDOFF.md`), no longer the app. Deploy it
+with `website/deploy.sh`, from either laptop: on the work Mac it is the only sanctioned
+way (wrangler there is logged in to the employer's account; the script ignores that and
+uses the personal Pages-only token in the untracked `website/deploy.env`). `main` holds the service since
 the evening of 2026-11-24. The worktree can't check `main` out (the cron
 checkout has it), so it stays detached at `origin/main`. To deploy:
 

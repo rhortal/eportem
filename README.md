@@ -620,8 +620,12 @@ access by email), no cookies, nothing loaded from other sites in the source. Cop
 site address and host), then `python3 website/build.py` writes `website/dist/`, built
 for Cloudflare Pages (extensionless links, a 404 page per language; `--example` builds
 a preview with made-up values). Its pictures are drawings of
-the product, never screenshots; `website/VISUALS.md` lists where each comes from.
-Details in `website/README.md`.
+the product, never screenshots; `website/VISUALS.md` lists where each comes from
+(the notes in the source are stripped from the built pages). The site presents the
+skill for AI agents but never publishes it (D-028). To deploy to Cloudflare Pages
+with a Pages-only token kept in the untracked `website/deploy.env`, isolated from any
+other Cloudflare credentials on the machine: `website/deploy.sh` (`--check` only
+checks the token). Details in `website/README.md`.
 
 ## Development
 

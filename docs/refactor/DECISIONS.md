@@ -419,3 +419,11 @@ built in memory with a `defaults.json` naming the instance, and is byte-for-byte
 stable. The Docker image now copies `skill/`. In this repository,
 `.claude/skills/checkin` is an untracked symlink to `skill/checkin`, with an
 untracked `defaults.json`, so the maintainer runs their own account from here.
+
+Amended 2026-11-25 (owner's request), D-027 and D-028: the build strips HTML comments,
+so the pictures' notes (which name repository files) stay in the source and never reach
+the published pages; a test checks it. The site deploys with `website/deploy.sh`, which
+runs wrangler with an empty environment and a throwaway home folder and a Pages-only
+token from the untracked `website/deploy.env`, after checking the token reaches the
+Pages project, so a machine holding another Cloudflare account's credentials (the work
+Mac) can deploy without any risk of using them.

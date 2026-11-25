@@ -2,7 +2,8 @@
 
 Every picture on the public site is drawn in HTML and CSS, not a screenshot. Each one
 is a partial in `src/` (`_v-<name>.<lang>.html`, English and Spanish) and starts with a
-`<!-- visual: ... Source: ... -->` comment naming what it is drawn from. This file is
+`<!-- visual: ... Source: ... -->` comment naming what it is drawn from (source only:
+the build strips comments, so repository paths never reach the published pages). This file is
 the catalogue: when the product's UI changes or gets a redesign, use it to find which
 pictures to redraw, and note here what each one simplifies or invents.
 

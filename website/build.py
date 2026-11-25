@@ -15,6 +15,8 @@ Other markers:
              ("/privacy", "/es/"), as Cloudflare Pages serves them, so a 404 page
              works at any depth
   {{ALT}}    the same page in the other language (the other home page for 404.html)
+  <!-- ... -->  any other comment is for the source only (the pictures' notes name
+             files in the repository) and is left out of the built pages
 Standard library only: the site has no build dependencies.
 """
 import argparse
@@ -32,6 +34,7 @@ LANGS = {"": "es/", "es/": ""}  # page directory -> the other language's directo
 PLACEHOLDER = re.compile(r"\{\{([A-Z_]+)\}\}")
 INCLUDE = re.compile(r"<!--include:\s*([^>]*?)\s*-->")
 IF_BLOCK = re.compile(r"<!--if:([A-Z_]+)-->(.*?)<!--endif:\1-->", re.S)
+COMMENT = re.compile(r"[ \t]*<!--.*?-->[ \t]*\n?", re.S)
 
 
 class BuildError(Exception):
@@ -99,7 +102,7 @@ def build(values, src=SRC, dist=DIST):
             name = f"{page_dir}{page.name}"
             page_values = dict(values, ROOT="/", ALT=page_url(other, page.name), PAGE=page.name)
             try:
-                html = render(page.read_text(encoding="utf-8"), page_values, src)
+                html = COMMENT.sub("", render(page.read_text(encoding="utf-8"), page_values, src))
             except BuildError as e:
                 raise BuildError(f"{name}: {e}") from None
             out = dist / name
