@@ -42,7 +42,7 @@ def _now():
 class ProfileIn(BaseModel):
     email: str | None = None
     timezone: str | None = None
-    locale: Literal["en", "es"] | None = None
+    locale: str | None = None  # a code in checkin/locales; checked by service
     jitter_before_minutes: int | None = None
     jitter_after_minutes: int | None = None
     paused: bool | None = None

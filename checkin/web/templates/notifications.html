@@ -25,9 +25,9 @@
 </form>
 <form class="card" method="post" action="/notifications"><input type="hidden" name="csrf" value="{{ csrf }}">
   <input type="hidden" name="kind" value="slack"><strong>Slack</strong>
-  <p class="muted">A bot token (xoxb-) sends from the app so Slack alerts you; a user token (xoxp-, scope users.profile:write) sets your status.</p>
+  <p class="muted">{{ t("A bot token (xoxb-) sends from the app so Slack alerts you; a user token (xoxp-, scope users.profile:write) sets your status.") }}</p>
   <div class="row"><div><label>bot_token</label><input name="bot_token"></div><div><label>user_token</label><input name="user_token"></div>
-    <div><label>channel</label><input name="channel" placeholder="optional"></div><div><label>webhook_url</label><input name="webhook_url" placeholder="optional"></div></div>
+    <div><label>channel</label><input name="channel" placeholder="{{ t('optional') }}"></div><div><label>webhook_url</label><input name="webhook_url" placeholder="{{ t('optional') }}"></div></div>
   <div class="row"><label><input type="checkbox" name="notify" value="1" checked> {{ t("Clock notifications") }}</label>
     <label><input type="checkbox" name="alerts" value="1" checked> {{ t("Failure alerts") }}</label>
     <label><input type="checkbox" name="slack_status" value="1"> {{ t("Slack status") }}</label></div>

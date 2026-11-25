@@ -3,13 +3,13 @@
 <h1>{{ t("Profile") }}</h1>
 <form class="card" method="post" action="/profile"><input type="hidden" name="csrf" value="{{ csrf }}">
   <div class="row">
-    <div><label>Email</label><input type="email" name="email" value="{{ user.email or '' }}"></div>
+    <div><label>{{ t("Email") }}</label><input type="email" name="email" value="{{ user.email or '' }}"></div>
     <div><label>{{ t("Time zone") }}</label><input name="timezone" value="{{ user.timezone }}" required></div>
-    <div><label>{{ t("Language") }}</label><select name="locale"><option value="es" {{ 'selected' if user.locale == 'es' }}>Español</option>
-      <option value="en" {{ 'selected' if user.locale == 'en' }}>English</option></select></div>
+    <div><label>{{ t("Language") }}</label><select name="locale" translate="no">{% for code, name in languages.items() %}
+      <option value="{{ code }}" lang="{{ code }}" {{ 'selected' if user.locale == code }}>{{ name }}</option>{% endfor %}</select></div>
   </div>
   <h2>{{ t("Random offset") }}</h2>
-  <p class="muted">Lunch out and back start at a random moment between these limits around their time, inside the {{ window }}-minute window. The day never starts late or ends early: the clock-in goes only before the start time and the clock-out only after the stop time, spread over both limits together.</p>
+  <p class="muted">{{ t("Lunch out and back start at a random moment between these limits around their time, inside the {window}-minute window. The day never starts late or ends early: the clock-in goes only before the start time and the clock-out only after the stop time, spread over both limits together.", window=window) }}</p>
   <div class="row">
     <div><label>{{ t("minutes before") }}</label><input type="number" name="jitter_before_minutes" min="0" max="{{ window }}" value="{{ user.jitter_before_minutes }}"></div>
     <div><label>{{ t("minutes after") }}</label><input type="number" name="jitter_after_minutes" min="0" max="{{ window }}" value="{{ user.jitter_after_minutes }}"></div>

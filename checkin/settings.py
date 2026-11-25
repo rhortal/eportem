@@ -29,6 +29,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from checkin.core.schedule import jitter_problems
 from checkin.core.templates import BUILTIN_TEMPLATES
+from checkin.i18n import LANGUAGES
 
 ENV_PREFIX = "CHECKIN_"
 CONFIG_FILE_VAR = "CHECKIN_CONFIG_FILE"
@@ -91,7 +92,8 @@ class Settings(BaseSettings):
 
     # --- Defaults for new users
     default_timezone: str = _f("Europe/Madrid", "Defaults for new users", "Time zone for new users.")
-    default_locale: Literal["en", "es"] = _f("es", "Defaults for new users", "Language for new users.")
+    default_locale: str = _f("es", "Defaults for new users", "Language for new users: a code with a catalogue "
+                              "in checkin/locales (en, es, ca...).")
     default_holiday_country: str | None = _f("ES", "Defaults for new users", "Country for public holidays "
                                              "(ISO code); empty for none.")
     default_holiday_region: str | None = _f(None, "Defaults for new users", "Region for public holidays, "
@@ -166,6 +168,13 @@ class Settings(BaseSettings):
             zoneinfo.ZoneInfo(value)
         except (zoneinfo.ZoneInfoNotFoundError, ValueError) as e:
             raise ValueError(f"unknown time zone {value!r}") from e
+        return value
+
+    @field_validator("default_locale")
+    @classmethod
+    def _locale(cls, value):
+        if value not in LANGUAGES:
+            raise ValueError(f"must be one of {', '.join(LANGUAGES)}")
         return value
 
     @field_validator("default_template")

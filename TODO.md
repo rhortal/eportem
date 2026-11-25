@@ -44,13 +44,11 @@ Details for each item are in `docs/HANDOFF.md`.
 - [x] GlitchTip moved out of this project's Compose project into its own stack on
       a shared Postgres, for every service on the host (2026-11-21).
 - [ ] The owner's region for public holidays (only national ones for now).
-- [ ] Make CheckIn multilingual (added 2026-11-21). Today only the web UI is
-      translated, English and Spanish, from a hand-written dictionary in
-      `checkin/web/i18n.py` (English text as keys, missing entries fall back to
-      English); `default_locale` and each user's `locale` only allow `en`/`es`.
-      Still English-only: Telegram/Slack notifications and alerts (sent by the
-      scheduler), emails, API error messages and the CLI. To work out: a real
-      message catalogue (gettext/Babel or similar) instead of the dictionary,
-      sending each person's notifications in their own language, a test that
-      fails on untranslated UI text, and which languages to add (Catalan,
-      Basque and Galician are the obvious next ones for Spain).
+- [ ] Make the rest of CheckIn multilingual (added 2026-11-21). The web UI and the
+      public website speak English, Spanish and Catalan from JSON catalogues in
+      `checkin/locales/` (D-029, 2026-11-25), with tests that fail on a missing
+      key or untranslated UI text. Still English only: Telegram/Slack
+      notifications and alerts (written in `checkin/core/actions.py` and the
+      scheduler, shared with the cron scripts until they go), emails, API error
+      messages (the problems shown on forms too) and the CLI. Next languages for
+      Spain: Basque and Galician (a catalogue each, plus the website pages).

@@ -1,7 +1,8 @@
 # CheckIn's public website
 
 A static site that presents CheckIn while it is in final testing: what it is, how it
-works, terms of use, privacy and a legal notice, in English (`/`) and Spanish (`/es/`).
+works, terms of use, privacy and a legal notice, in English (`/`), Spanish (`/es/`) and
+Catalan (`/ca/`).
 No public sign-up (early access is asked for by email), no cookies, and nothing loaded from other sites in the source (fonts are the system's,
 pictures are drawn in HTML and CSS). Visits are counted by Cloudflare Web Analytics,
 which Cloudflare injects at its edge (the zone's automatic install), so the source
@@ -23,7 +24,7 @@ every personal value (the portability test enforces it), and the build refuses t
 while one is missing. Standard library only.
 
 Links are root-absolute and extensionless (`/privacy`, `/es/legal`, `/es/`), the way
-Cloudflare Pages serves `privacy.html` and friends, and `404.html` / `es/404.html` are
+Cloudflare Pages serves `privacy.html` and friends, and `404.html`, `es/404.html` and `ca/404.html` are
 the not-found pages (Pages serves the nearest one; without them it would answer every
 unknown path with the home page and a 200). So opening the files from disk won't
 follow links: preview with `npx wrangler pages dev website/dist`. Another host needs
@@ -57,14 +58,19 @@ you run.
 
 ## Source
 
-- `src/*.html` and `src/es/*.html`: the pages (`index`, `terms`, `privacy`, `legal`, `agents`),
-  the same names in both languages.
+- `src/*.html`, `src/es/*.html` and `src/ca/*.html`: the pages (`index`, `terms`,
+  `privacy`, `legal`, `agents`, `404`), the same names in every language.
 - `src/_*.html`: partials (header, footer, logo, and one per picture, `_v-*.html`),
   pulled in with `<!--include:_name.html-->`.
 - `src/assets/`: the stylesheet and the favicon.
 - Placeholders: `{{OWNER_NAME}}` and the others from `site.env`; `<!--if:KEY-->...
-  <!--endif:KEY-->` for optional ones; `{{ROOT}}` and `{{ALT}}` (the same page in the
-  other language) are set by the build.
+  <!--endif:KEY-->` for optional ones; the build sets `{{ROOT}}`, `{{LANG_LINKS}}` (the
+  language switcher), `{{ALTERNATES}}` (the `hreflang` links) and `{{PAGE_IN_ES}}`,
+  `{{PAGE_IN_EN}}`... (this page in that language).
+- Languages: `LANGUAGES` in `build.py`. A new one is a folder with the same pages, its
+  partials (`_header.<code>.html`, `_footer.<code>.html`, `_v-*.<code>.html`) and a line
+  in `LANGUAGES`; the tests fail until every page and picture exists in it. The Catalan
+  terms say the Spanish version prevails.
 - Comments (`<!-- ... -->`, such as each picture's note naming the repository files it
   is drawn from) are for the source only: the build leaves them out of `dist/`, and a
   test checks no comment reaches a built page.

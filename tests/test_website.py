@@ -31,12 +31,25 @@ class TestWebsite(unittest.TestCase):
     def html(self, name):
         return (self.dist / name).read_text(encoding="utf-8")
 
-    def test_every_page_in_both_languages(self):
-        for name in ("index.html", "terms.html", "privacy.html", "legal.html", "agents.html"):
-            self.assertIn(name, self.pages)
-            self.assertIn(f"es/{name}", self.pages)
-            self.assertIn('lang="en"', self.html(name))
-            self.assertIn('lang="es"', self.html(f"es/{name}"))
+    def test_every_page_in_every_language(self):
+        self.assertEqual(list(build.LANGUAGES), ["en", "es", "ca"])
+        for code, (folder, _) in build.LANGUAGES.items():
+            for name in ("index.html", "terms.html", "privacy.html", "legal.html", "agents.html", "404.html"):
+                self.assertIn(f"{folder}{name}", self.pages)
+                self.assertIn(f'<html lang="{code}">', self.html(f"{folder}{name}"))
+        per_language = {code: sorted(p.name for p in (SITE / "src" / folder).glob("[!_]*.html"))
+                        for code, (folder, _) in build.LANGUAGES.items()}
+        self.assertEqual(len({tuple(v) for v in per_language.values()}), 1, per_language)
+
+    def test_every_page_links_to_itself_in_the_other_languages(self):
+        site = self.values["SITE_URL"]
+        for code, (folder, _) in build.LANGUAGES.items():
+            html = self.html(f"{folder}privacy.html")
+            for other, (other_folder, name) in build.LANGUAGES.items():
+                self.assertIn(f'<link rel="alternate" hreflang="{other}" href="{site}/{other_folder}privacy">', html)
+                if other != code:
+                    self.assertIn(f'href="/{other_folder}privacy" hreflang="{other}" lang="{other}">{name}</a>', html)
+            self.assertIn('hreflang="x-default" href="' + site + '/privacy"', html)
 
     def test_nothing_left_unfilled(self):
         for name in self.pages:
@@ -50,7 +63,8 @@ class TestWebsite(unittest.TestCase):
     def test_the_eportem_disclaimer_is_on_every_page(self):
         for name in self.pages:
             html = re.sub(r"\s+", " ", self.html(name))
-            self.assertTrue("not affiliated with" in html or "no está afiliado" in html, name)
+            said = ("not affiliated with", "no está afiliado", "no està afiliat")
+            self.assertTrue(any(s in html for s in said), name)
 
     def test_loads_nothing_from_other_sites(self):
         for name in self.pages:
@@ -93,11 +107,13 @@ class TestWebsite(unittest.TestCase):
                 self.assertNotRegex(url.split("#")[0], r"\.html$", f"{name}: {url}")
 
     def test_a_not_found_page_in_each_language(self):
-        for name, home in (("404.html", "/es/"), ("es/404.html", "/")):
-            html = self.html(name)
+        for code, (folder, _) in build.LANGUAGES.items():
+            html = self.html(f"{folder}404.html")
             self.assertIn('name="robots" content="noindex"', html)
             self.assertNotIn('rel="canonical"', html)
-            self.assertIn(f'href="{home}"', html, "the language link goes to the other home page")
+            for other, (home, _) in build.LANGUAGES.items():
+                if other != code:  # the language links go to the other home pages
+                    self.assertIn(f'href="/{home}" hreflang="{other}"', html)
 
     def test_every_picture_is_catalogued(self):
         catalogue = (SITE / "VISUALS.md").read_text(encoding="utf-8")
@@ -107,7 +123,8 @@ class TestWebsite(unittest.TestCase):
             self.assertIsNotNone(match, f"{partial.name} has no visual/source comment")
             self.assertIn(f"`{match.group(1)}`", catalogue, partial.name)
             self.assertIn(partial.name.replace(".en.html", ".*.html"), catalogue)
-            self.assertTrue(partial.with_name(partial.name.replace(".en.", ".es.")).is_file())
+            for code in build.LANGUAGES:
+                self.assertTrue(partial.with_name(partial.name.replace(".en.", f".{code}.")).is_file(), code)
 
     def test_refuses_to_build_without_a_required_value(self):
         with self.assertRaisesRegex(build.BuildError, "OWNER_NAME"):
@@ -128,8 +145,8 @@ class TestWebsite(unittest.TestCase):
     def test_the_skill_for_agents_is_presented_but_never_published(self):
         # The skill is only for people with an account: the app serves it (D-028).
         self.assertFalse((self.dist / "skill").exists())
-        for page, home, link in (("agents.html", "index.html", 'href="/agents"'),
-                                 ("es/agents.html", "es/index.html", 'href="/es/agents"')):
+        for folder, _ in build.LANGUAGES.values():
+            page, home, link = f"{folder}agents.html", f"{folder}index.html", f'href="/{folder}agents"'
             html = self.html(page)
             for leak in ("install.sh", "checkin.zip", "curl ", "/skill/"):
                 self.assertNotIn(leak, html, f"{page}: {leak}")

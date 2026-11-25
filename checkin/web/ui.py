@@ -28,9 +28,9 @@ from checkin.db.models import (
     UserSchedule,
 )
 from checkin.db.repo import load_calendar, local_today, templates_for
+from checkin.i18n import LANGUAGES, pick_locale, translator
 from checkin.web import sessions
 from checkin.web.app import _state, client_address, get_db
-from checkin.web.i18n import pick_locale, translator
 
 HERE = Path(__file__).parent
 templates = Jinja2Templates(directory=str(HERE / "templates"))
@@ -73,7 +73,8 @@ def page(request, name, user=None, status=200, **ctx):
     value = getattr(request.state, "session_value", None)
     token = sessions.csrf_token(settings.secret_key.get_secret_value(), value) if value else ""
     ctx.update(request=request, user=user, t=translator(locale), locale=locale, csrf=token,
-               saved=request.query_params.get("saved"), format_minutes=format_minutes, WEEKDAYS=WEEKDAYS)
+               saved=request.query_params.get("saved"), format_minutes=format_minutes, WEEKDAYS=WEEKDAYS,
+               languages=LANGUAGES)
     return templates.TemplateResponse(request, name, ctx, status_code=status)
 
 

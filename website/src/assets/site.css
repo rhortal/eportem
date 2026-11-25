@@ -217,3 +217,5 @@ section, .hero { scroll-margin-top:4rem; }
   .week .day .why { display:none; }
   .day { padding:.3rem; }
 }
+.langs { display:flex; gap:.4rem; flex-wrap:wrap; }
+footer .lang { border:0; padding:0; font-size:inherit; }

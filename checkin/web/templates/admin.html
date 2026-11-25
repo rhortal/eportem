@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block main %}
 <h1>{{ t("Admin") }}</h1>
-<div class="card"><strong>Last 7 days:</strong> {% for k, v in stats.items() %}<span class="status-{{ k }}">{{ t(k) }} {{ v }}</span>{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}</div>
+<div class="card"><strong>{{ t("Last 7 days:") }}</strong> {% for k, v in stats.items() %}<span class="status-{{ k }}">{{ t(k) }} {{ v }}</span>{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}</div>
 <h2>{{ t("Runs that need a look") }}</h2>
 <div class="card"><table>{% for r in attention %}
   <tr><td>{{ names.get(r.user_id) }}</td><td>{{ r.date }} {{ format_minutes(r.target_minute) }}</td><td>{{ t(r.action) }}</td>
@@ -9,15 +9,15 @@
 {% else %}<tr><td class="muted">—</td></tr>{% endfor %}</table></div>
 <h2>{{ t("Users") }}</h2>
 <div class="card"><table>{% for u in users %}
-  <tr><td>{{ u.username }}</td><td>{{ u.email or "" }}</td><td>{{ u.role }}</td><td>{{ u.status }}{% if u.paused %} (paused){% endif %}</td>
+  <tr><td>{{ u.username }}</td><td>{{ u.email or "" }}</td><td>{{ u.role }}</td><td>{{ t(u.status) }}{% if u.paused %} ({{ t("Paused")|lower }}){% endif %}</td>
   <td>{% if u.id != user.id %}<form class="inline" method="post" action="/admin/users/{{ u.id }}/status"><input type="hidden" name="csrf" value="{{ csrf }}">
-    {% if u.status == "active" %}<input type="hidden" name="status" value="suspended"><button class="danger">suspend</button>
-    {% else %}<input type="hidden" name="status" value="active"><button class="quiet">activate</button>{% endif %}</form>{% endif %}</td></tr>
+    {% if u.status == "active" %}<input type="hidden" name="status" value="suspended"><button class="danger">{{ t("Suspend") }}</button>
+    {% else %}<input type="hidden" name="status" value="active"><button class="quiet">{{ t("Activate") }}</button>{% endif %}</form>{% endif %}</td></tr>
 {% endfor %}</table>
 <form class="row" method="post" action="/admin/users"><input type="hidden" name="csrf" value="{{ csrf }}">
   <div><label>{{ t("Username") }}</label><input name="username" required></div>
-  <div><label>Email</label><input type="email" name="email"></div>
+  <div><label>{{ t("Email") }}</label><input type="email" name="email"></div>
   <div><label>{{ t("Password") }}</label><input type="password" name="password" minlength="10" required></div>
-  <div><label>Role</label><select name="role"><option>user</option><option>admin</option></select></div>
+  <div><label>{{ t("Role") }}</label><select name="role"><option>user</option><option>admin</option></select></div>
   <button>{{ t("Add") }}</button></form></div>
 {% endblock %}

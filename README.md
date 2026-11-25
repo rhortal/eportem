@@ -549,7 +549,7 @@ The multi-user service (`docs/refactor/PLAN.md`) is configured only through thes
 install-specific is in the code or the image. Set them as environment variables,
 or in a TOML file named by `CHECKIN_CONFIG_FILE` (keys in lower case, without the
 prefix). Secrets can also be read from a file with `CHECKIN_<NAME>_FILE`.
-`.env.example` lists them all. `python -m checkin migrate` creates the database, and `python -m checkin import-legacy --user NAME --dry-run` shows what moving this checkout's cron set-up into it would do (drop `--dry-run` to do it). `python -m checkin scheduler` runs the scheduler in the foreground (set `CHECKIN_DRY_RUN=true` to plan and log without sending anything). `python -m checkin serve` runs the web app, the JSON API (`/api/v1`, documented at `/api/docs`) and the scheduler together; create the first admin with `python -m checkin create-admin NAME` (or `CHECKIN_ADMIN_USERNAME`/`CHECKIN_ADMIN_PASSWORD`) and an API token with `python -m checkin create-token NAME --scopes read,write`. The web UI (English and Spanish) shows this week and next, where one tap switches a day between home and office; the schedule (built-in templates such as European 9–18, Spanish 9–18 with lunch 14:30–15:30, short Friday, summer hours; or your own week), home days, public holidays by region and periods; a calendar for time off, business trips and one-off changes; notifications; history; your random offset; API tokens; and admin pages. Check the settings with `python -m checkin config check`,
+`.env.example` lists them all. `python -m checkin migrate` creates the database, and `python -m checkin import-legacy --user NAME --dry-run` shows what moving this checkout's cron set-up into it would do (drop `--dry-run` to do it). `python -m checkin scheduler` runs the scheduler in the foreground (set `CHECKIN_DRY_RUN=true` to plan and log without sending anything). `python -m checkin serve` runs the web app, the JSON API (`/api/v1`, documented at `/api/docs`) and the scheduler together; create the first admin with `python -m checkin create-admin NAME` (or `CHECKIN_ADMIN_USERNAME`/`CHECKIN_ADMIN_PASSWORD`) and an API token with `python -m checkin create-token NAME --scopes read,write`. The web UI (English, Spanish and Catalan; see Languages below) shows this week and next, where one tap switches a day between home and office; the schedule (built-in templates such as European 9–18, Spanish 9–18 with lunch 14:30–15:30, short Friday, summer hours; or your own week), home days, public holidays by region and periods; a calendar for time off, business trips and one-off changes; notifications; history; your random offset; API tokens; and admin pages. Check the settings with `python -m checkin config check`,
 and see what is in effect with `python -m checkin config show`. The table is
 generated from `checkin/settings.py` by `python -m checkin config docs`.
 
@@ -578,7 +578,7 @@ generated from `checkin/settings.py` by `python -m checkin config docs`.
 | `CHECKIN_BROWSER_SANDBOX` | `true` | Use Chromium's own sandbox. The Docker image turns it off (it can't start as a non-root user there; the container isolates it instead). |
 | **Defaults for new users** | | |
 | `CHECKIN_DEFAULT_TIMEZONE` | `Europe/Madrid` | Time zone for new users. |
-| `CHECKIN_DEFAULT_LOCALE` | `es` | Language for new users. |
+| `CHECKIN_DEFAULT_LOCALE` | `es` | Language for new users: a code with a catalogue in checkin/locales (en, es, ca...). |
 | `CHECKIN_DEFAULT_HOLIDAY_COUNTRY` | `ES` | Country for public holidays (ISO code); empty for none. |
 | `CHECKIN_DEFAULT_HOLIDAY_REGION` |  | Region for public holidays, e.g. MD (Madrid), CT (Catalonia). |
 | `CHECKIN_DEFAULT_TEMPLATE` | `european-9-18` | Working-day template for new users (a built-in key). |
@@ -611,9 +611,22 @@ generated from `checkin/settings.py` by `python -m checkin config docs`.
 | `CHECKIN_ADMIN_ALERT_CHANNEL` |  | Where admin alerts go, e.g. telegram:<chat id> or slack:<channel id>. |
 <!-- settings-table:end -->
 
+## Languages
+
+The web UI speaks English, Spanish and Catalan. Each person picks theirs in their
+profile (`CHECKIN_DEFAULT_LOCALE` for new users; before signing in, the browser's
+language). The texts are one JSON catalogue per language in `checkin/locales/`
+(D-029): keys are the English text, or a code such as `start_day` for the values the
+service stores. To add a language, copy `en.json` to `<code>.json` (for example
+`eu.json`), set `_language` to the language's own name and translate the values; it
+then appears in the profile and is accepted everywhere. `make check` fails while any
+catalogue misses a key or a `{placeholder}`, and while a page shows text that never
+went through `t()`. The public website has the same three languages (see below).
+Notifications, alerts, emails, API errors and the CLI are still English only.
+
 ## Public website
 
-`website/` is a static site that presents CheckIn, in English and Spanish: what it
+`website/` is a static site that presents CheckIn, in English, Spanish and Catalan: what it
 does, how it works, terms of use, privacy and a legal notice. No public sign-up (early
 access by email), no cookies, nothing loaded from other sites in the source. Copy
 `website/site.env.example` to `website/site.env` (untracked: your name, contact email,

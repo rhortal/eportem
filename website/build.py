@@ -14,9 +14,15 @@ Other markers:
   {{ROOT}}   the site root, "/": links are root-absolute and extensionless
              ("/privacy", "/es/"), as Cloudflare Pages serves them, so a 404 page
              works at any depth
-  {{ALT}}    the same page in the other language (the other home page for 404.html)
+  {{LANG_LINKS}}   links to this page in every other language (the switcher)
+  {{ALTERNATES}}   <link rel="alternate" hreflang> lines for every language
+  {{PAGE_IN_ES}}   this page in one language (PAGE_IN_EN, PAGE_IN_CA...); a 404
+             page's are its language's home page
   <!-- ... -->  any other comment is for the source only (the pictures' notes name
              files in the repository) and is left out of the built pages
+Languages: LANGUAGES below. A new one is a folder of the same pages
+(src/<code>/), its partials (_*.<code>.html) and a line here; the tests check
+that every language has every page and partial.
 Standard library only: the site has no build dependencies.
 """
 import argparse
@@ -29,7 +35,8 @@ HERE = Path(__file__).resolve().parent
 SRC, DIST = HERE / "src", HERE / "dist"
 REQUIRED = ("SITE_URL", "OWNER_NAME", "CONTACT_EMAIL", "HOSTING_PROVIDER")
 OPTIONAL = ("OWNER_TAX_ID", "OWNER_ADDRESS")
-LANGS = {"": "es/", "es/": ""}  # page directory -> the other language's directory
+# code -> (page directory, the language's own name); the first is the default, at the root
+LANGUAGES = {"en": ("", "English"), "es": ("es/", "Español"), "ca": ("ca/", "Català")}
 
 PLACEHOLDER = re.compile(r"\{\{([A-Z_]+)\}\}")
 INCLUDE = re.compile(r"<!--include:\s*([^>]*?)\s*-->")
@@ -86,6 +93,19 @@ def page_url(page_dir, file_name):
     return f"/{page_dir}" + ("" if stem in ("index", "404") else stem)
 
 
+def language_values(code, file_name, values):
+    """LANG_LINKS, ALTERNATES and PAGE_IN_<CODE> for one page in one language."""
+    urls = {other: page_url(d, file_name) for other, (d, _) in LANGUAGES.items()}
+    links = "".join(f'<a class="lang" href="{urls[other]}" hreflang="{other}" lang="{other}">{name}</a>'
+                    for other, (_, name) in LANGUAGES.items() if other != code)
+    alternates = "\n".join([f'<link rel="alternate" hreflang="{other}" href="{values["SITE_URL"]}{url}">'
+                             for other, url in urls.items()]
+                            + [f'<link rel="alternate" hreflang="x-default" href="{values["SITE_URL"]}'
+                               f'{urls[next(iter(LANGUAGES))]}">'])
+    return {"LANG_LINKS": links, "ALTERNATES": alternates,
+            **{f"PAGE_IN_{other.upper()}": url for other, url in urls.items()}}
+
+
 def build(values, src=SRC, dist=DIST):
     missing = [k for k in REQUIRED if not values.get(k)]
     if missing:
@@ -95,12 +115,12 @@ def build(values, src=SRC, dist=DIST):
         shutil.rmtree(dist)
     shutil.copytree(src / "assets", dist / "assets")
     pages = []
-    for page_dir, other in LANGS.items():
+    for code, (page_dir, _) in LANGUAGES.items():
         for page in sorted((src / page_dir).glob("*.html")):
             if page.name.startswith("_"):
                 continue
             name = f"{page_dir}{page.name}"
-            page_values = dict(values, ROOT="/", ALT=page_url(other, page.name), PAGE=page.name)
+            page_values = dict(values, ROOT="/", PAGE=page.name, **language_values(code, page.name, values))
             try:
                 html = COMMENT.sub("", render(page.read_text(encoding="utf-8"), page_values, src))
             except BuildError as e:

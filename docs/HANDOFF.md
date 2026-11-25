@@ -7,7 +7,21 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 `docs/OPERATIONS.md`, the plan in
 `docs/refactor/PLAN.md`, the decisions in `docs/refactor/DECISIONS.md`.
 
-## Start here (2026-11-25, late morning, on the work Mac): agent skill live; website deployed
+## Start here (2026-11-25, afternoon, on the work Mac): three languages (D-029)
+
+- The web UI and the website speak English, Spanish and Catalan. UI texts moved from
+  `checkin/web/i18n.py` to JSON catalogues in `checkin/locales/` (`checkin/i18n.py`);
+  run actions and statuses now show as words ("Start of day", "Inicio de jornada",
+  "Inici de jornada") instead of `start_day`; the remaining hard-coded English is
+  translated; tests fail on a missing key or untranslated page text (README
+  "Languages"). Website: `/ca/` pages and partials, a generated language switcher
+  and `hreflang` links (`LANGUAGES` in `website/build.py`). No migration.
+- To go live: deploy the app to `omv` (outside clock times) and the website with
+  `website/deploy.sh`. Until then production shows the old labels.
+- Next for languages (TODO): notifications, alerts, emails, API errors in each
+  person's language; Basque and Galician.
+
+## Earlier (2026-11-25, late morning, on the work Mac): agent skill live; website deployed
 
 - CheckIn from AI agents (D-028; README "AI agents"; PLAN "After the cutover") is in
   `main` (`a0db5e7`) and live on `omv` since 10:46: device-flow sign-in (`/device`),

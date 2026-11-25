@@ -7,7 +7,7 @@
   <div class="card {{ 'on' if current and current.key == tpl.key else '' }}">
     <strong>{{ t(tpl.name) }}</strong>
     <div class="muted">{{ t(tpl.description) if tpl.description else "" }}</div>
-    <ul class="muted">{% for wd, d in tpl.days|dictsort %}<li>{{ t(WEEKDAYS[wd])[:3] }}: {% include "_times.html" %}</li>{% endfor %}</ul>
+    <ul class="muted">{% for wd, d in tpl.days|dictsort %}<li>{{ t(WEEKDAYS[wd][:3]) }}: {% include "_times.html" %}</li>{% endfor %}</ul>
     {% if current and current.key == tpl.key %}<em>{{ t("In use") }}</em>{% else %}
     <form method="post" action="/schedule/template"><input type="hidden" name="csrf" value="{{ csrf }}">
       <input type="hidden" name="template_key" value="{{ tpl.key }}"><button class="quiet">{{ t("Use this template") }}</button></form>{% endif %}
@@ -15,9 +15,9 @@
 {% endfor %}
 </div>
 
-<details class="card"><summary>Customise the week</summary>
+<details class="card"><summary>{{ t("Customise the week") }}</summary>
 <form method="post" action="/schedule/custom"><input type="hidden" name="csrf" value="{{ csrf }}">
-  <label>{{ t("Name") }}</label><input name="name" value="{{ 'My week' }}">
+  <label>{{ t("Name") }}</label><input name="name" value="{{ t('My week') }}">
   <table><tr><th></th><th>{{ t("Start") }}</th><th>{{ t("Lunch out") }}</th><th>{{ t("Lunch back") }}</th><th>{{ t("Stop") }}</th></tr>
   {% for wd in range(7) %}{% set d = current.day(wd) if current else none %}
   <tr><td><label><input type="checkbox" name="works_{{ wd }}" {{ 'checked' if d }}> {{ t(WEEKDAYS[wd]) }}</label></td>
@@ -34,15 +34,15 @@
   <div class="row">{% for wd in range(7) %}
     <label><input type="checkbox" name="home_{{ wd }}" {{ 'checked' if week.get(wd|string) == 'home' }}> {{ t(WEEKDAYS[wd]) }}</label>
   {% endfor %}</div>
-  <p class="muted">Unticked days are office days.</p>
+  <p class="muted">{{ t("Unticked days are office days.") }}</p>
   <button>{{ t("Save") }}</button>
 </form>
 
 <h2>{{ t("Public holidays") }}</h2>
 <form class="card row" method="post" action="/schedule/holidays"><input type="hidden" name="csrf" value="{{ csrf }}">
-  <div><label>Country</label><select name="holiday_country"><option value="ES" {{ 'selected' if sched and sched.holiday_country == 'ES' }}>España</option>
+  <div><label>{{ t("Country") }}</label><select name="holiday_country" translate="no"><option value="ES" {{ 'selected' if sched and sched.holiday_country == 'ES' }}>España</option>
     <option value="" {{ 'selected' if sched and not sched.holiday_country }}>—</option></select></div>
-  <div><label>{{ t("Region") }}</label><select name="holiday_region">{% for code, name in regions %}
+  <div><label>{{ t("Region") }}</label><select name="holiday_region" translate="no">{% for code, name in regions %}
     <option value="{{ code }}" {{ 'selected' if sched and (sched.holiday_region or '') == code }}>{{ name }}</option>{% endfor %}</select></div>
   <button>{{ t("Save") }}</button>
 </form>

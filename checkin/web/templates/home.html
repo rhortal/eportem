@@ -24,7 +24,7 @@
   <form method="post" action="/actions/start_day" class="row">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <select name="location"><option value="">—</option><option value="office">{{ t("office") }}</option><option value="home">{{ t("home") }}</option></select>
-    <label><input type="checkbox" name="confirm" value="yes" required> records a real clock event</label>
+    <label><input type="checkbox" name="confirm" value="yes" required> {{ t("records a real clock event") }}</label>
     {% for a in actions %}<button formaction="/actions/{{ a }}">{{ t(a) }}</button>{% endfor %}
   </form></details>
 </div>

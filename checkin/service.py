@@ -31,6 +31,7 @@ from checkin.db.models import (
     utcnow,
 )
 from checkin.db.repo import DbCookieStore, load_calendar, local_today, new_user, templates_for
+from checkin.i18n import LANGUAGES
 
 CHANNEL_FIELDS = {"telegram": ("token", "chat_id"), "slack": ("webhook_url", "bot_token", "user_token", "channel")}
 SECRET_CHANNEL_FIELDS = {"token", "webhook_url", "bot_token", "user_token"}
@@ -76,8 +77,8 @@ def update_profile(db, settings, user, actor, data):
             zoneinfo.ZoneInfo(data["timezone"])
         except (zoneinfo.ZoneInfoNotFoundError, ValueError, TypeError):
             problems.append(f"unknown time zone {data['timezone']!r}")
-    if "locale" in data and data["locale"] not in ("en", "es"):
-        problems.append("locale must be en or es")
+    if "locale" in data and data["locale"] not in LANGUAGES:
+        problems.append(f"locale must be one of {', '.join(LANGUAGES)}")
     before = data.get("jitter_before_minutes", user.jitter_before_minutes)
     after = data.get("jitter_after_minutes", user.jitter_after_minutes)
     problems += jitter_problems(before, after, settings.window_minutes)

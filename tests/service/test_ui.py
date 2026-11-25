@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from checkin.db.models import DayChangeRow, EportemAccount, ScheduleTemplate, User, UserSchedule, WebSession
 from checkin.db.repo import local_today
+from checkin.i18n import LANGUAGES, translator
 from tests.service.test_api import ApiCase
 
 PAGES = ("/", "/schedule", "/calendar", "/notifications", "/account", "/history", "/profile", "/tokens")
@@ -77,8 +78,9 @@ class TestSignIn(UiCase):
 
 class TestPages(UiCase):
 
-    def test_every_page_renders_in_both_languages(self):
-        for lang, word in (("es", "Horario"), ("en", "Schedule")):
+    def test_every_page_renders_in_every_language(self):
+        for lang in LANGUAGES:
+            word = translator(lang)("Schedule")
             with self.Session.begin() as db:
                 db.get(User, self.alice).locale = lang
             client = self.browser(lang=lang)
@@ -218,3 +220,59 @@ class TestForms(UiCase):
             erin_id = db.scalar(select(User.id).where(User.username == "erin"))
         self.post(admin, f"/admin/users/{erin_id}/status", {"status": "suspended"})
         self.assertEqual(erin.get("/").status_code, 303)
+
+
+class TestNoUntranslatedText(UiCase):
+    """Every page in a made-up language whose texts are all ⟦marked⟧: whatever
+    text is left unmarked was never sent through t() and would show in English
+    whatever the person's language."""
+
+    # Words that are the same in every language: names, codes, the person's own data.
+    KEEP = {"CheckIn", "ePortem", "Telegram", "Slack", "token", "chat_id", "bot_token", "user_token", "channel",
+            "webhook_url", "read", "write", "admin", "user", "ID", "UTC", "HTTP", "API", "api", "docs", "alice", "bob",
+            "boss", "ept_", "BCDF", "GHJK"}
+
+    class Texts(__import__("html.parser").parser.HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.found, self.skip = [], 0
+
+        VOID = ("input", "br", "meta", "link", "img", "hr")
+
+        def handle_starttag(self, tag, attrs):
+            if self.skip or tag in ("script", "style", "pre", "code") or ("translate", "no") in attrs:
+                self.skip += tag not in self.VOID
+                return
+            self.found += [v for k, v in attrs if k in ("placeholder", "aria-label", "title") and v]
+
+        def handle_endtag(self, tag):
+            if self.skip and tag not in self.VOID:
+                self.skip -= 1
+
+        def handle_data(self, data):
+            if not self.skip:
+                self.found.append(data)
+
+    def leftovers(self, html):
+        parser = self.Texts()
+        parser.feed(html)
+        out = []
+        for text in parser.found:
+            rest = re.sub(r"⟦.*?⟧", " ", text, flags=re.S)
+            out += [w for w in re.findall(r"[A-Za-z][A-Za-z_]{2,}", rest) if w not in self.KEEP]
+        return out
+
+    def test_every_page_is_fully_translated(self):
+        from checkin import i18n
+        marked = {"_language": "XX", **{k: f"⟦{v}⟧" for k, v in i18n.messages("en").items()}}
+        with patch.dict(i18n.CATALOGUES, {"xx": marked}), patch.dict(i18n.LANGUAGES, {"xx": "XX"}):
+            with self.Session.begin() as db:
+                for u in db.scalars(select(User)):
+                    u.locale = "xx"
+            pages = [(self.browser(), p) for p in (*PAGES, "/device")]
+            pages.append((self.browser("boss", "boss-password-1"), "/admin"))
+            for client, path in pages:
+                with self.subTest(path=path):
+                    r = client.get(path)
+                    self.assertEqual(r.status_code, 200)
+                    self.assertEqual(self.leftovers(r.text), [])

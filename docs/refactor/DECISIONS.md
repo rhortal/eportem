@@ -427,3 +427,29 @@ runs wrangler with an empty environment and a throwaway home folder and a Pages-
 token from the untracked `website/deploy.env`, after checking the token reaches the
 Pages project, so a machine holding another Cloudflare account's credentials (the work
 Mac) can deploy without any risk of using them.
+
+**D-029: Languages are catalogues; Catalan joins English and Spanish** (Accepted, 2026-11-25, owner's request)
+
+The web UI showed stored codes in English (`start_day`, `not_recorded`) because a
+missing English entry fell back to the key, and a dozen strings were never sent
+through `t()`. (1) **Catalogues:** one JSON file per language in `checkin/locales/`
+(`en.json`, `es.json`, `ca.json`), loaded by `checkin/i18n.py`. Keys are the English
+text for UI copy, or a code for values the service stores (actions, run and user
+statuses) and for long blocks (`agent_prompt`); `en.json` holds every key and is the
+template for a new language. The list of languages comes from the files: the profile's
+picker, the API's `locale`, `CHECKIN_DEFAULT_LOCALE` and Accept-Language all follow
+it, so adding a language is adding a file. Chosen over gettext/Babel: no build step
+or binary catalogues, and the texts fit in a few hundred keys. (2) **Codes get
+names:** "Start of day / Lunch break / Back from lunch / End of day" (Spanish "Inicio
+de jornada / Salida a comer / Vuelta de comer / Fin de jornada"); weekday
+abbreviations are their own keys (Catalan's are not the first three letters).
+(3) **Tests that keep it so:** every catalogue has exactly `en.json`'s keys with the
+same `{placeholders}`; every `t("...")` in the templates and `ui.py` and every code
+the pages show is in `en.json`; and every page rendered in a made-up language whose
+texts are all marked must show no unmarked words (proper names are allowed through
+a short list or `translate="no"`). (4) **The website** gets `/ca/` too: `build.py`
+has one `LANGUAGES` list that makes the language switcher (`{{LANG_LINKS}}`), the
+`hreflang` links (`{{ALTERNATES}}`) and `{{PAGE_IN_XX}}`, and the tests require every
+page and picture in every language. The Catalan terms say the Spanish version
+prevails if they differ. Still English only: notifications and alerts, emails, API
+error messages and the CLI (TODO).
