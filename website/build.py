@@ -23,8 +23,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SRC, DIST = HERE / "src", HERE / "dist"
-REQUIRED = ("SITE_URL", "OWNER_NAME", "CONTACT_EMAIL", "LOG_RETENTION_DAYS")
-OPTIONAL = ("OWNER_TAX_ID", "OWNER_ADDRESS", "NETWORK_PROVIDER")
+REQUIRED = ("SITE_URL", "OWNER_NAME", "CONTACT_EMAIL", "HOSTING_PROVIDER")
+OPTIONAL = ("OWNER_TAX_ID", "OWNER_ADDRESS")
 LANGS = {"": "es/", "es/": ""}  # page directory -> the other language's directory
 
 PLACEHOLDER = re.compile(r"\{\{([A-Z_]+)\}\}")

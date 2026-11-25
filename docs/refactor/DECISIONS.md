@@ -370,3 +370,11 @@ below the zone (Cloudflare's free certificate covers only one level, so not
 `app.<site address>`), rather than under a `/app` sub-path (never run in production,
 and it would share an origin and cookies with the site).
 
+
+Amended 2026-11-25 (owner's request): the site counts visits with Cloudflare Web
+Analytics. It sets no cookies and Cloudflare injects its script at the edge (the
+zone's automatic install, EU visitors included), so the source still loads nothing
+from other sites and the test still holds; the privacy page and footer now say so.
+The privacy page also names the host (`HOSTING_PROVIDER`) and says we keep no access
+logs of our own, which replaces the self-hosted wording (`LOG_RETENTION_DAYS`). The
+app's `script-src 'self'` blocks the injected script, so signed-in pages aren't counted.

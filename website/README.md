@@ -2,8 +2,10 @@
 
 A static placeholder that presents CheckIn: what it is, how it works, terms of use,
 privacy and a legal notice, in English (`/`) and Spanish (`/es/`). No sign-up, no
-cookies, no analytics, and nothing loaded from other sites (fonts are the system's,
-pictures are drawn in HTML and CSS).
+cookies, and nothing loaded from other sites in the source (fonts are the system's,
+pictures are drawn in HTML and CSS). Visits are counted by Cloudflare Web Analytics,
+which Cloudflare injects at its edge (the zone's automatic install), so the source
+stays free of third-party scripts; the privacy page and footer say so.
 
 ## Build
 
@@ -33,10 +35,10 @@ npx wrangler pages project create checkin
 npx wrangler pages deploy website/dist --project-name checkin
 ```
 
-Then add the custom domain in the Pages project. Before publishing, make the privacy
-page match the host: it describes server logs kept for `LOG_RETENTION_DAYS` days,
-which fits a server you run, not Pages (where you keep no logs and Cloudflare is
-the host).
+Then add the custom domain in the Pages project. The privacy page names
+`HOSTING_PROVIDER` as the host that sees visitors' IP addresses and says we keep no
+access logs of our own, which fits Pages; reword it if the site moves to a server
+you run.
 
 ## Source
 
@@ -58,5 +60,5 @@ changes. Pictures of ePortem are generic illustrations, never its real design.
 ## Before publishing for real
 
 The terms of use and privacy policy are a careful first draft, not legal advice. Have
-them reviewed before anyone uses the service, and check `LOG_RETENTION_DAYS` and
-`NETWORK_PROVIDER` against the host that serves the site.
+them reviewed before anyone uses the service, and check `HOSTING_PROVIDER` against the
+host that serves the site.

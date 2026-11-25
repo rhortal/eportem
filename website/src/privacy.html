@@ -12,10 +12,10 @@
 <!--include:_header.en.html-->
 <main id="main" class="wrap doc">
 <h1>Privacy</h1>
-<p class="updated">Last updated: 24 November 2026</p>
+<p class="updated">Last updated: 25 November 2026</p>
 
-<div class="box"><strong>In short.</strong> This website sets no cookies, uses no analytics and loads nothing from other
-sites. If you email us, we use your message only to reply. When CheckIn opens, it will hold what it needs to clock in
+<div class="box"><strong>In short.</strong> This website sets no cookies and loads nothing from other sites except Cloudflare's
+cookieless visit counter. If you email us, we use your message only to reply. When CheckIn opens, it will hold what it needs to clock in
 for you, your ePortem password encrypted, and nothing for advertising.</div>
 
 <h2>Who is responsible</h2>
@@ -24,16 +24,17 @@ for you, your ePortem password encrypted, and nothing for advertising.</div>
 
 <h2>This website</h2>
 <ul>
-  <li><strong>No cookies, no tracking.</strong> The site stores nothing on your device and has no analytics, ads,
-  social buttons or embedded content. Fonts and images are served from this site, so visiting it sends nothing to
-  anyone else.</li>
-  <li><strong>Server logs.</strong> Like any web server, ours records each request (IP address, time, page, browser
-  type) to keep the site secure and working. These logs are deleted after {{LOG_RETENTION_DAYS}} days and are not
-  used to identify or profile you. Legal basis: our legitimate interest in running a secure site (GDPR art. 6.1.f).</li>
-  <!--if:NETWORK_PROVIDER--><li><strong>Network provider.</strong> Traffic to this site passes through {{NETWORK_PROVIDER}},
-  which protects it from attacks and handles the encrypted connection, and so processes IP addresses on our behalf. It
-  may do so outside the European Economic Area under the safeguards the GDPR requires (an adequacy decision or
-  standard contractual clauses).</li><!--endif:NETWORK_PROVIDER-->
+  <li><strong>No cookies, no tracking.</strong> The site stores nothing on your device and has no ads, social
+  buttons or embedded content. Fonts and images are served from this site.</li>
+  <li><strong>Visit statistics.</strong> We count visits with Cloudflare Web Analytics, a small script from Cloudflare
+  that sets no cookies, stores nothing on your device and doesn't follow you across sites. It reports the page, the
+  page that sent you here, your browser and device type, your country and how fast the page loaded, and we only see
+  totals. Legal basis: our legitimate interest in knowing how the site is used (GDPR art. 6.1.f).</li>
+  <li><strong>Hosting.</strong> This site is hosted by {{HOSTING_PROVIDER}}, which delivers it, protects it from
+  attacks and handles the encrypted connection. To do that it processes each request (IP address, time, page, browser
+  type) on our behalf, and may do so outside the European Economic Area under the safeguards the GDPR requires (an
+  adequacy decision or standard contractual clauses). We keep no access logs of our own and don't use this data to
+  identify or profile you. Legal basis: our legitimate interest in running a secure site (GDPR art. 6.1.f).</li>
   <li><strong>Email.</strong> If you write to us, we use your address and message only to answer you and delete them
   when the conversation is over, unless you ask us to tell you when CheckIn opens. Then we keep your address only
   for that, until it opens or you ask us to stop. Legal basis: your request, and your consent for the opening notice.</li>
