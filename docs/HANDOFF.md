@@ -7,6 +7,20 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 `docs/OPERATIONS.md`, the plan in
 `docs/refactor/PLAN.md`, the decisions in `docs/refactor/DECISIONS.md`.
 
+## Start here (2026-11-25, morning, on the personal laptop)
+
+- **The app is now `https://checkin-app.hortal.me`**; `https://checkin.hortal.me` is the
+  public website on Cloudflare Pages (the hosting runbook on the `website` branch, all
+  steps done; details in that branch's `docs/HANDOFF.md`). On `omv`: DNS record and proxy
+  host 74 (cert 94) for the app, `CHECKIN_PUBLIC_URL` changed (backup
+  `.env.bak-20261125-hostname`), container recreated at 09:18 after the clock-in (08:58,
+  HTTP); today's runs intact; proxy host 73 and its cert deleted. Montastic watches the
+  new `/healthz`; the owner signed in on the new name.
+- The website's contact address `checkin@hortal.me` is a Mailu **mailbox** (not an alias:
+  forwards to Gmail are refused by the SMTP2GO relay; see the homelab repo,
+  `hosts/omv/services/mailu.md`). Password in Bitwarden "mail.hortal.me (checkin@hortal.me)".
+- Next is unchanged: volumes about 2026-11-28, cron clean-up about 2026-12-08.
+
 ## Start here (end of the 2026-11-24 session on the work Mac, about 18:50)
 
 The hand-over on the work Mac is done. Anything about the public website, including

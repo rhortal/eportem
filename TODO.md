@@ -32,9 +32,11 @@ Details for each item are in `docs/HANDOFF.md`.
 - [ ] About 2026-12-08, after two clean weeks: remove the cron path (PLAN.md
       phase 8, step 6).
 - [x] `checkin.hortal.me`: a Cloudflare DNS record and an nginx-proxy-manager
-      proxy host (found in place on 2026-11-21, see `docs/HANDOFF.md`).
+      proxy host (found in place on 2026-11-21, see `docs/HANDOFF.md`). Since
+      2026-11-25 the app is `checkin-app.hortal.me` and `checkin.hortal.me` is the
+      website on Cloudflare Pages.
 - [x] A destination for GlitchTip alerts (Telegram) and an outside uptime
-      monitor on `https://checkin.hortal.me/healthz` (Montastic), 2026-11-21.
+      monitor (Montastic), 2026-11-21; now on `https://checkin-app.hortal.me/healthz`.
 - [x] GlitchTip moved out of this project's Compose project into its own stack on
       a shared Postgres, for every service on the host (2026-11-21).
 - [ ] The owner's region for public holidays (only national ones for now).
