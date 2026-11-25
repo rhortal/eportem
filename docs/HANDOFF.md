@@ -7,6 +7,37 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 `docs/OPERATIONS.md`, the plan in
 `docs/refactor/PLAN.md`, the decisions in `docs/refactor/DECISIONS.md`.
 
+## Start here (2026-11-25, personal laptop): the site is live
+
+The hosting runbook below is **done** (all 8 steps, 08:30-09:40):
+- `https://checkin.hortal.me` is this website on **Cloudflare Pages**: project `checkin` on the
+  owner's personal account (`checkin.pages.dev` was taken globally, so its address is
+  `checkin-api.pages.dev`; the `checkin` CNAME, proxied, points there). Deploy:
+  `python3 website/build.py && wrangler pages deploy website/dist --project-name checkin --branch main`
+  (check `wrangler whoami` first: the personal account, never the work one).
+- The app is `https://checkin-app.hortal.me` (proxy host 74, `CHECKIN_PUBLIC_URL` changed,
+  Montastic moved; see `main`'s `docs/OPERATIONS.md`). Proxy host 73 and cert 93 deleted.
+- `website/site.env` (untracked) on the personal laptop: `SITE_URL=https://checkin.hortal.me`,
+  the owner's name, `CONTACT_EMAIL=checkin@hortal.me`, `HOSTING_PROVIDER=Cloudflare`.
+- Contact: `checkin@hortal.me` is a Mailu **mailbox** (password in Bitwarden
+  "mail.hortal.me (checkin@hortal.me)"). A forward-only alias doesn't work: SMTP2GO, Mailu's
+  outgoing relay, refuses forwarded mail from unverified domains (and the bounce is lost). The
+  owner plans an n8n "re-send as the mailbox" workflow; recipe in the homelab repo,
+  `hosts/omv/services/mailu.md`. A test from outside arrived in the mailbox.
+- Analytics (owner's request): Cloudflare Web Analytics, turned on in the Pages project; the
+  privacy page and footer say so (`e792e49`), and the privacy page now names the host and says we
+  keep no access logs (`LOG_RETENTION_DAYS` gone).
+
+Follow-ups, not done:
+- **Two beacons on the page**: the Pages project's Web Analytics *and* the `hortal.me` zone's
+  automatic install both inject `beacon.min.js` (seen in headless Chrome), so each visit is counted
+  in two Web Analytics sites. Keep one: turn off the Pages toggle, or exclude `checkin.hortal.me`
+  from the zone's automatic install (a Web Analytics rule; zone-wide setting, ask first).
+- **No 404 page**: Pages serves the home page with 200 for unknown paths (its single-page-app
+  fallback when there is no `404.html`). Add `src/404.html` (both languages' links) to the build.
+- Pages drops `.html` (308 `/privacy.html` -> `/privacy`); internal links and `rel=canonical` use
+  `.html`. Works; consider extensionless links and canonicals.
+
 ## Start here (end of the 2026-11-24 session on the work Mac, about 16:15)
 
 Sequence agreed with the owner: the work Mac finishes today's hand-over on
