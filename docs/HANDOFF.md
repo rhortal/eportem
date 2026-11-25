@@ -16,8 +16,11 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   translated; tests fail on a missing key or untranslated page text (README
   "Languages"). Website: `/ca/` pages and partials, a generated language switcher
   and `hreflang` links (`LANGUAGES` in `website/build.py`). No migration.
-- To go live: deploy the app to `omv` (outside clock times) and the website with
-  `website/deploy.sh`. Until then production shows the old labels.
+- Live: website deployed 12:58 (Pages deployment `9cbf232d`, `/ca/` and the switcher
+  checked); app `bb18122` on `omv` since 13:46 (backup
+  `/data/backups/checkin-20261125-134618.db`, readyz 200, the day's remaining runs
+  still planned). No migration, so rolling back is checking out `a0db5e7` and
+  rebuilding.
 - Next for languages (TODO): notifications, alerts, emails, API errors in each
   person's language; Basque and Galician.
 
