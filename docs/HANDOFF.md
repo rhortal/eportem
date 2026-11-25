@@ -19,11 +19,10 @@ The hosting runbook below is **done** (all 8 steps, 08:30-09:40):
   Montastic moved; see `main`'s `docs/OPERATIONS.md`). Proxy host 73 and cert 93 deleted.
 - `website/site.env` (untracked) on the personal laptop: `SITE_URL=https://checkin.hortal.me`,
   the owner's name, `CONTACT_EMAIL=checkin@hortal.me`, `HOSTING_PROVIDER=Cloudflare`.
-- Contact: `checkin@hortal.me` is a Mailu **mailbox** (password in Bitwarden
-  "mail.hortal.me (checkin@hortal.me)"). A forward-only alias doesn't work: SMTP2GO, Mailu's
-  outgoing relay, refuses forwarded mail from unverified domains (and the bounce is lost). The
-  owner plans an n8n "re-send as the mailbox" workflow; recipe in the homelab repo,
-  `hosts/omv/services/mailu.md`. A test from outside arrived in the mailbox.
+- Contact: `checkin@hortal.me` is a Mailu alias to the local mailbox `roberto@hortal.com`, which
+  Gmail fetches over POP. It can't forward straight to Gmail: SMTP2GO, Mailu's outgoing relay,
+  refuses forwarded mail from unverified domains (and the bounce is lost). Details in the homelab
+  repo, `hosts/omv/services/mailu.md`. A test from outside arrived.
 - Analytics (owner's request): Cloudflare Web Analytics, from the `hortal.me` zone (see below); the
   privacy page and footer say so (`e792e49`), and the privacy page now names the host and says we
   keep no access logs (`LOG_RETENTION_DAYS` gone).
