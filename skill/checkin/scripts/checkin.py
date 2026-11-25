@@ -113,7 +113,7 @@ def http(method, url, body=None, token=None, timeout=30):
 def app_url(cfg, given=None):
     url = given or os.environ.get("CHECKIN_URL") or cfg.get("url") or defaults().get("app_url")
     if not url:
-        raise Problem("no CheckIn address: run `login --url https://...`", EXIT_USAGE)
+        raise Problem("no CheckIn address: run `login --url https://checkin.example.com`", EXIT_USAGE)
     return url.rstrip("/")
 
 

@@ -24,7 +24,7 @@ repeat the token: the script keeps it in `~/.config/checkin/agent.json` itself.
 1. `checkin.py login` prints `open_this_link` and `code`. Give the user both and ask
    them to open the link, check that the page shows the same code, and approve.
    (If the skill doesn't know the address of the user's CheckIn, ask them for it and
-   run `login --url https://...`. Add `--read-only` if the user only wants you to look.)
+   run `login --url https://checkin.example.com`. Add `--read-only` if the user only wants you to look.)
 2. Run `checkin.py login --wait`. It waits up to about 100 seconds; exit code 4
    means not approved yet: run it again (the code lives 10 minutes).
 3. Exit code 3 on any command later means the token expired (after 90 days) or was

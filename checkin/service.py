@@ -520,7 +520,8 @@ def list_runs(db, user, start, end):
 def run_log(db, user, run_id):
     run = owned(db, PlannedRun, run_id, user, "run")
     log = db.get(RunLog, run.id)
-    return {"run": run_view(run, user.timezone), "outcome": log.outcome if log else None, "text": log.text if log else ""}
+    return {"run": run_view(run, user.timezone), "outcome": log.outcome if log else None,
+            "text": log.text if log else ""}
 
 
 def prepare_manual_run(db, user, actor, action, location, now_utc):
