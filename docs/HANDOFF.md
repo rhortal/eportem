@@ -7,7 +7,7 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
 `docs/OPERATIONS.md`, the plan in
 `docs/refactor/PLAN.md`, the decisions in `docs/refactor/DECISIONS.md`.
 
-## Start here (2026-11-25, 10:50, on the work Mac): agent skill live; website to deploy
+## Start here (2026-11-25, 10:50, on the work Mac): agent skill live; website deployed
 
 - CheckIn from AI agents (D-028; README "AI agents"; PLAN "After the cutover") is in
   `main` (`a0db5e7`) and live on `omv` since 10:46: device-flow sign-in (`/device`),
@@ -26,14 +26,12 @@ end of each session. General guidance lives in `CLAUDE.md`, the live host in
   gitignored; recreate them on the personal laptop to use the skill there).
   `checkin.py state` read the real dashboard correctly (working, after the 08:58
   clock-in), so the state rule holds on the real site.
-- **To do on the personal laptop: deploy the website**, which now presents the
-  skill (home section "Or just ask your AI agent", `/agents`, illustration
-  `agent-chat`; nothing of the skill is published there). Not done from the work
-  Mac: its wrangler and `CLOUDFLARE_*` tokens are the employer's, and
-  `website/site.env` is only on the personal laptop. There: `git pull`, `make
-  check`, `wrangler whoami` (the personal account), then `python3 website/build.py
-  && wrangler pages deploy website/dist --project-name checkin --branch main`, and
-  check `/agents`, `/es/agents` and the home section.
+- **Website deployed** from the personal laptop on 2026-11-25 (deployment
+  `cca864e1`, built from `c316485`): it now presents the skill (home section "Or just
+  ask your AI agent", `/agents`, illustration `agent-chat`; nothing of the skill is
+  published there). `/`, `/agents`, `/es/` and `/es/agents` answer 200 on
+  `https://checkin.hortal.me`. The skill itself is not set up on the personal laptop
+  yet (symlink, `defaults.json`, sign-in: see above).
 - Later, if asked: ePortem's other pauses and switching home/office while working.
 
 ## Start here (2026-11-25, morning, on the personal laptop)
