@@ -36,7 +36,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 UPDATE_CHECK_EVERY = datetime.timedelta(days=1)
 # One `login --wait` or `clock` stays under the usual two-minute tool timeout.

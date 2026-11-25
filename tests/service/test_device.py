@@ -182,6 +182,16 @@ class TestAgentEndpoints(DeviceCase):
                          ["ePortem account", "Working-day template", "Home days", "Notifications"])
         self.assertIn("next_run", body)
 
+    def test_runs_say_when_they_really_go_in_local_time(self):
+        import datetime as dt
+
+        from checkin.db.models import PlannedRun
+        with self.Session.begin() as db:
+            db.add(PlannedRun(user_id=self.alice, date=dt.date(2026, 12, 1), action="stop_day", target_minute=18 * 60,
+                              planned_at=dt.datetime(2026, 12, 1, 17, 8, 54), location="home", status="planned"))
+        runs = self.call("GET", "/runs?from=2026-12-01&to=2026-12-01", self.alice_token).json()
+        self.assertEqual((runs[0]["time"], runs[0]["at"]), ("18:00", "18:08:54"))   # Madrid, UTC+1
+
     def test_revoke_the_current_token(self):
         self.assertEqual(self.call("DELETE", "/tokens/current", self.alice_token).status_code, 204)
         self.assertEqual(self.call("GET", "/me", self.alice_token).status_code, 401)

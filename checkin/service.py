@@ -449,8 +449,8 @@ def status(db, user, now_utc=None):
                       .order_by(PlannedRun.planned_at)).all()
     upcoming = [r for r in runs if r.status == "planned" and r.planned_at >= now_utc]
     return {"user": profile(user), "today": calendar(db, user, today, 1)[0],
-            "runs_today": [run_view(r) for r in runs if r.date == today],
-            "next_run": run_view(upcoming[0]) if upcoming else None,
+            "runs_today": [run_view(r, user.timezone) for r in runs if r.date == today],
+            "next_run": run_view(upcoming[0], user.timezone) if upcoming else None,
             "setup": [{"step": label, "page": page, "done": done} for label, page, done in setup_steps(db, user)]}
 
 
@@ -497,23 +497,30 @@ def owned(db, model, row_id, user, what):
 
 
 # --- runs --------------------------------------------------------------------------
-def run_view(run):
-    return {"id": run.id, "date": run.date.isoformat(), "action": run.action,
-            "time": format_minutes(run.target_minute), "location": run.location, "status": run.status,
-            "via": run.via, "planned_at": run.planned_at.isoformat() + "Z",
-            "finished_at": run.finished_at.isoformat() + "Z" if run.finished_at else None, "error": run.error}
+def run_view(run, timezone=None):
+    """`time` is the schedule's time for the action; `planned_at` (UTC) is when
+    the run really goes, with the random offset, and `at` the same in the
+    person's time zone, when it is given."""
+    out = {"id": run.id, "date": run.date.isoformat(), "action": run.action,
+           "time": format_minutes(run.target_minute), "location": run.location, "status": run.status,
+           "via": run.via, "planned_at": run.planned_at.isoformat() + "Z",
+           "finished_at": run.finished_at.isoformat() + "Z" if run.finished_at else None, "error": run.error}
+    if timezone:
+        local = run.planned_at.replace(tzinfo=datetime.UTC).astimezone(zoneinfo.ZoneInfo(timezone))
+        out["at"] = local.strftime("%H:%M:%S")
+    return out
 
 
 def list_runs(db, user, start, end):
     rows = db.scalars(select(PlannedRun).where(PlannedRun.user_id == user.id, PlannedRun.date >= start,
                                                PlannedRun.date <= end).order_by(PlannedRun.planned_at))
-    return [run_view(r) for r in rows]
+    return [run_view(r, user.timezone) for r in rows]
 
 
 def run_log(db, user, run_id):
     run = owned(db, PlannedRun, run_id, user, "run")
     log = db.get(RunLog, run.id)
-    return {"run": run_view(run), "outcome": log.outcome if log else None, "text": log.text if log else ""}
+    return {"run": run_view(run, user.timezone), "outcome": log.outcome if log else None, "text": log.text if log else ""}
 
 
 def prepare_manual_run(db, user, actor, action, location, now_utc):

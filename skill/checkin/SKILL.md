@@ -36,8 +36,10 @@ whom you are signed in, without calling the server.
 ## Reading
 
 - `state`: what ePortem shows right now (see below).
-- `status`: who, today's plan (`today`: works, reason, location, planned times),
-  today's runs and their status, the next run, and the setup checklist. Start here.
+- `status`: who, today's plan (`today`: works, reason, location, the schedule's
+  times), today's runs and their status, the next run, and the setup checklist.
+  Start here. A run's `time` is the schedule's time; `at` is when it really goes
+  (with the random offset, local time). Answer "when do I clock out?" with `at`.
 - `get /calendar from=YYYY-MM-DD days=14` (1 to 62 days): what will happen each day
   and why (`reason`: workday, weekend, public holiday, time off...), home or office.
 - `get /runs from=YYYY-MM-DD to=YYYY-MM-DD`: clock events and their status
