@@ -61,13 +61,42 @@ class TestWebsite(unittest.TestCase):
             self.assertNotIn("@import", html)
         self.assertNotRegex((self.dist / "assets/site.css").read_text(), r"url\(\s*['\"]?(?:https?:)?//")
 
+    def served_file(self, url):
+        """The file Cloudflare Pages serves for a root-absolute URL: "/" and "/es/"
+        are index.html, "/terms" is terms.html, assets keep their names."""
+        path = url.split("#")[0].lstrip("/")
+        if path == "" or path.endswith("/"):
+            path += "index.html"
+        elif "." not in Path(path).name:
+            path += ".html"
+        return self.dist / path
+
+    def internal_links(self, name):
+        site = self.values["SITE_URL"]
+        for target in LINK.findall(self.html(name)):
+            if target.startswith(site):
+                yield target[len(site):] or "/"
+            elif not target.startswith(("http://", "https://", "mailto:", "#")):
+                yield target
+
     def test_internal_links_resolve(self):
         for name in self.pages:
-            for target in LINK.findall(self.html(name)):
-                if target.startswith(("http://", "https://", "mailto:", "#")):
-                    continue
-                path = (self.dist / name).parent / target.split("#")[0]
-                self.assertTrue(path.resolve().is_file(), f"{name}: {target}")
+            for url in self.internal_links(name):
+                self.assertTrue(url.startswith("/"), f"{name}: {url} is not root-absolute")
+                self.assertTrue(self.served_file(url).is_file(), f"{name}: {url}")
+
+    def test_links_and_canonicals_have_no_html_extension(self):
+        # Pages answers /x.html with a redirect to /x, so link to /x directly.
+        for name in self.pages:
+            for url in self.internal_links(name):
+                self.assertNotRegex(url.split("#")[0], r"\.html$", f"{name}: {url}")
+
+    def test_a_not_found_page_in_each_language(self):
+        for name, home in (("404.html", "/es/"), ("es/404.html", "/")):
+            html = self.html(name)
+            self.assertIn('name="robots" content="noindex"', html)
+            self.assertNotIn('rel="canonical"', html)
+            self.assertIn(f'href="{home}"', html, "the language link goes to the other home page")
 
     def test_every_picture_is_catalogued(self):
         catalogue = (SITE / "VISUALS.md").read_text(encoding="utf-8")

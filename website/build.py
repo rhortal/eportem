@@ -11,8 +11,10 @@ build refuses to run while a required one is missing or a placeholder is left.
 Other markers:
   <!--include:_footer.en.html-->   the partial's text (it may hold placeholders too)
   <!--if:KEY--> ... <!--endif:KEY-->  kept only when KEY has a value
-  {{ROOT}}   the relative path to the site root ("" or "../")
-  {{ALT}}    the same page in the other language
+  {{ROOT}}   the site root, "/": links are root-absolute and extensionless
+             ("/privacy", "/es/"), as Cloudflare Pages serves them, so a 404 page
+             works at any depth
+  {{ALT}}    the same page in the other language (the other home page for 404.html)
 Standard library only: the site has no build dependencies.
 """
 import argparse
@@ -74,6 +76,13 @@ def render(text, values, src_dir):
     return text
 
 
+def page_url(page_dir, file_name):
+    """The address a page is served at: "/es/" for es/index.html, "/terms" for
+    terms.html. A 404 page links to its language's home page instead."""
+    stem = file_name.removesuffix(".html")
+    return f"/{page_dir}" + ("" if stem in ("index", "404") else stem)
+
+
 def build(values, src=SRC, dist=DIST):
     missing = [k for k in REQUIRED if not values.get(k)]
     if missing:
@@ -88,8 +97,7 @@ def build(values, src=SRC, dist=DIST):
             if page.name.startswith("_"):
                 continue
             name = f"{page_dir}{page.name}"
-            root = "../" if page_dir else ""
-            page_values = dict(values, ROOT=root, ALT=f"{root}{other}{page.name}", PAGE=page.name)
+            page_values = dict(values, ROOT="/", ALT=page_url(other, page.name), PAGE=page.name)
             try:
                 html = render(page.read_text(encoding="utf-8"), page_values, src)
             except BuildError as e:

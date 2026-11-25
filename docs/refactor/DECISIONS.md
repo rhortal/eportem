@@ -377,4 +377,6 @@ zone's automatic install, EU visitors included), so the source still loads nothi
 from other sites and the test still holds; the privacy page and footer now say so.
 The privacy page also names the host (`HOSTING_PROVIDER`) and says we keep no access
 logs of our own, which replaces the self-hosted wording (`LOG_RETENTION_DAYS`). The
-app's `script-src 'self'` blocks the injected script, so signed-in pages aren't counted.
+app's `script-src 'self'` blocks the injected script, so signed-in pages aren't counted. Also on 2026-11-25: links and canonicals became root-absolute and extensionless (Pages
+redirected every `.html` link with a 308), and each language got a `404.html` (Pages answered
+unknown paths with the home page and a 200).

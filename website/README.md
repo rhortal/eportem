@@ -20,7 +20,12 @@ site address, and later a tax ID and address). They stay out of the repository, 
 every personal value (the portability test enforces it), and the build refuses to run
 while one is missing. Standard library only.
 
-Publish `website/dist/` on any static host or web server.
+Links are root-absolute and extensionless (`/privacy`, `/es/legal`, `/es/`), the way
+Cloudflare Pages serves `privacy.html` and friends, and `404.html` / `es/404.html` are
+the not-found pages (Pages serves the nearest one; without them it would answer every
+unknown path with the home page and a 200). So opening the files from disk won't
+follow links: preview with `npx wrangler pages dev website/dist`. Another host needs
+the same two behaviours (`.html` optional, a 404 page).
 
 ## Hosting
 

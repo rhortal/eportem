@@ -33,10 +33,8 @@ Follow-ups, not done:
   automatic install both inject `beacon.min.js` (seen in headless Chrome), so each visit is counted
   in two Web Analytics sites. Keep one: turn off the Pages toggle, or exclude `checkin.hortal.me`
   from the zone's automatic install (a Web Analytics rule; zone-wide setting, ask first).
-- **No 404 page**: Pages serves the home page with 200 for unknown paths (its single-page-app
-  fallback when there is no `404.html`). Add `src/404.html` (both languages' links) to the build.
-- Pages drops `.html` (308 `/privacy.html` -> `/privacy`); internal links and `rel=canonical` use
-  `.html`. Works; consider extensionless links and canonicals.
+- Done 2026-11-25: `404.html` in each language, and root-absolute, extensionless links and
+  canonicals (Pages used to redirect every `.html` link).
 
 ## Start here (end of the 2026-11-24 session on the work Mac, about 16:15)
 
